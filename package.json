@@ -1,0 +1,13 @@
+{
+  "name": "splitbill-service",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Mousebot 分帳服務：網頁記帳介面 + REST API + 分帳資料（獨立部署）",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "express": "^4.22.2"
+  }
+}
