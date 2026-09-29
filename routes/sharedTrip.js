@@ -22,7 +22,7 @@ module.exports = function createSharedTripRouter(ctx) {
       if (storage.isShareLinkExpired(found.shareLink)) {
         return res.status(403).json({ error: '這個分享連結已經過期，請跟建立連結的人索取新的連結' });
       }
-      res.json({ trip: found.trip, permission: found.shareLink.permission });
+      res.json({ trip: storage.toPublicTrip(found.trip), permission: found.shareLink.permission });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
@@ -47,7 +47,7 @@ module.exports = function createSharedTripRouter(ctx) {
       if (typeof expected === 'number' && typeof found.trip.updatedAt === 'number' && expected !== found.trip.updatedAt) {
         return res.status(409).json({
           error: '這個行程已經被其他人更新過，請合併最新版本後再儲存一次。',
-          currentTrip: found.trip,
+          currentTrip: storage.toPublicTrip(found.trip),
         });
       }
 
@@ -65,7 +65,7 @@ module.exports = function createSharedTripRouter(ctx) {
       // 並一併帶上 writerId 讓寫入者本人可以被正確辨識出來。
       storage.touchTrip(repaired, { writerId });
       storage.persist();
-      res.json({ trip: repaired, permission: found.shareLink.permission });
+      res.json({ trip: storage.toPublicTrip(repaired), permission: found.shareLink.permission });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }

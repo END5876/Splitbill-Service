@@ -41,7 +41,7 @@ module.exports = function createTripsRouter(ctx) {
       const trip = guild.trips[req.params.tripId];
       if (!trip) return res.status(404).json({ error: '找不到這個行程' });
       if (!authorizeTripAccess(req, res, trip, false)) return;
-      res.json(trip);
+      res.json(storage.toPublicTrip(trip));
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
@@ -65,7 +65,7 @@ module.exports = function createTripsRouter(ctx) {
         if (typeof expected === 'number' && typeof existing.updatedAt === 'number' && expected !== existing.updatedAt) {
           return res.status(409).json({
             error: '這個行程已經被其他人更新過，請合併最新版本後再儲存一次。',
-            currentTrip: existing,
+            currentTrip: storage.toPublicTrip(existing),
           });
         }
       }
@@ -89,7 +89,7 @@ module.exports = function createTripsRouter(ctx) {
 
       storage.touchTrip(repaired, { writerId });
       storage.persist();
-      res.json(repaired);
+      res.json(storage.toPublicTrip(repaired));
     } catch (err) {
       res.status(500).json({ error: err.message });
     }

@@ -17,8 +17,11 @@ module.exports = function createGuildRouter(ctx) {
     if (!requireOwner(req, res)) return;
     try {
       const guild = storage.getGuild(req.params.guildId);
+      // Bot 不需要（也不該拿到）分享連結 token，一律去掉。
+      const trips = {};
+      for (const [id, t] of Object.entries(guild.trips)) trips[id] = storage.toPublicTrip(t);
       res.json({
-        trips: guild.trips,
+        trips,
         activeTripByUser: guild.activeTripByUser,
         defaultTripId: guild.defaultTripId,
       });
