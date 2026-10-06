@@ -11,6 +11,7 @@ Mousebot 分帳系統的獨立服務：**網頁記帳介面（`public/`）＋ RE
    | 變數 | 說明 |
    |---|---|
    | `SPLITBILL_API_KEY` | **必填**。共用金鑰；網頁前端與 Bot 都用 `x-api-key` 帶上 |
+   | `OWNER_USER_ID` | 選填。Bot 擁有者的 Discord ID。刪除行程時若帶 `x-actor-id`，只有該行程的建立者（`ownerId`）或此名單內的人可刪；未設定則只有建立者可刪 |
    | `PORT` | 監聽埠，預設 3000 |
    | `SPLITBILL_DATA_DIR` | 資料目錄，Dockerfile 預設 `/app/data` |
    | `GEMINI_API_KEY` | 選填。網頁版帳單照片辨識用，沒設定只會停用該功能 |

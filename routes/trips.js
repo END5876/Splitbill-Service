@@ -8,6 +8,12 @@ const express = require('express');
 // handlers/splitbill/utils/splitbillClient.js），bot 對這個 service 來說
 // 權限視同擁有者（沿用 SPLITBILL_API_KEY／requireOwner），Discord 成員層級
 // 的權限檢查在 bot 自己的 index.js enforceTripPermission() 已經做過。
+// 「Bot 擁有者」的 Discord ID（逗號分隔，與 Mousebot 的 OWNER_USER_ID 相同）。
+// 刪除行程時，若呼叫端宣告了操作者（x-actor-id），只有該行程的建立者或這些人能刪。
+const OWNER_USER_IDS = new Set(
+  (process.env.OWNER_USER_ID || '').split(',').map((s) => s.trim()).filter(Boolean)
+);
+
 module.exports = function createTripsRouter(ctx) {
   const { storage, apiKey, authorizeTripAccess, requireOwner } = ctx;
   const router = express.Router();
@@ -75,6 +81,12 @@ module.exports = function createTripsRouter(ctx) {
       delete incoming.writerId;
       if (existing) {
         incoming.shareLinks = existing.shareLinks;
+        // 🔒 ownerId 一旦建立就不可變更：否則持有「可編輯」分享連結的人只要 PUT
+        // 一個自己的 ownerId，就能把自己（或自己控制的 Discord 帳號）變成建立者。
+        if (existing.ownerId) incoming.ownerId = existing.ownerId;
+        else delete incoming.ownerId;
+      } else if (typeof incoming.ownerId !== 'string' || !incoming.ownerId.trim()) {
+        delete incoming.ownerId; // 新行程：只有擁有者金鑰能走到這裡（上面已 requireOwner），ownerId 才被採用
       }
       const repaired = storage.repairTrip({ ...incoming, id: req.params.tripId });
       guild.trips[req.params.tripId] = repaired;
@@ -104,6 +116,14 @@ module.exports = function createTripsRouter(ctx) {
       const trip = guild.trips[req.params.tripId];
       if (!trip) return res.status(404).json({ error: '找不到這個行程' });
       if (!requireOwner(req, res)) return;
+
+      // 🔒 呼叫端（例如 Mousebot）宣告了「是誰要刪」時，在這裡獨立再驗證一次：
+      // 只有行程建立者或 OWNER_USER_ID 名單內的人可以刪。沒帶 x-actor-id 的呼叫
+      // （持有擁有者金鑰的網頁／維運）維持原本行為。
+      const actorId = (req.get('x-actor-id') || '').trim().slice(0, 64);
+      if (actorId && !OWNER_USER_IDS.has(actorId) && !(trip.ownerId && trip.ownerId === actorId)) {
+        return res.status(403).json({ error: '只有行程建立者可以刪除這個行程' });
+      }
 
       if (guild.defaultTripId === trip.id) guild.defaultTripId = null;
       // 行程被刪除後，順手清掉所有指向它的個人指標，避免資料檔留下
