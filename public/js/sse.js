@@ -5,11 +5,12 @@
    ---------------------------------------------------------------------
    任何人（webui 存檔、或 Discord 面板操作）異動這個行程時，伺服器都會
    把最新的行程資料推播到這裡。設計原則：
-   - 擁有者模式：先用一般帶 x-api-key header 的請求換一張短效、一次性的
+   - Discord 登入：直接開 SSE，瀏覽器會自動帶上登入 cookie。
+   - 管理員金鑰：先用一般帶 x-api-key header 的請求換一張短效、一次性的
      票券（EventSource 無法自訂 header，不能直接帶金鑰去開連線），
-     再用票券開 SSE。連線中斷時（含票券只能用一次、網路波動）一律自己
-     重新換票、重新連線，不依賴瀏覽器對同一個網址的內建自動重連
-     （那樣會直接被拒絕，因為票券已經用掉了）。
+     再用票券開 SSE。
+   - 連線中斷時一律自己重新連線（金鑰模式會重新換票），不依賴瀏覽器對
+     同一個網址的內建自動重連（票券只能用一次）。
    - 分享連結模式：沿用既有設計，token 本身就是路徑上的憑證，不需換票。
    - 收到推播時：若使用者目前沒有正在編輯中的表單/認領流程，直接套用
      並重繪；若有，先嘗試用既有的 tryMergeTrips() 自動合併，合併不了
@@ -44,13 +45,17 @@ async function connectTripEventStream(){
     if (shareMode){
       url = `${apiBaseUrl()}/api/shared-trip/${encodeURIComponent(shareMode.token)}/events`;
     } else {
-      const guildId = document.getElementById('guildSelect').value;
-      const tripId = document.getElementById('tripSelect').value || trip.id;
-      if (!guildId || !tripId) return; // 尚未連線到任何行程，之後 loadTripFromApi() 成功時會再呼叫一次
-      const ticketRes = await fetch(apiBaseUrl() + '/api/sse-ticket', { method: 'POST', headers: apiHeaders() });
-      if (!ticketRes.ok) return; // 換票失敗（例如金鑰失效）就安靜放棄，不影響其他既有功能
-      const { ticket } = await ticketRes.json();
-      url = `${apiBaseUrl()}/api/trip/${encodeURIComponent(guildId)}/${encodeURIComponent(tripId)}/events?ticket=${encodeURIComponent(ticket)}`;
+      if (!currentTripId) return; // 尚未開啟任何雲端行程，之後 loadTripFromApi() 成功時會再呼叫一次
+      if (usingAdminKey()){
+        // 管理員金鑰放在 header，EventSource 帶不了，改用一次性票券
+        const ticketRes = await fetch(apiBaseUrl() + '/api/sse-ticket', { method: 'POST', headers: apiHeaders() });
+        if (!ticketRes.ok) return; // 換票失敗（例如金鑰失效）就安靜放棄，不影響其他既有功能
+        const { ticket } = await ticketRes.json();
+        url = tripApiUrl(`/events?ticket=${encodeURIComponent(ticket)}`);
+      } else {
+        // 🆕 Discord 登入：EventSource 對同源網址會自動帶 cookie，不需要換票
+        url = tripApiUrl('/events');
+      }
     }
 
     const es = new EventSource(url);
@@ -163,19 +168,20 @@ function handleIncomingTripUpdate(rawPushedTrip){
 
 // 🆕 [即時同步] 行程被刪除時的處理：分享連結模式下這個 token 本身也已經
 // 跟著行程一起消失了（shareLinks 是存在 trip 物件裡的），直接沿用既有的
-// 「連結失效」全頁提示；擁有者模式下沒有對應的全頁畫面，用醒目、不會自動
-// 消失太快的 toast 提醒，並刷新伺服器/行程清單，避免使用者沒注意到還繼續
-// 對著一個已經不存在的行程按「儲存回 Bot」（那會被伺服器當成建立一個
-//全新、同名的行程，見 webui/server.js 的 PUT /api/trip/:guildId/:tripId）。
+// 「連結失效」全頁提示；一般模式下用醒目、不會自動消失太快的 toast 提醒，
+// 並刷新「我的行程」清單。
 function handleIncomingTripDeleted(){
   disconnectTripEventStream();
   if (shareMode){
     showShareError('這個行程已經被刪除了，分享連結也跟著失效。');
     return;
   }
-  toast('⚠️ 這個行程已經在別處被刪除了。畫面上仍保留刪除前的最後一份資料，但請避免直接按「儲存」，那會被當成建立一筆新的行程。', 'error', { duration: 10000 });
-  if (document.getElementById('guildSelect').value){
-    refreshGuildList().catch(()=>{});
-  }
+  // 🆕 刪除後就不再是「連線中的雲端行程」：畫面保留最後一份資料當成離線內容，
+  // 之後按「儲存」不會再寫回任何地方（需要的話可以重新上傳成新的雲端行程）。
+  currentTripId = null;
+  clearOwnerConnectionState();
+  updateBotStatusPill(false);
+  toast('⚠️ 這個行程已經在別處被刪除了。畫面上仍保留刪除前的最後一份資料（現在是離線內容），需要的話可以到「設定 → 🧳 行程」重新上傳成雲端行程。', 'error', { duration: 10000 });
+  refreshTripList({ silent: true }).catch(()=>{});
 }
 

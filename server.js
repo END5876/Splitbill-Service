@@ -8,7 +8,10 @@
  * （見 Mousebot 的 handlers/splitbill/utils/splitbillClient.js）。
  *
  * 環境變數：
- *   SPLITBILL_API_KEY   （強烈建議設定）共用金鑰，網頁前端與 Bot 都用 x-api-key 帶上
+ *   SPLITBILL_API_KEY   Bot（與維運）用的共用金鑰，以 x-api-key 帶上；沒設定時 Bot 無法連線
+ *   DISCORD_CLIENT_ID / DISCORD_CLIENT_SECRET / PUBLIC_BASE_URL / SESSION_SECRET
+ *                       網頁的 Discord 登入（見 routes/oauth.js）；沒設定時網頁只能用分享連結
+ *   OWNER_USER_ID       Bot 擁有者的 Discord ID（逗號分隔），對所有行程有建立者權限
  *   PORT / SPLITBILL_WEB_PORT   監聽埠號，預設 3000
  *   SPLITBILL_DATA_DIR  資料目錄（放 splitbill.json），預設 ./data；請掛 Volume 到這裡
  *   GEMINI_API_KEY      網頁版帳單照片辨識需要（沒設定只會停用該功能）
@@ -17,12 +20,13 @@
 const path = require('path');
 const express = require('express');
 
-// ⚠️ 依你實際的專案結構調整這行路徑（本檔預期放在 repo 根目錄的 webui/ 資料夾）
 const storage = require('./lib/storage');
 
 const { getFxRatesFor } = require('./lib/fxRates');
 const { genAI, extractJsonObject, sanitizeReceiptResponse, recognizeReceipt } = require('./lib/receiptScan');
-const { createApiKeyMiddleware, createAuthHelpers } = require('./lib/auth');
+const { createIdentityMiddleware, createAuthHelpers } = require('./lib/auth');
+const session = require('./lib/session');
+const { createLegacyTripPathRewrite } = require('./lib/legacyPaths');
 const { createSseHub, attachTripEventBroadcast } = require('./lib/sse');
 const { getReceiptSession, setReceiptSession, clearReceiptSession } = require('./lib/receiptSessions');
 
@@ -33,6 +37,10 @@ const createSseRouter = require('./routes/sse');
 const createUtilityRouter = require('./routes/utility');
 const createReceiptSessionRouter = require('./routes/receiptSession');
 const createGuildRouter = require('./routes/guild');
+const createMeRouter = require('./routes/me');
+const createOAuthRouter = require('./routes/oauth');
+const createMembersRouter = require('./routes/members');
+const createAttachRouter = require('./routes/attach');
 
 function startWebApi(options = {}) {
   const port = options.port || process.env.PORT || process.env.SPLITBILL_WEB_PORT || 3000;
@@ -47,8 +55,14 @@ function startWebApi(options = {}) {
   // 提供前端靜態頁面（public/index.html），同源存取可避免 CORS 問題
   app.use(express.static(path.join(__dirname, 'public')));
 
-  // ---- 金鑰驗證（僅保護 /api/* 路由，細節見 lib/auth.js） ----
-  app.use('/api', createApiKeyMiddleware(apiKey));
+  // ---- 🆕 [行程獨立化] 舊網址 /api/trip/:guildId/:tripId → /api/trip/:tripId ----
+  app.use('/api', createLegacyTripPathRewrite(storage));
+
+  // ---- 🆕 [Discord 登入] OAuth 登入／登出（不在 /api 底下，瀏覽器直接導向） ----
+  app.use('/auth', createOAuthRouter());
+
+  // ---- 身分辨識：金鑰／分享 token／登入 cookie（細節見 lib/auth.js） ----
+  app.use('/api', createIdentityMiddleware(apiKey));
 
   // ---- 🆕 [即時同步] 掛上 SSE 廣播：任何一條寫入路徑呼叫 storage.touchTrip()
   // 時，都會自動推播給該行程目前所有開著的 SSE 連線（見 lib/sse.js）。
@@ -56,11 +70,10 @@ function startWebApi(options = {}) {
   attachTripEventBroadcast(storage, sseHub);
 
   // ---- 組裝共用的 ctx，各個 router 依需要挑選使用 ----
-  const auth = createAuthHelpers({ storage, apiKey });
+  const auth = createAuthHelpers({ storage });
   const ctx = {
     storage,
-    apiKey,
-    ...auth,       // authorizeTripAccess, requireOwner, hasShareableCredential
+    ...auth,       // requireTripAccess, requireService, requireUser, canLinkMembers, hasUtilityAccess, ...
     ...sseHub,      // sseTickets, pruneSseTickets, SSE_TICKET_TTL_MS, openTripSseStream, broadcastReceiptSession, ...
     getFxRatesFor,
     genAI,
@@ -79,11 +92,19 @@ function startWebApi(options = {}) {
   app.use('/api', createUtilityRouter(ctx));
   app.use('/api', createReceiptSessionRouter(ctx));
   app.use('/api', createGuildRouter(ctx));
+  app.use('/api', createMeRouter(ctx));
+  app.use('/api', createMembersRouter(ctx));
+  app.use('/api', createAttachRouter(ctx));
+
+  storage.loadAll(); // 啟動時就載入（必要時把 v1 資料遷移成 v2），不要等第一個請求進來
 
   app.listen(port, () => {
     console.log(`[splitbill-web] 網頁記帳介面已啟動： http://0.0.0.0:${port}`);
     if (!apiKey) {
-      console.warn('[splitbill-web] ⚠️ 尚未設定 SPLITBILL_API_KEY，任何能連到這個埠的人都能讀寫帳本資料，建議至少設定一組金鑰或只在內網／VPN 開放。');
+      console.warn('[splitbill-web] ⚠️ 尚未設定 SPLITBILL_API_KEY：Bot 無法連線（網頁登入與分享連結不受影響）。');
+    }
+    if (!session.isEnabled() || !process.env.DISCORD_CLIENT_ID) {
+      console.warn('[splitbill-web] ⚠️ 尚未設定 Discord 登入（DISCORD_CLIENT_ID／DISCORD_CLIENT_SECRET／PUBLIC_BASE_URL／SESSION_SECRET≥32 字元），網頁只能用分享連結或金鑰。');
     }
   });
 }

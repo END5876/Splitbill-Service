@@ -1,5 +1,5 @@
 'use strict';
-// 🆕 [分享連結] 擁有者專用：建立／列出／修改／撤銷分享連結面板。
+// 🆕 [分享連結] 行程建立者專用：建立／列出／修改／撤銷分享連結面板。
 /* ===================== 🆕 [分享連結] 擁有者專用：建立／列出／撤銷 ===================== */
 
 // 把一個分享 token 組成完整的、朋友可以直接點的網址。刻意放在 URL 的 hash
@@ -18,10 +18,10 @@ function buildShareUrl(token){
 async function renderShareLinksPanel(){
   const noTripHint = document.getElementById('shareLinkNoTripHint');
   const manageArea = document.getElementById('shareLinkManageArea');
-  const guildId = document.getElementById('guildSelect').value;
-  const tripId = document.getElementById('tripSelect').value;
-
-  if (!guildId || !tripId){
+  if (!currentTripId || !canManageTrip()){
+    noTripHint.innerHTML = currentTripId
+      ? '<p class="hint">只有行程建立者可以管理分享連結。想讓朋友一起記帳，可以到「👥 成員」傳邀請連結給他。</p>'
+      : '<p class="hint">請先到「🧳 行程」開啟一個雲端行程，才能為它建立分享連結。</p>';
     noTripHint.style.display = '';
     manageArea.style.display = 'none';
     return;
@@ -32,7 +32,7 @@ async function renderShareLinksPanel(){
   const listEl = document.getElementById('shareLinkList');
   const countEl = document.getElementById('shareLinkCount');
   try{
-    const res = await fetch(`${apiBaseUrl()}/api/trip/${encodeURIComponent(guildId)}/${encodeURIComponent(tripId)}/share-links`, { headers: apiHeaders() });
+    const res = await fetch(tripApiUrl('/share-links'), { headers: apiHeaders() });
     if (!res.ok){
       const body = await res.json().catch(()=>({}));
       throw new Error(body.error || ('HTTP ' + res.status));
@@ -67,16 +67,14 @@ async function renderShareLinksPanel(){
 }
 
 async function createShareLink(){
-  const guildId = document.getElementById('guildSelect').value;
-  const tripId = document.getElementById('tripSelect').value;
-  if (!guildId || !tripId){ toast('請先連線並選擇一個行程。', 'error'); return; }
+  if (!currentTripId){ toast('請先開啟一個雲端行程。', 'error'); return; }
 
   const label = document.getElementById('shareLinkLabel').value.trim();
   const permission = document.getElementById('shareLinkPermission').value;
   const expiresInDays = parseInt(document.getElementById('shareLinkExpiry').value, 10) || 0;
 
   try{
-    const res = await fetch(`${apiBaseUrl()}/api/trip/${encodeURIComponent(guildId)}/${encodeURIComponent(tripId)}/share-links`, {
+    const res = await fetch(tripApiUrl('/share-links'), {
       method: 'POST',
       headers: Object.assign({ 'Content-Type': 'application/json' }, apiHeaders()),
       body: JSON.stringify({ label, permission, expiresInDays })
@@ -111,10 +109,8 @@ async function copyShareLinkUrl(token){
 // 完全不變，下一次對方開啟或儲存時就會立刻套用新權限。select 選單本身已經有目前的值，
 // 這裡只在使用者真的選了不同的選項時才送出請求，避免每次重新整理清單都白打一次 API。
 async function updateShareLinkPermission(token, permission){
-  const guildId = document.getElementById('guildSelect').value;
-  const tripId = document.getElementById('tripSelect').value;
   try{
-    const res = await fetch(`${apiBaseUrl()}/api/trip/${encodeURIComponent(guildId)}/${encodeURIComponent(tripId)}/share-links/${encodeURIComponent(token)}`, {
+    const res = await fetch(tripApiUrl(`/share-links/${encodeURIComponent(token)}`), {
       method: 'PATCH',
       headers: Object.assign({ 'Content-Type': 'application/json' }, apiHeaders()),
       body: JSON.stringify({ permission })
@@ -135,10 +131,8 @@ async function revokeShareLink(token, label){
   const ok = await confirmModal(`確定要撤銷「${label}」這組分享連結嗎？撤銷後，任何拿著這個連結的人都會立刻無法再存取。`, { danger:true, confirmText:'確定撤銷' });
   if (!ok) return;
 
-  const guildId = document.getElementById('guildSelect').value;
-  const tripId = document.getElementById('tripSelect').value;
   try{
-    const res = await fetch(`${apiBaseUrl()}/api/trip/${encodeURIComponent(guildId)}/${encodeURIComponent(tripId)}/share-links/${encodeURIComponent(token)}`, {
+    const res = await fetch(tripApiUrl(`/share-links/${encodeURIComponent(token)}`), {
       method: 'DELETE',
       headers: apiHeaders()
     });

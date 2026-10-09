@@ -25,9 +25,7 @@ let remoteReceiptSessionInfo = null;   // 偵測到「其他人正在辨識中�
 function receiptSessionUrl(suffix){
   suffix = suffix || '';
   if (shareMode) return `${apiBaseUrl()}/api/shared-trip/${encodeURIComponent(shareMode.token)}/receipt-session${suffix}`;
-  const guildId = document.getElementById('guildSelect').value;
-  const tripId = document.getElementById('tripSelect').value || trip.id;
-  return `${apiBaseUrl()}/api/trip/${encodeURIComponent(guildId)}/${encodeURIComponent(tripId)}/receipt-session${suffix}`;
+  return tripApiUrl(`/receipt-session${suffix}`);
 }
 
 async function pushReceiptSessionToServer(){
@@ -99,11 +97,7 @@ function receiptSessionAnnounceCleared(){
 // 進行帳單辨識協作，若有則顯示「加入認領」的提示按鈕。
 async function checkReceiptSessionAvailability(){
   if (receiptSessionJoined || receiptState) return;
-  if (!shareMode){
-    const guildId = document.getElementById('guildSelect').value;
-    const tripId = document.getElementById('tripSelect').value;
-    if (!guildId || !tripId) return; // 尚未連線，不用檢查
-  }
+  if (!shareMode && !currentTripId) return; // 尚未開啟雲端行程，不用檢查
   try{
     const res = await fetch(receiptSessionUrl(), { headers: apiHeadersAny() });
     if (!res.ok) return;

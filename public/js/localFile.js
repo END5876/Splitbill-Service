@@ -13,7 +13,7 @@ function initFsApiUi(){
     document.getElementById('btnOpenLocal').disabled = true;
     document.getElementById('btnSaveLocal').disabled = true;
     document.getElementById('autoSaveLocal').disabled = true;
-    hint.textContent = '你目前的瀏覽器不支援「直接寫入本機檔案」（僅 Chrome / Edge 等 Chromium 瀏覽器支援）。請改用下方的下載／貼上方式，或用「連線 Bot」分頁直接存回伺服器（所有瀏覽器都適用）。';
+    hint.textContent = '你目前的瀏覽器不支援「直接寫入本機檔案」（僅 Chrome / Edge 等 Chromium 瀏覽器支援）。請改用下方的下載／貼上方式，或登入後把行程存到雲端（所有瀏覽器都適用）。';
   } else {
     hint.textContent = '按「選擇 trip.json」開啟你要編輯的檔案，之後按「儲存並覆寫檔案」會直接寫回同一個檔案，不用再下載、也不用手動貼上。此功能需要 HTTPS 或 localhost。';
   }
@@ -56,14 +56,14 @@ function updateBotStatusPill(connected, label){
   const pillText = document.getElementById('botStatusText');
   const pill = document.getElementById('botStatusPill');
   if (connected){
-    pillText.textContent = label ? `已連線：${label}` : '已連線 Bot';
+    pillText.textContent = label ? `雲端行程：${label}` : '已開啟雲端行程';
     pill.classList.add('on'); pill.classList.remove('warn');
   } else {
-    pillText.textContent = '未連線 Bot';
+    pillText.textContent = (typeof currentUser !== 'undefined' && currentUser) ? '離線編輯中（未開啟雲端行程）' : '未登入';
     pill.classList.remove('on','warn');
   }
-  // 🆕 [狀態 pill 精簡] 已連線是正常狀態，不需要常駐佔位；未連線才是需要
-  // 使用者處理的狀態，才跳出來提醒（點下去可直接跳到「連線 Bot」分頁）。
+  // 🆕 [狀態 pill 精簡] 已開啟雲端行程是正常狀態，不需要常駐佔位；沒有才需要
+  // 使用者處理，才跳出來提醒（點下去可直接跳到「行程」分頁）。
   pill.style.display = connected ? 'none' : '';
   syncStatusPillsVisibility();
 }

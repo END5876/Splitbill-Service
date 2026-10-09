@@ -1,24 +1,60 @@
 'use strict';
-// 連線 Bot API 的基礎設施：apiBaseUrl/apiHeaders、即時匯率查詢、伺服器與行程清單、記住上次連線。
-/* ===================== connect to bot API ===================== */
-let lastGuilds = [];
+// 連線 splitbill-service 的基礎設施：身分（Discord 登入／管理員金鑰）、目前行程、
+// 即時匯率查詢、「我的行程」清單、記住上次開的行程。
+/* ===================== connection ===================== */
+// 🆕 [行程獨立化] 行程以 tripId 為主鍵（/api/trip/:tripId），不再需要先選伺服器。
+// 身分有兩種：
+//   - Discord 登入（主要用法）：cookie 自動帶上，寫入請求另外帶 x-requested-with
+//     標頭（service 端的 CSRF 檢查，見 lib/auth.js）
+//   - 管理員金鑰（進階／維運）：在「行程 → 進階」填 SPLITBILL_API_KEY，可看到所有行程
+let currentUser = null;      // { id, name, avatar } | null
+let oauthEnabled = false;
+let myTrips = [];            // GET /api/my/trips 的結果（含 role）
+let currentTripId = null;    // 目前「連線中」的雲端行程；null＝離線編輯（本機檔案／匯入）
 let lastSyncedTripJSON = null; // 用來做簡單的樂觀鎖：跟伺服器目前的版本比對，偵測是否被別人改過
+
 function apiBaseUrl(){
   const v = document.getElementById('apiBase').value.trim();
   return v ? v.replace(/\/+$/,'') : ''; // 空字串 = 使用目前網址（同源）
 }
+function usingAdminKey(){
+  return !!document.getElementById('apiKey').value.trim();
+}
 function apiHeaders(){
   const key = document.getElementById('apiKey').value.trim();
-  return key ? { 'x-api-key': key } : {};
+  return key ? { 'x-api-key': key } : { 'x-requested-with': 'splitbill' };
 }
 // 🆕 [分享連結] 給「擁有者/分享連結都可能呼叫」的共用工具端點用（即時匯率、
-// 帳單辨識）：分享連結模式下用連結自己的 token 當憑證，否則沿用擁有者在
-// 「連線 Bot」分頁填的金鑰。分享連結持有者的畫面上根本沒有 apiKey 那個
-// 輸入框，apiHeaders() 在那個情境下只會拿到空字串，這是先前即時匯率對
-// 分享連結訪客一直失敗的根因——這裡統一改用這個函式來源正確的憑證。
+// 帳單辨識）：分享連結模式下用連結自己的 token 當憑證，否則沿用一般身分。
 function apiHeadersAny(){
   if (shareMode) return { 'x-api-key': shareMode.token };
   return apiHeaders();
+}
+function isConnected(){ return !!currentTripId; }
+function tripApiUrl(suffix){
+  return `${apiBaseUrl()}/api/trip/${encodeURIComponent(currentTripId)}${suffix || ''}`;
+}
+// 目前行程裡「我」的身分：'admin' | 'owner' | 'member' | null
+function currentTripRole(){
+  if (!currentTripId) return null;
+  const entry = myTrips.find(t => t.id === currentTripId);
+  if (entry) return entry.role;
+  if (currentUser && trip.ownerId === currentUser.id) return 'owner';
+  if (currentUser && trip.members.some(m => m.discordId === currentUser.id)) return 'member';
+  return null;
+}
+function canManageTrip(){
+  const r = currentTripRole();
+  return r === 'owner' || r === 'admin';
+}
+async function apiJson(res){
+  const body = await res.json().catch(()=>({}));
+  if (!res.ok){
+    const err = new Error(body.error || ('HTTP ' + res.status));
+    err.status = res.status; err.body = body;
+    throw err;
+  }
+  return body;
 }
 
 /* ===================== 即時匯率 ===================== */
@@ -33,8 +69,7 @@ async function fetchLiveRate(from, to){
   if (cached && (Date.now() - cached.fetchedAt) < LIVE_RATE_CACHE_TTL) return cached;
   try{
     const res = await fetch(`${apiBaseUrl()}/api/fx-rate?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, { headers: apiHeadersAny() });
-    const body = await res.json().catch(()=>({}));
-    if (!res.ok) throw new Error(body.error || ('HTTP ' + res.status));
+    const body = await apiJson(res);
     const entry = { rate: body.rate, asOf: body.asOf, fetchedAt: Date.now() };
     liveRateCache[key] = entry;
     return entry;
@@ -42,95 +77,157 @@ async function fetchLiveRate(from, to){
     return null; // 由呼叫端自行退回使用手動設定的匯率，不擋住記帳
   }
 }
-async function refreshGuildList(){
+
+/* ===================== 身分 ===================== */
+async function fetchMe(){
   try{
-    const res = await fetch(apiBaseUrl() + '/api/guilds', { headers: apiHeaders() });
-    if (!res.ok){
-      const body = await res.json().catch(()=>({}));
-      throw new Error(body.error || ('HTTP ' + res.status));
-    }
-    const guilds = await res.json();
-    lastGuilds = guilds;
-    const sel = document.getElementById('guildSelect');
-    sel.innerHTML = guilds.length
-      ? guilds.map(g=>`<option value="${g.guildId}">${g.guildId}${g.guildName?(' － '+escapeHtml(g.guildName)):''}</option>`).join('')
-      : '<option value="">（伺服器上沒有任何資料）</option>';
-    sel.onchange = ()=>{ populateTripSelect(); syncAdvDetailsState(); };
+    const res = await fetch(apiBaseUrl() + '/api/me', { credentials: 'same-origin' });
+    const body = await apiJson(res);
+    currentUser = body.user || null;
+    oauthEnabled = !!body.oauth;
+  }catch(e){
+    currentUser = null;
+  }
+  renderAccountArea();
+  return currentUser;
+}
+function loginWithDiscord(next){
+  const target = next || (location.pathname + location.search + location.hash);
+  location.href = `${apiBaseUrl()}/auth/discord/login?next=${encodeURIComponent(target)}`;
+}
+async function logout(){
+  try{
+    await fetch(apiBaseUrl() + '/auth/logout', { method: 'POST', headers: { 'x-requested-with': 'splitbill' } });
+  }catch(e){}
+  clearOwnerConnectionState();
+  location.reload();
+}
+
+/* ===================== 我的行程 ===================== */
+async function refreshTripList(opts){
+  opts = opts || {};
+  try{
+    const res = await fetch(apiBaseUrl() + '/api/my/trips', { headers: apiHeaders() });
+    const body = await apiJson(res);
+    myTrips = body.trips || [];
     populateTripSelect();
-    syncAdvDetailsState();
-    toast(`連線成功，共找到 ${guilds.length} 個伺服器`, 'success');
-    updateBotStatusPill(true);
+    if (!opts.silent) toast(`共 ${myTrips.length} 個行程`, 'success');
+    return myTrips;
   }catch(err){
-    toast('連線失敗：' + err.message + '（請確認網址、API Key，以及伺服器是否有開放該埠）', 'error');
-    updateBotStatusPill(false);
+    myTrips = [];
+    populateTripSelect();
+    if (!opts.silent){
+      toast(err.status === 401 ? '請先用 Discord 登入' : ('讀取行程清單失敗：' + err.message), 'error');
+    }
+    throw err;
   }
 }
+const ROLE_LABELS = { owner: '建立者', member: '成員', admin: '管理' };
 function populateTripSelect(){
-  const guildId = document.getElementById('guildSelect').value;
-  const g = lastGuilds.find(x=>x.guildId===guildId);
   const sel = document.getElementById('tripSelect');
-  if (!g){ sel.innerHTML = '<option value="">－ 請先選伺服器 －</option>'; return; }
-  sel.innerHTML = g.trips.length
-    ? g.trips.map(t=>`<option value="${t.id}" ${t.id===g.defaultTripId?'selected':''}>${escapeHtml(t.name)}${t.archived?'（已封存）':''}</option>`).join('')
-    : '<option value="">（此伺服器尚無行程）</option>';
+  const prev = sel.value || currentTripId || '';
+  sel.innerHTML = myTrips.length
+    ? myTrips.map(t=>`<option value="${escapeHtml(t.id)}">${escapeHtml(t.name)}${t.archived?'（已封存）':''}　·　${ROLE_LABELS[t.role]||''}${t.guildId?'　·　🤖 已綁定':''}</option>`).join('')
+    : '<option value="">（還沒有任何行程，先在下方建立一個）</option>';
+  if (prev && myTrips.some(t=>t.id===prev)) sel.value = prev;
 }
-// 🆕 記住擁有者上次連線成功的伺服器/行程（連同 API 位址與金鑰），下次重新
-// 整理頁面時可以自動接回去，不用每次都重新輸入金鑰、重新選一次伺服器與
-// 行程。存在 localStorage：這是「你自己這台裝置」記住「你自己的」連線
-// 設定，資料完全不會被送到任何地方，跟先前討論過的「把金鑰塞進可分享
-// 網址」是不同的風險等級（那個問題已經由分享連結機制解決了——分享連結
-// 走的是完全獨立的 token，不會用到這裡存的擁有者金鑰）。
+
+// 🆕 記住上次開的行程（連同 API 位址與管理員金鑰），下次重新整理頁面時可以
+// 自動接回去。存在 localStorage：這是「你自己這台裝置」記住「你自己的」設定，
+// 資料不會被送到任何地方。
 const OWNER_CONNECTION_STORAGE_KEY = 'splitbill-owner-connection';
 function saveOwnerConnectionState(){
   try{
-    const guildId = document.getElementById('guildSelect').value;
-    const tripId = document.getElementById('tripSelect').value;
-    if (!guildId || !tripId) return;
+    if (!currentTripId) return;
     localStorage.setItem(OWNER_CONNECTION_STORAGE_KEY, JSON.stringify({
       apiBase: document.getElementById('apiBase').value.trim(),
       apiKey: document.getElementById('apiKey').value.trim(),
-      guildId, tripId,
+      tripId: currentTripId,
     }));
   }catch(e){}
 }
 function clearOwnerConnectionState(){
   try{ localStorage.removeItem(OWNER_CONNECTION_STORAGE_KEY); }catch(e){}
 }
-// 頁面載入時嘗試自動接回上次的連線。刻意不重用 refreshGuildList()／
-// loadTripFromApi()，因為那兩個函式失敗時會跳 toast 提示錯誤——這裡是
-// 「安靜嘗試」，接不回去就悄悄退回一般的空白狀態，不用嚇到使用者（例如
-// 伺服器金鑰後來換過、或行程被刪除了）。成功的話效果等同手動選好伺服器/
-// 行程再按「載入」。
+// 頁面載入時「安靜地」嘗試接回上次的行程：接不回去（金鑰換過、行程被刪除、
+// 已經不是成員）就悄悄退回一般狀態，不跳錯誤訊息。
 async function restoreOwnerConnectionState(){
   let saved = null;
   try{ saved = JSON.parse(localStorage.getItem(OWNER_CONNECTION_STORAGE_KEY) || 'null'); }catch(e){}
-  if (!saved || !saved.guildId || !saved.tripId) return false;
-
+  if (!saved || !saved.tripId) return false;
+  // 舊版存的是 guildId＋tripId，tripId 本身仍然有效，直接沿用
   document.getElementById('apiKey').value = saved.apiKey || '';
   document.getElementById('apiBase').value = saved.apiBase || '';
-
+  if (!saved.apiKey && !currentUser) return false;
   try{
-    const res = await fetch(apiBaseUrl() + '/api/guilds', { headers: apiHeaders() });
-    if (!res.ok){ clearOwnerConnectionState(); return false; }
-    const guilds = await res.json();
-    lastGuilds = guilds;
-    if (!guilds.some(g => g.guildId === saved.guildId)){ clearOwnerConnectionState(); return false; }
-
-    const guildSel = document.getElementById('guildSelect');
-    guildSel.innerHTML = guilds.map(g=>`<option value="${g.guildId}">${g.guildId}${g.guildName?(' － '+escapeHtml(g.guildName)):''}</option>`).join('');
-    guildSel.onchange = ()=>{ populateTripSelect(); syncAdvDetailsState(); };
-    guildSel.value = saved.guildId;
-    populateTripSelect();
-
-    const tripSel = document.getElementById('tripSelect');
-    if (![...tripSel.options].some(o => o.value === saved.tripId)){ clearOwnerConnectionState(); return false; }
-    tripSel.value = saved.tripId;
-
-    await loadTripFromApi();
-    syncAdvDetailsState();
-    return true;
+    await refreshTripList({ silent: true });
+    if (!myTrips.some(t => t.id === saved.tripId)){ clearOwnerConnectionState(); return false; }
+    document.getElementById('tripSelect').value = saved.tripId;
+    await loadTripFromApi({ quiet: true });
+    return isConnected();
   }catch(e){
     return false;
   }
 }
 
+/* ===================== 建立行程 ===================== */
+// 在雲端建立一個新的空白行程（自己是建立者，也是第一位已連結的成員），建立後直接開啟。
+async function createTripOnServer(){
+  const nameInput = document.getElementById('newTripName');
+  const curInput = document.getElementById('newTripCurrency');
+  const name = nameInput.value.trim();
+  const baseCurrency = (curInput.value.trim() || 'TWD').toUpperCase();
+  if (!name){ toast('請輸入行程名稱', 'error'); nameInput.focus(); return; }
+  if (!/^[A-Z]{2,6}$/.test(baseCurrency)){ toast('基準幣別請輸入 2～6 個英文字母，例如 TWD、JPY', 'error'); return; }
+  try{
+    const res = await fetch(apiBaseUrl() + '/api/trips', {
+      method: 'POST',
+      headers: Object.assign({ 'Content-Type': 'application/json' }, apiHeaders()),
+      body: JSON.stringify({ name, baseCurrency })
+    });
+    const created = await apiJson(res);
+    nameInput.value = '';
+    await refreshTripList({ silent: true });
+    document.getElementById('tripSelect').value = created.id;
+    await loadTripFromApi({ quiet: true });
+    toast(`已建立行程「${created.name}」，可以到「👥 成員」新增朋友並傳邀請連結給他們`, 'success', { duration: 6000 });
+  }catch(err){
+    toast('建立行程失敗：' + err.message, 'error');
+  }
+}
+
+// 把畫面上離線編輯（或從 JSON 匯入）的行程整份上傳成新的雲端行程。
+// 會先問「你是哪一位」，讓那位成員連結到自己的 Discord 帳號；其他人之後用邀請連結認領。
+async function uploadLocalTripToServer(){
+  if (!currentUser){ toast('請先用 Discord 登入', 'error'); return; }
+  let selfMemberId = '';
+  if (trip.members.length){
+    // 選中的成員會連結到自己的 Discord 帳號；其他成員之後可以用邀請連結自己認領
+    selfMemberId = await pickModal('上傳成雲端行程：這個行程裡哪一位是你？', [
+      ...trip.members.map(m => ({ value: m.id, title: m.name })),
+      { value: '', title: '都不是', sub: '另外把我加成一位新成員' },
+    ]);
+    if (selfMemberId === null) return; // 取消
+  }
+  try{
+    const res = await fetch(apiBaseUrl() + '/api/trips', {
+      method: 'POST',
+      headers: Object.assign({ 'Content-Type': 'application/json' }, apiHeaders()),
+      body: JSON.stringify({
+        name: trip.name,
+        baseCurrency: trip.baseCurrency,
+        rates: trip.rates,
+        memberName: currentUser.name,
+        selfMemberId: selfMemberId || undefined,
+        content: { members: trip.members, expenses: trip.expenses, deposits: trip.deposits },
+      })
+    });
+    const created = await apiJson(res);
+    await refreshTripList({ silent: true });
+    document.getElementById('tripSelect').value = created.id;
+    await loadTripFromApi({ quiet: true });
+    toast(`已上傳成雲端行程「${created.name}」`, 'success');
+  }catch(err){
+    toast('上傳失敗：' + err.message, 'error');
+  }
+}

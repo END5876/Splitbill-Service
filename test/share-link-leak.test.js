@@ -11,6 +11,7 @@ const path = require('node:path');
 const PORT = 43000 + Math.floor(Math.random() * 500);
 const BASE = `http://127.0.0.1:${PORT}`;
 const KEY = 'test-owner-key';
+const G = '100000000000000001'; // 測試用的 Discord 伺服器 ID（snowflake 格式）
 const OWNER = { 'x-api-key': KEY, 'content-type': 'application/json' };
 const JSONH = { 'content-type': 'application/json' };
 let proc, dataDir, RO, RW;
@@ -51,9 +52,9 @@ before(async () => {
     try { if ((await fetch(`${BASE}/healthz`)).ok) break; } catch (_) { /* not up yet */ }
     await new Promise((r) => setTimeout(r, 100));
   }
-  await fetch(`${BASE}/api/trip/g/t1`, { method: 'PUT', headers: OWNER, body: JSON.stringify(T) });
-  RO = (await j(await fetch(`${BASE}/api/trip/g/t1/share-links`, { method: 'POST', headers: OWNER, body: JSON.stringify({ permission: 'read' }) }))).body.token;
-  RW = (await j(await fetch(`${BASE}/api/trip/g/t1/share-links`, { method: 'POST', headers: OWNER, body: JSON.stringify({ permission: 'write' }) }))).body.token;
+  await fetch(`${BASE}/api/trip/${G}/t1`, { method: 'PUT', headers: OWNER, body: JSON.stringify(T) });
+  RO = (await j(await fetch(`${BASE}/api/trip/${G}/t1/share-links`, { method: 'POST', headers: OWNER, body: JSON.stringify({ permission: 'read' }) }))).body.token;
+  RW = (await j(await fetch(`${BASE}/api/trip/${G}/t1/share-links`, { method: 'POST', headers: OWNER, body: JSON.stringify({ permission: 'write' }) }))).body.token;
 });
 
 after(() => { if (proc) proc.kill(); fs.rmSync(dataDir, { recursive: true, force: true }); });
@@ -86,41 +87,41 @@ test('write-link PUT response and stale-PUT 409 body carry no shareLinks/tokens'
 });
 
 test('owner GET trip / PUT response / guild list carry no shareLinks/tokens', async () => {
-  const g = await j(await fetch(`${BASE}/api/trip/g/t1`, { headers: OWNER }));
+  const g = await j(await fetch(`${BASE}/api/trip/${G}/t1`, { headers: OWNER }));
   assert.equal(g.body.shareLinks, undefined); assert.equal(leaks(g.body), false);
-  const p = await j(await fetch(`${BASE}/api/trip/g/t1`, { method: 'PUT', headers: OWNER, body: JSON.stringify({ ...g.body, expectedUpdatedAt: g.body.updatedAt }) }));
+  const p = await j(await fetch(`${BASE}/api/trip/${G}/t1`, { method: 'PUT', headers: OWNER, body: JSON.stringify({ ...g.body, expectedUpdatedAt: g.body.updatedAt }) }));
   assert.equal(p.status, 200); assert.equal(p.body.shareLinks, undefined); assert.equal(leaks(p.body), false);
-  const guild = await j(await fetch(`${BASE}/api/guild/g`, { headers: OWNER }));
+  const guild = await j(await fetch(`${BASE}/api/guild/${G}`, { headers: OWNER }));
   assert.equal(guild.status, 200); assert.equal(leaks(guild.body), false);
   assert.equal(guild.body.trips.t1.shareLinks, undefined);
 });
 
 test('share-token holder using GET /api/trip sees no tokens either', async () => {
-  const r = await j(await fetch(`${BASE}/api/trip/g/t1`, { headers: { 'x-api-key': RO } }));
+  const r = await j(await fetch(`${BASE}/api/trip/${G}/t1`, { headers: { 'x-api-key': RO } }));
   assert.equal(r.status, 200); assert.equal(leaks(r.body), false);
 });
 
 test('SSE trip-updated (guest connection) carries no shareLinks/tokens', async () => {
   const buf = await readSse(`${BASE}/api/shared-trip/${RO}/events`, async () => {
-    const cur = (await j(await fetch(`${BASE}/api/trip/g/t1`, { headers: OWNER }))).body;
-    await fetch(`${BASE}/api/trip/g/t1`, { method: 'PUT', headers: OWNER, body: JSON.stringify({ ...cur, name: 't-renamed', expectedUpdatedAt: cur.updatedAt }) });
+    const cur = (await j(await fetch(`${BASE}/api/trip/${G}/t1`, { headers: OWNER }))).body;
+    await fetch(`${BASE}/api/trip/${G}/t1`, { method: 'PUT', headers: OWNER, body: JSON.stringify({ ...cur, name: 't-renamed', expectedUpdatedAt: cur.updatedAt }) });
   });
   assert.match(buf, /event: trip-updated/);
   assert.equal(buf.includes(RW) || buf.includes('shareLinks'), false);
 });
 
 test('regression: owner-only share-link management still works and links survive PUTs', async () => {
-  const list = await j(await fetch(`${BASE}/api/trip/g/t1/share-links`, { headers: OWNER }));
+  const list = await j(await fetch(`${BASE}/api/trip/${G}/t1/share-links`, { headers: OWNER }));
   assert.equal(list.status, 200);
   assert.deepEqual(list.body.map((l) => l.token).sort(), [RO, RW].sort()); // 擁有者專用端點仍看得到 token
   // 擁有者送 shareLinks: [] 的整包 PUT 也不會洗掉分享連結
-  const cur = (await j(await fetch(`${BASE}/api/trip/g/t1`, { headers: OWNER }))).body;
-  await fetch(`${BASE}/api/trip/g/t1`, { method: 'PUT', headers: OWNER, body: JSON.stringify({ ...cur, shareLinks: [], expectedUpdatedAt: cur.updatedAt }) });
-  assert.equal((await j(await fetch(`${BASE}/api/trip/g/t1/share-links`, { headers: OWNER }))).body.length, 2);
+  const cur = (await j(await fetch(`${BASE}/api/trip/${G}/t1`, { headers: OWNER }))).body;
+  await fetch(`${BASE}/api/trip/${G}/t1`, { method: 'PUT', headers: OWNER, body: JSON.stringify({ ...cur, shareLinks: [], expectedUpdatedAt: cur.updatedAt }) });
+  assert.equal((await j(await fetch(`${BASE}/api/trip/${G}/t1/share-links`, { headers: OWNER }))).body.length, 2);
   // 分享連結持有者不能碰擁有者專用端點
-  assert.equal((await fetch(`${BASE}/api/trip/g/t1/share-links`, { headers: { 'x-api-key': RW } })).status, 403);
+  assert.equal((await fetch(`${BASE}/api/trip/${G}/t1/share-links`, { headers: { 'x-api-key': RW } })).status, 403);
   // 權限切換與撤銷仍有效
-  assert.equal((await fetch(`${BASE}/api/trip/g/t1/share-links/${RO}`, { method: 'PATCH', headers: OWNER, body: JSON.stringify({ permission: 'write' }) })).status, 200);
-  assert.equal((await fetch(`${BASE}/api/trip/g/t1/share-links/${RO}`, { method: 'DELETE', headers: OWNER })).status, 200);
+  assert.equal((await fetch(`${BASE}/api/trip/${G}/t1/share-links/${RO}`, { method: 'PATCH', headers: OWNER, body: JSON.stringify({ permission: 'write' }) })).status, 200);
+  assert.equal((await fetch(`${BASE}/api/trip/${G}/t1/share-links/${RO}`, { method: 'DELETE', headers: OWNER })).status, 200);
   assert.equal((await fetch(`${BASE}/api/shared-trip/${RO}`)).status, 404);
 });

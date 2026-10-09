@@ -1,46 +1,47 @@
 'use strict';
 // 行程讀寫核心：loadTripFromApi/saveTripToApi（含版本衝突重試與合併）、分享連結版 saveSharedTripToApi、tryMergeTrips。
-async function loadTripFromApi(){
-  const guildId = document.getElementById('guildSelect').value;
+// 🆕 [行程獨立化] 雲端行程一律用 /api/trip/:tripId（tripApiUrl()），不再需要伺服器 ID。
+async function loadTripFromApi(opts){
+  opts = opts || {};
   const tripId = document.getElementById('tripSelect').value;
-  if (!guildId || !tripId){ toast('請先選擇伺服器與行程', 'error'); return; }
+  if (!tripId){ if (!opts.quiet) toast('請先選擇一個行程', 'error'); return; }
   try{
-    const res = await fetch(`${apiBaseUrl()}/api/trip/${encodeURIComponent(guildId)}/${encodeURIComponent(tripId)}`, { headers: apiHeaders() });
-    if (!res.ok){
-      const body = await res.json().catch(()=>({}));
-      throw new Error(body.error || ('HTTP ' + res.status));
-    }
-    const data = await res.json();
+    const res = await fetch(`${apiBaseUrl()}/api/trip/${encodeURIComponent(tripId)}`, { headers: apiHeaders() });
+    const data = await apiJson(res);
+    currentTripId = tripId;
     trip = repairTrip(data);
     lastSyncedTripJSON = JSON.stringify(trip);
     editingExpenseId = null; editingDepositId = null;
     expandedExpenseIds.clear(); expandedDepositIds.clear();
     resetListFilters();
     resetOverviewSectionCurrencyState();
-    toast(`已載入「${trip.name}」（成員 ${trip.members.length} 人、支出 ${trip.expenses.length} 筆）`, 'success');
+    if (!opts.quiet) toast(`已載入「${trip.name}」（成員 ${trip.members.length} 人、支出 ${trip.expenses.length} 筆）`, 'success');
     updateBotStatusPill(true, trip.name);
     syncAdvDetailsState();
     if (currentSettingsSub === 'share') renderShareLinksPanel();
+    if (currentSettingsSub === 'discord') renderDiscordPanel();
     saveOwnerConnectionState();
     renderAll();
     connectTripEventStream();
     checkReceiptSessionAvailability(); // 🆕 [多人協作] 看看有沒有人正在進行帳單辨識協作
     if (!receiptState) maybeOfferReceiptDraftRestore(); // 🆕 目前沒有進行中的認領才詢問，避免打斷正在做的事
   }catch(err){
-    toast('載入失敗：' + err.message, 'error');
+    if (!opts.quiet) toast('載入失敗：' + err.message, 'error');
   }
 }
 async function saveTripToApi(){
   // 🆕 [分享連結] 分享連結模式下走完全不同的儲存路徑（見 saveSharedTripToApi()）：
-  // 不需要 guildSelect/tripSelect、不需要 apiHeaders() 裡的金鑰，純粹用網址
+  // 不需要登入、不需要 apiHeaders() 裡的金鑰，純粹用網址
   // 路徑上的 token 當憑證，對分享連結的持有者來說完全不用碰到任何技術設定。
   if (shareMode) return saveSharedTripToApi();
 
-  const guildId = document.getElementById('guildSelect').value;
-  const tripId = document.getElementById('tripSelect').value || trip.id;
-  if (!guildId){
+  if (!currentTripId){
     showMainTab('settings'); showSettingsSub('connect');
-    toast('尚未連線，請先到「設定 → 🔌 連線 Bot」選擇伺服器與行程，之後就能在這裡直接儲存。', 'error');
+    if (currentUser){
+      toast('目前是離線編輯的行程。可以在「設定 → 🧳 行程」把它上傳成雲端行程，或開啟既有的行程。', 'error', { duration: 7000 });
+    } else {
+      toast('尚未登入：請先到「設定 → 🧳 行程」用 Discord 登入並開啟行程，之後就能在這裡直接儲存。', 'error', { duration: 7000 });
+    }
     return;
   }
 
@@ -58,12 +59,12 @@ async function saveTripToApi(){
     // 極短的競爭視窗。真正的保護在於 PUT 請求本身帶了 expectedUpdatedAt，
     // 由伺服器端原子化比對＋拒絕（見下方 409 處理）。
     try{
-      const checkRes = await fetch(`${apiBaseUrl()}/api/trip/${encodeURIComponent(guildId)}/${encodeURIComponent(tripId)}`, { headers: apiHeaders() });
+      const checkRes = await fetch(tripApiUrl(), { headers: apiHeaders() });
       if (checkRes.ok){
         const serverTrip = await checkRes.json();
         if (!lastSyncedTripJSON) {
           // 首次儲存（從未載入過），直接確認
-          const proceed = await confirmModal(`確定要儲存目前的行程資料嗎？（伺服器 ${guildId} ／行程 ${tripId}）`, { confirmText:'儲存' });
+          const proceed = await confirmModal(`確定要用目前畫面上的內容覆蓋雲端行程「${serverTrip.name}」嗎？`, { confirmText:'儲存' });
           if (!proceed) return;
         } else if (serverTrip.updatedAt && trip.updatedAt && serverTrip.updatedAt !== trip.updatedAt) {
           // 伺服器版本比本地版本新，嘗試智慧合併
@@ -98,7 +99,7 @@ async function saveTripToApi(){
       // 寫入前原子化比對這個版本號是否仍然等於它「當下」的版本，不一致就
       // 回傳 409，讓下面的重試邏輯接手，而不是悶不吭聲地整包覆蓋。
       const payload = Object.assign({}, trip, { expectedUpdatedAt: trip.updatedAt || null, writerId: CLIENT_INSTANCE_ID });
-      const res = await fetch(`${apiBaseUrl()}/api/trip/${encodeURIComponent(guildId)}/${encodeURIComponent(tripId)}`, {
+      const res = await fetch(tripApiUrl(), {
         method: 'PUT',
         headers: Object.assign({ 'Content-Type': 'application/json' }, apiHeaders()),
         body: JSON.stringify(payload)

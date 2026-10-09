@@ -14,7 +14,7 @@ const express = require('express');
 // ════════════════════════════════════════════════════════════════
 module.exports = function createReceiptSessionRouter(ctx) {
   const {
-    storage, authorizeTripAccess,
+    storage, requireTripAccess,
     getReceiptSession, setReceiptSession, clearReceiptSession, broadcastReceiptSession,
   } = ctx;
   const router = express.Router();
@@ -30,25 +30,23 @@ module.exports = function createReceiptSessionRouter(ctx) {
     return KNOWN_END_REASONS.has(raw) ? raw : null;
   }
 
-  // ---- 擁有者／一般分享連結路徑：/api/trip/:guildId/:tripId/receipt-session ----
-  router.get('/trip/:guildId/:tripId/receipt-session', (req, res) => {
+  // ---- 擁有者／一般分享連結路徑：/api/trip/:tripId/receipt-session ----
+  router.get('/trip/:tripId/receipt-session', (req, res) => {
     try {
-      const guild = storage.getGuild(req.params.guildId);
-      const trip = guild.trips[req.params.tripId];
+      const trip = storage.getTrip(req.params.tripId);
       if (!trip) return res.status(404).json({ error: '找不到這個行程' });
-      if (!authorizeTripAccess(req, res, trip, true)) return;
+      if (!requireTripAccess(req, res, trip, 'write')) return;
       respondSession(res, getReceiptSession(trip.id));
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
   });
 
-  router.put('/trip/:guildId/:tripId/receipt-session', (req, res) => {
+  router.put('/trip/:tripId/receipt-session', (req, res) => {
     try {
-      const guild = storage.getGuild(req.params.guildId);
-      const trip = guild.trips[req.params.tripId];
+      const trip = storage.getTrip(req.params.tripId);
       if (!trip) return res.status(404).json({ error: '找不到這個行程' });
-      if (!authorizeTripAccess(req, res, trip, true)) return;
+      if (!requireTripAccess(req, res, trip, 'write')) return;
       const body = req.body || {};
       if (!body.state || typeof body.state !== 'object') {
         return res.status(400).json({ error: '缺少 state 資料' });
@@ -62,12 +60,11 @@ module.exports = function createReceiptSessionRouter(ctx) {
     }
   });
 
-  router.delete('/trip/:guildId/:tripId/receipt-session', (req, res) => {
+  router.delete('/trip/:tripId/receipt-session', (req, res) => {
     try {
-      const guild = storage.getGuild(req.params.guildId);
-      const trip = guild.trips[req.params.tripId];
+      const trip = storage.getTrip(req.params.tripId);
       if (!trip) return res.status(404).json({ error: '找不到這個行程' });
-      if (!authorizeTripAccess(req, res, trip, true)) return;
+      if (!requireTripAccess(req, res, trip, 'write')) return;
       clearReceiptSession(trip.id);
       broadcastReceiptSession(trip.id, null, sanitizeReceiptSessionEndReason(req.query.reason));
       res.json({ ok: true });

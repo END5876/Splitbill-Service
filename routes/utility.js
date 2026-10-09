@@ -1,9 +1,14 @@
 'use strict';
 const express = require('express');
+const { createRateLimiter } = require('../lib/rateLimit');
+
+// 帳單辨識會消耗共用的 Gemini 額度；任何 Discord 帳號都能登入網頁，因此每位呼叫者
+// （登入者／分享連結）每小時最多 30 次。Bot 有自己的限流（Mousebot billScan.js），不在此限。
+const receiptLimiter = createRateLimiter({ limit: 30, windowMs: 60 * 60 * 1000 });
 
 // 不綁定特定行程的共用工具端點：即時匯率查詢、帳單照片辨識。
 module.exports = function createUtilityRouter(ctx) {
-  const { apiKey, hasShareableCredential, getFxRatesFor, genAI, recognizeReceipt } = ctx;
+  const { hasUtilityAccess, getFxRatesFor, genAI, recognizeReceipt } = ctx;
   const router = express.Router();
 
   // ---- GET /api/fx-rate?from=JPY&to=TWD：取得當下即時匯率（供非基準幣支出/轉帳換算 amountInBase 用）----
@@ -11,8 +16,8 @@ module.exports = function createUtilityRouter(ctx) {
   // 因此開放給任何一把尚未過期的分享連結使用（唯讀或可編輯皆可）——唯讀訪客
   // 雖然不能存檔，但檢視金額換算後的正確結果一樣需要即時匯率。
   router.get('/fx-rate', async (req, res) => {
-    if (apiKey && !hasShareableCredential(req, false)) {
-      return res.status(403).json({ error: '此操作僅限擁有者本人或有效的分享連結使用' });
+    if (!hasUtilityAccess(req, false)) {
+      return res.status(req.principal ? 403 : 401).json({ error: '請先登入，或使用有效的分享連結' });
     }
     const from = String(req.query.from || '').trim().toUpperCase();
     const to = String(req.query.to || '').trim().toUpperCase();
@@ -37,8 +42,16 @@ module.exports = function createUtilityRouter(ctx) {
   // 性質的操作，因此只開放給擁有者本人，或是擁有「可編輯」權限的分享連結
   // （唯讀連結不行——唯讀訪客本來就不能新增花費，開放掃描給他們也用不上）。
   router.post('/parse-receipt', async (req, res) => {
-    if (apiKey && !hasShareableCredential(req, true)) {
-      return res.status(403).json({ error: '此功能僅限擁有者本人或擁有「可編輯」權限的分享連結使用' });
+    if (!hasUtilityAccess(req, true)) {
+      return res.status(req.principal ? 403 : 401).json({ error: '此功能僅限登入的使用者或擁有「可編輯」權限的分享連結使用' });
+    }
+    const p = req.principal;
+    if (p.kind !== 'service') {
+      const key = p.kind === 'user' ? `u:${p.userId}` : `s:${p.token}`;
+      const r = receiptLimiter.take(key);
+      if (!r.ok) {
+        return res.status(429).json({ error: `帳單辨識次數已達上限，請 ${Math.ceil(r.retryAfterMs / 60000)} 分鐘後再試` });
+      }
     }
     if (!genAI) {
       return res.status(500).json({ error: '伺服器尚未設定 GEMINI_API_KEY，無法使用帳單辨識功能' });

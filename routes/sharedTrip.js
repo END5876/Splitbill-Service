@@ -1,5 +1,6 @@
 'use strict';
 const express = require('express');
+const { mergeIncomingMembers } = require('../lib/members');
 
 // ════════════════════════════════════════════════════════════════
 // 🆕 [分享連結] 分享連結持有者專用：純粹靠網址路徑上的 token 當憑證，
@@ -40,7 +41,7 @@ module.exports = function createSharedTripRouter(ctx) {
         return res.status(403).json({ error: '此分享連結為唯讀，無法儲存變更' });
       }
 
-      // 🆕 [併發保護] 原子化版本比對，理由同 routes/trips.js 的 PUT /api/trip/:guildId/:tripId。
+      // 🆕 [併發保護] 原子化版本比對，理由同 routes/trips.js 的 PUT /api/trip/:tripId。
       // 分享連結版本先前完全沒有任何併發保護（連前端的「先查再比對」都沒有），
       // 風險其實比擁有者版本更高，這裡一併補上。
       const expected = req.body && req.body.expectedUpdatedAt;
@@ -51,16 +52,22 @@ module.exports = function createSharedTripRouter(ctx) {
         });
       }
 
-      const incoming = req.body || {};
+      const incoming = (req.body && typeof req.body === 'object') ? { ...req.body } : {};
       const writerId = typeof incoming.writerId === 'string' ? incoming.writerId.slice(0, 64) : null;
       delete incoming.expectedUpdatedAt;
       delete incoming.writerId;
-      // 🔒 同上方 routes/trips.js PUT 的安全性備註：分享連結持有者送來的內容，
-      // shareLinks 欄位一律忽略、沿用伺服器上原本的清單，避免被拿來竄改
-      // 分享連結本身。
-      incoming.shareLinks = found.trip.shareLinks;
-      const repaired = storage.repairTrip({ ...incoming, id: found.trip.id });
-      found.guild.trips[found.trip.id] = repaired;
+      // 🔒 同 routes/trips.js PUT 的安全性備註：憑證、建立者、綁定的伺服器
+      // 一律沿用伺服器上的值；分享連結持有者不能替成員連結 Discord 帳號。
+      const existing = found.trip;
+      incoming.shareLinks = existing.shareLinks;
+      incoming.invite = existing.invite;
+      incoming.guildId = existing.guildId;
+      incoming.createdAt = existing.createdAt;
+      if (existing.ownerId) incoming.ownerId = existing.ownerId;
+      else delete incoming.ownerId;
+      incoming.members = mergeIncomingMembers(existing.members, incoming.members, { canLink: false });
+      const repaired = storage.repairTrip({ ...incoming, id: existing.id });
+      storage.setTrip(repaired);
       // 🆕 [多人協作 / 即時同步] 同上，改用 touchTrip() 才會觸發 SSE 廣播，
       // 並一併帶上 writerId 讓寫入者本人可以被正確辨識出來。
       storage.touchTrip(repaired, { writerId });

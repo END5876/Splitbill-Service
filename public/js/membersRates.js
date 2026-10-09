@@ -14,9 +14,20 @@ function renameMember(id, value){
   const m = trip.members.find(x=>x.id===id);
   if (m) m.name = value;
 }
-function removeMember(id){
+async function removeMember(id){
   const idx = trip.members.findIndex(x=>x.id===id);
   if (idx === -1) return;
+  // 🆕 已連結 Discord 的成員被刪除後，他就失去這個行程的存取權；先確認一次
+  if (trip.members[idx].discordId && currentTripId){
+    const isMe = currentUser && trip.members[idx].discordId === currentUser.id;
+    const ok = await confirmModal(
+      isMe
+        ? `「${trip.members[idx].name}」是你自己。刪除後（儲存時）你會失去這個行程的存取權（除非你是建立者）。確定要刪除嗎？`
+        : `「${trip.members[idx].name}」已經連結 Discord 帳號，刪除後（儲存時）他就無法再存取這個行程。確定要刪除嗎？`,
+      { confirmText:'刪除', danger:true }
+    );
+    if (!ok) return;
+  }
   const used = trip.expenses.some(e=>e.payers.some(p=>p.userId===id)||e.participants.some(s=>s.userId===id))
             || trip.deposits.some(d=>d.payerId===id||d.collectorId===id);
   const [removed] = trip.members.splice(idx,1);

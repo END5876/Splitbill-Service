@@ -65,9 +65,21 @@ function showShareError(message){
   el.style.display = 'block';
 }
 
+// 🆕 [Discord 登入] 沒有登入、也不是分享連結時顯示的全頁畫面。
+// 有開啟 Discord 登入時提供登入按鈕；沒有的話維持原本「請索取分享連結」的說明。
 function showNoAccessScreen(){
   const el = document.getElementById('noAccessScreen');
-  el.innerHTML = `
+  el.innerHTML = oauthEnabled ? `
+    <div class="no-access-card">
+      <div class="no-access-brand">拆帳本</div>
+      <h1>跟朋友一起記帳、結算</h1>
+      <div class="no-access-divider"></div>
+      <p>用 Discord 帳號登入，就能建立自己的行程、邀請朋友一起記帳；<br>之後也可以綁定到 Discord 伺服器，用 Mousebot 的面板操作。</p>
+      <button class="btn btn-brass no-access-login" type="button" onclick="loginWithDiscord()">用 Discord 登入</button>
+      <p class="no-access-note">只會讀取你的 Discord 名稱與頭像。<br>朋友傳給你的是分享連結的話，直接點開那個連結即可，不需要登入。</p>
+      <button class="btn btn-ghost btn-sm" type="button" onclick="hideNoAccessScreen(); showMainTab('settings'); showSettingsSub('io');">不登入，先用本機檔案記帳</button>
+    </div>
+  ` : `
     <div class="no-access-card">
       <svg class="no-access-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
         <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
@@ -79,14 +91,23 @@ function showNoAccessScreen(){
     </div>
   `;
   el.classList.add('visible');
-  // 隱藏主介面所有元素
-  document.getElementById('appHeader').style.display = 'none';
+  setMainUiVisible(false);
+}
+function hideNoAccessScreen(){
+  const el = document.getElementById('noAccessScreen');
+  el.classList.remove('visible');
+  el.innerHTML = '';
+  setMainUiVisible(true);
+}
+function setMainUiVisible(visible){
+  const display = visible ? '' : 'none';
+  document.getElementById('appHeader').style.display = display;
   const topNav = document.getElementById('topNav');
-  if (topNav) topNav.style.display = 'none';
+  if (topNav) topNav.style.display = display;
   const bottomNav = document.getElementById('bottomNav');
-  if (bottomNav) bottomNav.style.display = 'none';
+  if (bottomNav) bottomNav.style.display = display;
   const mainEl = document.querySelector('main.wrap');
-  if (mainEl) mainEl.style.display = 'none';
+  if (mainEl) mainEl.style.display = display;
 }
 
 async function initShareMode(token){
@@ -118,61 +139,49 @@ async function initShareMode(token){
   }
 }
 
-// 把目前的連線設定（API 位址／金鑰／伺服器／行程）組成一個網址，
-// 存成瀏覽器書籤後，之後點一下就能自動帶入並直接載入該行程。
-// 🔒 [安全性修正] 金鑰改放進 URL 的 hash（# 之後）而不是 query string
-// （? 之後）：query string 會被送到伺服器、留在瀏覽器歷史紀錄裡、也可能
-// 被 Referrer 帶到第三方（例如頁面內建的 Google Fonts、即時匯率 API）。
-// hash 完全不會被送出去，跟 buildShareUrl() 對分享連結 token 的處理方式
-// 保持一致（見該函式註解）。
+// 把「管理員金鑰＋目前行程」組成一個網址，存成瀏覽器書籤後點一下就能自動
+// 帶入金鑰並載入該行程。只給管理員金鑰模式用——用 Discord 登入的話，直接
+// 開網站就會自動接回上次的行程，不需要書籤。
+// 🔒 金鑰放在 URL 的 hash（# 之後）而不是 query string：hash 不會被送到伺服器、
+// 不會留在存取紀錄、也不會被 Referrer 帶到第三方（跟 buildShareUrl() 一致）。
 function buildBookmarkUrl(){
   const apiKey = document.getElementById('apiKey').value.trim();
   const apiBaseVal = document.getElementById('apiBase').value.trim();
-  const guildId = document.getElementById('guildSelect').value;
-  const tripId = document.getElementById('tripSelect').value;
   const url = new URL(apiBaseVal || location.href);
   url.search = '';
   const hashParams = new URLSearchParams();
   if (apiKey) hashParams.set('apiKey', apiKey);
-  if (guildId) hashParams.set('guild', guildId);
-  if (tripId) hashParams.set('trip', tripId);
+  if (apiBaseVal) hashParams.set('apiBase', apiBaseVal);
+  if (currentTripId) hashParams.set('trip', currentTripId);
   url.hash = hashParams.toString();
   return url.toString();
 }
 function copyBookmarkUrl(){
   const apiKey = document.getElementById('apiKey').value.trim();
-  if (!apiKey){ toast('請先在上面填 API Key（並建議先按一次「連線並讀取伺服器清單」選好伺服器/行程），再產生書籤網址', 'error'); return; }
+  if (!apiKey){ toast('這個書籤只給管理員金鑰用：請先填 API Key 並開啟一個行程，再產生書籤網址', 'error'); return; }
   const url = buildBookmarkUrl();
   navigator.clipboard.writeText(url)
     .then(()=>toast('已複製書籤網址！存成瀏覽器書籤，之後點它就會自動連線並載入行程。（網址裡含金鑰，請只存在自己的書籤，不要公開分享）', 'success'))
     .catch(()=>toast('複製失敗，這是網址（請手動複製）：' + url, 'error'));
 }
-// 頁面載入時，若網址帶有 #apiKey=...，自動帶入並連線、（若也帶 guild/trip）直接載入該行程。
-// 🔒 [安全性修正] 改讀 hash 而不是 query string（理由同 buildBookmarkUrl()），
-// 讀到後立刻用 history.replaceState() 清掉網址列的 hash，避免金鑰繼續留在
-// 網址列／瀏覽器歷史紀錄裡——做法跟 detectShareTokenFromUrl() 一致。
-// 兩者用的 hash 格式不同（這裡是 apiKey=...&guild=...，分享連結是
-// #share=<token>），不會互相誤判，bootstrap.js 既有的判斷順序不需要調整。
+// 頁面載入時，若網址帶有 #apiKey=...，自動帶入金鑰並（若也帶 trip）直接載入該行程。
+// 讀到後立刻清掉網址列的 hash，避免金鑰留在網址列／瀏覽器歷史紀錄裡。
+// 舊版書籤裡的 guild 參數直接忽略（行程已經不需要伺服器 ID 了）。
 async function applyUrlParams(){
   const hashParams = new URLSearchParams((location.hash || '').replace(/^#/, ''));
   const key = hashParams.get('apiKey');
   const base = hashParams.get('apiBase');
-  const guildId = hashParams.get('guild');
   const tripId = hashParams.get('trip');
   if (!key) return false;
   history.replaceState(null, '', location.pathname + location.search);
   document.getElementById('apiKey').value = key;
   if (base) document.getElementById('apiBase').value = base;
-  await refreshGuildList();
-  if (guildId && lastGuilds.some(g=>g.guildId===guildId)){
-    document.getElementById('guildSelect').value = guildId;
-    populateTripSelect();
-    const targetTrip = tripId || (lastGuilds.find(g=>g.guildId===guildId)||{}).defaultTripId;
-    if (targetTrip){
-      document.getElementById('tripSelect').value = targetTrip;
-      await loadTripFromApi();
-    }
+  try{ await refreshTripList(); }catch(e){ return true; }
+  if (tripId && myTrips.some(t => t.id === tripId)){
+    document.getElementById('tripSelect').value = tripId;
+    await loadTripFromApi();
+  } else {
+    showMainTab('settings'); showSettingsSub('connect');
   }
   return true;
 }
-

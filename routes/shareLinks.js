@@ -4,21 +4,21 @@ const express = require('express');
 // ════════════════════════════════════════════════════════════════
 // 🆕 [分享連結] 擁有者專用：建立／列出／修改／撤銷某個行程的分享連結
 // ════════════════════════════════════════════════════════════════
-// 這幾個端點永遠只接受擁有者本人的 SPLITBILL_API_KEY（見 requireOwner，
-// 定義於 webui/lib/auth.js），即使是「可編輯」的分享連結也不能呼叫。
+// 這幾個端點只接受行程建立者（以及持有 SPLITBILL_API_KEY 的管理端），即使是
+// 「可編輯」的分享連結也不能呼叫——分享連結的管理權本身不能被分享出去，否則
+// 拿到一個可編輯連結的人就能再幫自己開一把新的連結，權限無限擴散。
 module.exports = function createShareLinksRouter(ctx) {
-  const { storage, requireOwner } = ctx;
+  const { storage, requireTripAccess } = ctx;
   const router = express.Router();
 
-  // ---- POST /api/trip/:guildId/:tripId/share-links：建立一筆新的分享連結 ----
+  // ---- POST /api/trip/:tripId/share-links：建立一筆新的分享連結 ----
   // body: { label?: string, permission: 'read'|'write', expiresInDays?: number|null }
   //   expiresInDays 省略或 null／0／負數 一律視為「永久有效」。
-  router.post('/trip/:guildId/:tripId/share-links', (req, res) => {
-    if (!requireOwner(req, res)) return;
+  router.post('/trip/:tripId/share-links', (req, res) => {
     try {
-      const guild = storage.getGuild(req.params.guildId);
-      const trip = guild.trips[req.params.tripId];
+      const trip = storage.getTrip(req.params.tripId);
       if (!trip) return res.status(404).json({ error: '找不到這個行程' });
+      if (!requireTripAccess(req, res, trip, 'owner')) return;
 
       const body = req.body || {};
       const permission = body.permission === 'write' ? 'write' : 'read';
@@ -46,30 +46,28 @@ module.exports = function createShareLinksRouter(ctx) {
     }
   });
 
-  // ---- GET /api/trip/:guildId/:tripId/share-links：列出這個行程目前所有分享連結 ----
-  router.get('/trip/:guildId/:tripId/share-links', (req, res) => {
-    if (!requireOwner(req, res)) return;
+  // ---- GET /api/trip/:tripId/share-links：列出這個行程目前所有分享連結 ----
+  router.get('/trip/:tripId/share-links', (req, res) => {
     try {
-      const guild = storage.getGuild(req.params.guildId);
-      const trip = guild.trips[req.params.tripId];
+      const trip = storage.getTrip(req.params.tripId);
       if (!trip) return res.status(404).json({ error: '找不到這個行程' });
+      if (!requireTripAccess(req, res, trip, 'owner')) return;
       res.json(trip.shareLinks || []);
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
   });
 
-  // 🆕 ---- PATCH /api/trip/:guildId/:tripId/share-links/:token：修改一筆既有分享連結的權限 ----
+  // 🆕 ---- PATCH /api/trip/:tripId/share-links/:token：修改一筆既有分享連結的權限 ----
   // 讓擁有者不用撤銷重建，就能隨時把一組已經發出去的連結在「唯讀／可編輯」之間切換。
   // 連結本身的 token／網址完全不變（對方書籤/聊天室裡存的舊連結還是同一個），
   // 只有伺服器這邊記錄的 permission 欄位被更新，下一次對方存取或儲存時就會立刻套用新權限。
   // body: { permission: 'read'|'write' }
-  router.patch('/trip/:guildId/:tripId/share-links/:token', (req, res) => {
-    if (!requireOwner(req, res)) return;
+  router.patch('/trip/:tripId/share-links/:token', (req, res) => {
     try {
-      const guild = storage.getGuild(req.params.guildId);
-      const trip = guild.trips[req.params.tripId];
+      const trip = storage.getTrip(req.params.tripId);
       if (!trip) return res.status(404).json({ error: '找不到這個行程' });
+      if (!requireTripAccess(req, res, trip, 'owner')) return;
 
       const permission = (req.body || {}).permission;
       if (permission !== 'read' && permission !== 'write') {
@@ -89,13 +87,12 @@ module.exports = function createShareLinksRouter(ctx) {
     }
   });
 
-  // ---- DELETE /api/trip/:guildId/:tripId/share-links/:token：撤銷一筆分享連結 ----
-  router.delete('/trip/:guildId/:tripId/share-links/:token', (req, res) => {
-    if (!requireOwner(req, res)) return;
+  // ---- DELETE /api/trip/:tripId/share-links/:token：撤銷一筆分享連結 ----
+  router.delete('/trip/:tripId/share-links/:token', (req, res) => {
     try {
-      const guild = storage.getGuild(req.params.guildId);
-      const trip = guild.trips[req.params.tripId];
+      const trip = storage.getTrip(req.params.tripId);
       if (!trip) return res.status(404).json({ error: '找不到這個行程' });
+      if (!requireTripAccess(req, res, trip, 'owner')) return;
 
       const before = (trip.shareLinks || []).length;
       trip.shareLinks = (trip.shareLinks || []).filter((l) => l.token !== req.params.token);

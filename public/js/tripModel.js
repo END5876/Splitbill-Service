@@ -19,7 +19,13 @@ function repairTrip(raw){
   const t = Object.assign({}, def, raw||{});
   t.rates = Object.assign({}, def.rates, (raw&&raw.rates)||{});
   if (!t.rates[t.baseCurrency]) t.rates[t.baseCurrency] = 1;
-  t.members = Array.isArray(t.members) ? t.members.map(m=>({id:m.id||genId('mem'), name:m.name||m.id||'未知成員'})) : [];
+  // 🆕 [行程獨立化] discordId：伺服器管理的 Discord 連結狀態，前端只讀取顯示，
+  // 送回伺服器時就算被改掉也會被忽略（見 service 的 lib/members.js）。
+  t.members = Array.isArray(t.members) ? t.members.map(m=>{
+    const mem = {id:m.id||genId('mem'), name:m.name||m.id||'未知成員'};
+    if (m.discordId) mem.discordId = m.discordId;
+    return mem;
+  }) : [];
   t.expenses = Array.isArray(t.expenses) ? t.expenses.map(repairExpense) : [];
   t.deposits = Array.isArray(t.deposits) ? t.deposits.map(repairDeposit) : [];
   // 🆕 保留 shareLinks 欄位（不在前端修改，只是原封不動傳回伺服器）

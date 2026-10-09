@@ -17,7 +17,7 @@ let expenseFilterText = '';
 let expenseFilterMemberIds = new Set();
 let depositFilterText = '';
 let depositFilterMemberIds = new Set();
-// 🆕 [分享連結] null＝目前是擁有者模式（用真正的 SPLITBILL_API_KEY 操作）；
+// 🆕 [分享連結] null＝一般模式（Discord 登入或管理員金鑰）；
 // 有值時代表這個分頁是透過分享連結打開的：{ token, permission:'read'|'write' }。
 // 一旦進入分享模式就不會再切回擁有者模式（同一個分頁不混用兩種身分），
 // 相關 UI 收斂見 body.share-mode / body.share-readonly 這兩個 CSS class。
@@ -44,13 +44,15 @@ function showSettingsSub(sub){
   document.querySelectorAll('.subpanel[data-subpanel]').forEach(p=>p.classList.toggle('active', p.dataset.subpanel===sub));
   if (sub === 'io') syncAdvDetailsState();
   if (sub === 'share') renderShareLinksPanel();
+  if (sub === 'discord') renderDiscordPanel();
+  if (sub === 'members') renderInviteCard();
 }
-// 已連線 Bot 時，把「本機檔案／下載貼上／匯入」這些備用方式預設收合，
+// 已開啟雲端行程時，把「本機檔案／下載貼上／匯入」這些備用方式預設收合，
 // 減少畫面雜訊；沒連線時預設展開，因為那時候本機方式就是主要路徑。
 function syncAdvDetailsState(){
   const details = document.getElementById('advFileDetails');
   if (!details) return;
-  const connected = !!document.getElementById('guildSelect').value;
+  const connected = isConnected();
   if (!details.dataset.userToggled) details.open = !connected;
 }
 

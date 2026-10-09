@@ -193,6 +193,7 @@ function renderAll(){
     <div class="member-tag">
       <span class="dot"></span>
       <input type="text" value="${escapeHtml(m.name)}" onchange="renameMember('${m.id}', this.value)">
+      ${memberLinkBadgeHtml(m)}
       <button class="btn btn-danger btn-sm" onclick="removeMember('${m.id}')">刪除</button>
     </div>`).join('') || emptyState('👥', '尚未新增任何成員', '新增第一位成員 →', "document.getElementById('newMemberName').focus()");
 
@@ -297,5 +298,10 @@ function renderAll(){
   document.getElementById('jsonPreview').value = JSON.stringify(trip, null, 2);
   updateLocalFileStatus();
   scheduleAutoSave();
+
+  // 🆕 [行程獨立化] 帳號／邀請／Discord 綁定區塊跟著目前的行程與身分更新
+  renderAccountArea();
+  renderInviteCard();
+  if (currentSettingsSub === 'discord') renderDiscordPanel();
 }
 
