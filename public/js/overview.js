@@ -93,9 +93,11 @@ async function renderDebtSectionUI(){
 
   listEl.innerHTML = sourceList.length ? displayList.map(t => `
     <div class="settle-item">
-      <span>${escapeHtml(memberName(t.from))}</span>
-      <span class="settle-arrow">${arrowLabel}</span>
-      <span>${escapeHtml(memberName(t.to))}</span>
+      <span class="settle-who">
+        <span>${escapeHtml(memberName(t.from))}</span>
+        <span class="settle-arrow">${arrowLabel}</span>
+        <span>${escapeHtml(memberName(t.to))}</span>
+      </span>
       <span class="settle-amt">${fmtMoney(t.amount, effectiveCurrency)}<span class="settle-amt-cur">${effectiveCurrency}</span></span>
     </div>`).join('') : `<p class="empty-state" style="padding:16px;">${emptyMsg}</p>`;
 }

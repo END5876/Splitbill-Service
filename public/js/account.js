@@ -133,7 +133,7 @@ function memberLinkBadgeHtml(m){
     ? `<span class="link-badge linked" title="已連結 Discord 帳號">🔗${isMe ? ' 你' : ''}</span>`
     : `<span class="link-badge" title="尚未連結 Discord：可以用邀請連結讓本人認領">未連結</span>`;
   const btn = canUnlink
-    ? `<button class="btn btn-ghost btn-sm" type="button" onclick="unlinkMember('${escapeHtml(m.id)}')" title="解除這位成員與 Discord 帳號的連結">解除連結</button>`
+    ? `<button class="btn btn-ghost btn-sm member-btn" type="button" onclick="unlinkMember('${escapeHtml(m.id)}')" title="解除這位成員與 Discord 帳號的連結" aria-label="解除連結">${ICON_UNLINK}<span class="btn-label">解除連結</span></button>`
     : '';
   return badge + btn;
 }

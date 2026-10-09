@@ -804,12 +804,26 @@
   .member-tag .dot{width:9px; height:9px; border-radius:50%; background:var(--brass-soft); flex-shrink:0;}
   .member-tag input{border:none; background:transparent; font-size:14px; width:100px; min-width:0; padding:2px;}
   .member-tag .member-actions{display:flex; align-items:center; gap:8px; flex-shrink:0;}
-  /* 手機：每位成員佔滿一列，名字欄位吃掉剩餘寬度；放不下時操作按鈕整組換到下一行靠右，
-     不會把名字擠到看不見，也不會把按鈕擠成直排 */
+  .member-btn .btn-ic{display:none; flex-shrink:0;}
+  /* 手機：每位成員佔滿一列、永遠維持單行，名字欄位吃掉剩餘寬度 */
   @media (max-width:640px){
-    .member-tag{flex:1 1 100%; min-width:0; flex-wrap:wrap; row-gap:6px;}
-    .member-tag input{flex:1 1 110px; width:auto;}
-    .member-tag .member-actions{margin-left:auto;}
+    .member-tag{flex:1 1 100%; min-width:0;}
+    .member-tag input{flex:1 1 auto; width:auto;}
+  }
+  /* 較窄的手機（文字按鈕會把名字擠掉）：按鈕只顯示圖示，間距也收緊 */
+  @media (max-width:430px){
+    .member-tag{gap:6px; padding:6px 6px 6px 10px;}
+    .member-tag .member-actions{gap:4px;}
+    .member-btn{position:relative; width:34px; padding:0;}
+    .member-btn .btn-ic{display:block;}
+    .member-btn .btn-label{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap;}
+    .member-tag .link-badge{padding:2px 6px;}
+    .split-actions{flex-wrap:nowrap;}
+    .split-actions .btn{flex:1 1 0; min-width:0; padding-left:6px; padding-right:6px;}
+    .split-actions .lbl-long{display:none;}
+    /* 開啟／儲存行程兩顆按鈕平分一行，「重新整理清單」單獨在下一行 */
+    .trip-actions #btnLoadTrip, .trip-actions #btnSaveTrip{flex:1 1 0; min-width:0; padding-left:6px; padding-right:6px; font-size:13px; gap:4px;}
+    .trip-actions .btn-sm{flex:0 0 auto; margin-right:100%;}
   }
   .member-tag input:focus-visible{outline:none; border-bottom:1px solid var(--brass);}
 
@@ -859,12 +873,14 @@
 
   .settle-list{padding:4px 18px 16px;}
   .settle-item{
-    display:flex; align-items:center; gap:8px; font-size:13.5px; flex-wrap:wrap;
+    display:flex; align-items:center; gap:8px; font-size:13.5px;
     padding:10px 0; border-bottom:1px dashed var(--card-line);
   }
   .settle-item:last-child{border-bottom:none;}
-  .settle-arrow{color:var(--brass); font-family:'IBM Plex Mono',monospace;}
-  .settle-amt{margin-left:auto; font-family:'IBM Plex Mono',monospace; font-weight:700;}
+  /* 名字太長時只在左側區塊內換行，金額固定留在同一列的右側 */
+  .settle-who{flex:1; min-width:0; display:flex; align-items:center; flex-wrap:wrap; gap:2px 8px; overflow-wrap:anywhere;}
+  .settle-arrow{color:var(--brass); font-family:'IBM Plex Mono',monospace; white-space:nowrap;}
+  .settle-amt{margin-left:auto; flex-shrink:0; white-space:nowrap; font-family:'IBM Plex Mono',monospace; font-weight:700;}
   .settle-amt-cur{font-size:11px; font-weight:500; color:var(--ink-soft); margin-left:3px;}
 
   /* 🆕「建議轉帳」「彼此累計欠款總額」的幣別換算列：小型下拉選單＋匯率提示文字
@@ -1070,10 +1086,14 @@
   }
   @media (max-width:640px){
     /* 並排欄位（例如金額＋幣別）在手機上平分整列寬度，右緣對齊上下欄位 */
-    .row > .field{max-width:none !important;}
+    .row > .field{max-width:none !important; min-width:0;}
     .share-link-options > .field{flex-basis:100%;}
     .add-rate-row input{flex:1 1 0; min-width:0; max-width:none !important;}
     .add-rate-row .btn{flex-basis:100%;}
+    /* 「輸入框＋按鈕」維持同一行，由輸入框縮放 */
+    .inline-add-row{flex-wrap:nowrap;}
+    .inline-add-row input{flex:1 1 auto; min-width:0; max-width:none !important;}
+    .inline-add-row .btn{flex-shrink:0;}
   }
 
   /* ---------- Desktop layout ---------- */

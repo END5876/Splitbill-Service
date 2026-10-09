@@ -195,7 +195,7 @@ function renderAll(){
       <input type="text" value="${escapeHtml(m.name)}" onchange="renameMember('${m.id}', this.value)">
       <span class="member-actions">
         ${memberLinkBadgeHtml(m)}
-        <button class="btn btn-danger btn-sm" onclick="removeMember('${m.id}')">刪除</button>
+        <button class="btn btn-danger btn-sm member-btn" onclick="removeMember('${m.id}')" title="刪除這位成員" aria-label="刪除">${ICON_TRASH}<span class="btn-label">刪除</span></button>
       </span>
     </div>`).join('') || emptyState('👥', '尚未新增任何成員', '新增第一位成員 →', "document.getElementById('newMemberName').focus()");
 
