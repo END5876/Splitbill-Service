@@ -24,6 +24,12 @@ function apiHeaders(){
   const key = document.getElementById('apiKey').value.trim();
   return key ? { 'x-api-key': key } : { 'x-requested-with': 'splitbill' };
 }
+// 一定要以「Discord 登入者本人」身分呼叫的端點（建立／上傳行程）：只帶 cookie，
+// 不帶管理員金鑰——金鑰欄位有值（例如被瀏覽器密碼管理員自動填入）時，
+// 帶 x-api-key 會讓 service 端把請求當成管理端／分享連結，因而沒有 Discord 身分。
+function userHeaders(){
+  return { 'x-requested-with': 'splitbill' };
+}
 // 🆕 [分享連結] 給「擁有者/分享連結都可能呼叫」的共用工具端點用（即時匯率、
 // 帳單辨識）：分享連結模式下用連結自己的 token 當憑證，否則沿用一般身分。
 function apiHeadersAny(){
@@ -182,7 +188,7 @@ async function createTripOnServer(){
   try{
     const res = await fetch(apiBaseUrl() + '/api/trips', {
       method: 'POST',
-      headers: Object.assign({ 'Content-Type': 'application/json' }, apiHeaders()),
+      headers: Object.assign({ 'Content-Type': 'application/json' }, currentUser ? userHeaders() : apiHeaders()),
       body: JSON.stringify({ name, baseCurrency })
     });
     const created = await apiJson(res);
@@ -212,7 +218,7 @@ async function uploadLocalTripToServer(){
   try{
     const res = await fetch(apiBaseUrl() + '/api/trips', {
       method: 'POST',
-      headers: Object.assign({ 'Content-Type': 'application/json' }, apiHeaders()),
+      headers: Object.assign({ 'Content-Type': 'application/json' }, currentUser ? userHeaders() : apiHeaders()),
       body: JSON.stringify({
         name: trip.name,
         baseCurrency: trip.baseCurrency,
