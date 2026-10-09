@@ -337,6 +337,7 @@
     border:none; border-radius:9px; padding:11px 18px; cursor:pointer;
     transition:transform .1s, background .15s, opacity .15s; min-height:44px;
     display:inline-flex; align-items:center; justify-content:center; gap:7px;
+    white-space:nowrap;
   }
   .btn:active{transform:scale(.97);}
   .btn:disabled{opacity:.55; cursor:not-allowed; transform:none;}
@@ -350,6 +351,8 @@
   .btn-danger:hover{background:var(--debt-bg);}
   .btn-sm{padding:7px 12px; font-size:12.5px; min-height:34px; border-radius:7px;}
   .btn-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:6px;}
+  .check-row{display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14px; color:var(--ink); user-select:none;}
+  .check-row input[type=checkbox]{width:18px; height:18px; flex-shrink:0; margin:0; accent-color:var(--brass);}
   .btn-block{width:100%;}
 
   .spinner{
@@ -535,6 +538,14 @@
   .receipt-item-head input[type=text]{flex:1; min-width:100px; font-weight:700; font-size:14px; border:none; background:transparent; padding:2px;}
   .receipt-item-head input[type=text]:focus-visible{outline:2px solid var(--brass-soft); border-radius:4px;}
   .receipt-item-head .amt-input{width:90px; flex-shrink:0;}
+  .receipt-item-head .btn{flex-shrink:0;}
+  @media (max-width:640px){
+    /* 手機：類型、名稱、金額、✕ 維持同一列，由名稱欄位吸收寬度 */
+    .receipt-item-head{flex-wrap:nowrap; gap:6px;}
+    .receipt-item-head input[type=text]{min-width:0;}
+    .receipt-item-head .amt-input{width:78px; padding:9px 8px;}
+    .receipt-item-head .btn-sm{padding:7px 10px;}
+  }
   .receipt-type-badge{
     font-family:'IBM Plex Mono',monospace; font-size:10.5px; padding:3px 7px; border-radius:5px;
     background:var(--chip-bg); color:var(--ink-soft); flex-shrink:0;
@@ -645,7 +656,7 @@
   }
   .ledger-row:last-child{border-bottom:none;}
   .ledger-main{flex:1; min-width:0;}
-  .ledger-title{font-weight:700; font-size:14.5px;}
+  .ledger-title{font-weight:700; font-size:14.5px; overflow-wrap:anywhere;}
   .ledger-sub{font-size:12.5px; color:var(--ink-soft); margin-top:3px; line-height:1.65;}
   .ledger-amt{font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:15px; white-space:nowrap;}
   /* 🆕 [時間資訊] 支出／轉帳明細列的時間戳記：比一般說明文字更淡一階，
@@ -792,11 +803,13 @@
   }
   .member-tag .dot{width:9px; height:9px; border-radius:50%; background:var(--brass-soft); flex-shrink:0;}
   .member-tag input{border:none; background:transparent; font-size:14px; width:100px; min-width:0; padding:2px;}
-  .member-tag .btn{white-space:nowrap; flex-shrink:0;}
-  /* 手機：每位成員佔滿一列，名字欄位吃掉剩餘寬度，按鈕不會被擠成直排 */
+  .member-tag .member-actions{display:flex; align-items:center; gap:8px; flex-shrink:0;}
+  /* 手機：每位成員佔滿一列，名字欄位吃掉剩餘寬度；放不下時操作按鈕整組換到下一行靠右，
+     不會把名字擠到看不見，也不會把按鈕擠成直排 */
   @media (max-width:640px){
-    .member-tag{flex:1 1 100%; min-width:0;}
-    .member-tag input{flex:1 1 auto; width:auto;}
+    .member-tag{flex:1 1 100%; min-width:0; flex-wrap:wrap; row-gap:6px;}
+    .member-tag input{flex:1 1 110px; width:auto;}
+    .member-tag .member-actions{margin-left:auto;}
   }
   .member-tag input:focus-visible{outline:none; border-bottom:1px solid var(--brass);}
 
@@ -1045,6 +1058,22 @@
     .rate-table tr{border-bottom:1px dashed var(--card-line); padding:8px 0;}
     .rate-table td{border:none; padding:3px 0; display:flex; justify-content:space-between; align-items:center;}
     .rate-table td::before{content:attr(data-label); font-size:11px; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace;}
+    /* 幣別／匯率／刪除排成一行，不再拆成三列（標籤由幣別代碼本身說明） */
+    .rate-table tr{display:flex; align-items:center; gap:10px;}
+    .rate-table td{padding:0;}
+    .rate-table td::before{content:none;}
+    .rate-table td:nth-child(1){width:auto; flex:0 0 96px; justify-content:flex-start;}
+    .rate-table td:nth-child(2){width:auto; flex:1 1 auto; min-width:0;}
+    .rate-table td:nth-child(2) input{width:100%;}
+    .rate-table td:nth-child(3){width:auto; flex:0 0 auto;}
+    .rate-table td:nth-child(3):empty{flex-basis:52px;}
+  }
+  @media (max-width:640px){
+    /* 並排欄位（例如金額＋幣別）在手機上平分整列寬度，右緣對齊上下欄位 */
+    .row > .field{max-width:none !important;}
+    .share-link-options > .field{flex-basis:100%;}
+    .add-rate-row input{flex:1 1 0; min-width:0; max-width:none !important;}
+    .add-rate-row .btn{flex-basis:100%;}
   }
 
   /* ---------- Desktop layout ---------- */
@@ -1068,7 +1097,8 @@
   .account-meta{flex:1; min-width:0;}
   .account-name{font-weight:700; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .my-nickname{margin-top:14px; padding-top:12px; border-top:1px dashed var(--card-line);}
-  .my-nickname .btn-row{flex-wrap:nowrap;}
+  .my-nickname{margin-bottom:0;}
+  .my-nickname .btn-row{flex-wrap:nowrap; margin-top:0;}
   .my-nickname input{flex:1 1 auto; min-width:0;}
 
   .member-tag .link-badge{
@@ -1077,7 +1107,8 @@
   }
   .member-tag .link-badge.linked{border-style:solid; border-color:var(--brass-soft); color:var(--brass); background:var(--brass-tint);}
 
-  .discord-status{display:flex; align-items:center; gap:8px; font-weight:700; margin-bottom:8px; color:var(--ink);}
+  .discord-status{display:flex; align-items:center; flex-wrap:wrap; gap:4px 8px; font-weight:700; margin-bottom:8px; color:var(--ink);}
+  .discord-status code{word-break:break-all;}
   .discord-status .dot{width:8px; height:8px; border-radius:50%; background:#7C8A80; flex-shrink:0;}
   .discord-status.on .dot{background:#4FCB7E;}
   .discord-steps{margin:8px 0 12px; padding-left:20px; color:var(--ink-soft); font-size:14px; line-height:1.8;}

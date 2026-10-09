@@ -52,7 +52,7 @@ function myNicknameHtml(){
   const me = myTripMember();
   if (!me) return '';
   return `
-    <div class="my-nickname">
+    <div class="my-nickname field">
       <label for="myNicknameInput">我在「${escapeHtml(trip.name || '這個行程')}」的暱稱</label>
       <div class="btn-row">
         <input type="text" id="myNicknameInput" maxlength="60" value="${escapeHtml(me.name)}" onkeydown="if(event.key==='Enter'){event.preventDefault(); saveMyNickname();}">

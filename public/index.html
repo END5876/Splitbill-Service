@@ -322,7 +322,7 @@
           <thead><tr><th>幣別代碼</th><th>兌基準幣匯率</th><th></th></tr></thead>
           <tbody id="rateTableBody"></tbody>
         </table>
-        <div class="btn-row">
+        <div class="btn-row add-rate-row">
           <input type="text" id="newRateCurrency" placeholder="幣別代碼 (如 JPY)" style="max-width:140px; text-transform:uppercase;">
           <input type="number" inputmode="decimal" id="newRateValue" placeholder="匯率" step="0.0001" style="max-width:120px;">
           <button class="btn btn-primary" onclick="addRate()">＋ 新增幣別</button>
@@ -344,7 +344,7 @@
             <label>備註（選填，方便你自己認得這是給誰的連結，例如：小華）</label>
             <input type="text" id="shareLinkLabel" placeholder="例如：小華">
           </div>
-          <div class="row">
+          <div class="row share-link-options">
             <div class="field">
               <label>權限</label>
               <select id="shareLinkPermission">
@@ -457,7 +457,7 @@
               <button class="btn btn-primary" onclick="withLoading(this,'開啟中…',openLocalFile)" id="btnOpenLocal">📂 選擇 trip.json</button>
               <button class="btn btn-primary" onclick="withLoading(this,'儲存中…',()=>saveToLocalFile())" id="btnSaveLocal">💾 儲存並覆寫檔案</button>
             </div>
-            <label class="chip" style="margin-top:10px; cursor:pointer;">
+            <label class="check-row" style="margin-top:10px;">
               <input type="checkbox" id="autoSaveLocal" onchange="onAutoSaveToggle(this.checked)">
               每次新增／編輯後自動覆寫（需先連結檔案）
             </label>

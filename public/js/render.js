@@ -193,14 +193,16 @@ function renderAll(){
     <div class="member-tag">
       <span class="dot"></span>
       <input type="text" value="${escapeHtml(m.name)}" onchange="renameMember('${m.id}', this.value)">
-      ${memberLinkBadgeHtml(m)}
-      <button class="btn btn-danger btn-sm" onclick="removeMember('${m.id}')">刪除</button>
+      <span class="member-actions">
+        ${memberLinkBadgeHtml(m)}
+        <button class="btn btn-danger btn-sm" onclick="removeMember('${m.id}')">刪除</button>
+      </span>
     </div>`).join('') || emptyState('👥', '尚未新增任何成員', '新增第一位成員 →', "document.getElementById('newMemberName').focus()");
 
   // rates tab
   document.getElementById('rateTableBody').innerHTML = Object.entries(trip.rates).sort().map(([code,rate])=>`
     <tr>
-      <td data-label="幣別"><b>${code}</b>${code===trip.baseCurrency?' <span class="hint">（基準）</span>':''}</td>
+      <td data-label="幣別"><span><b>${code}</b>${code===trip.baseCurrency?' <span class="hint">（基準）</span>':''}</span></td>
       <td data-label="匯率"><input type="number" inputmode="decimal" step="0.0001" value="${rate}" ${code===trip.baseCurrency?'disabled':''} onchange="updateRate('${code}', this.value)"></td>
       <td data-label="">${code===trip.baseCurrency?'':`<button class="btn btn-danger btn-sm" onclick="removeRate('${code}')">刪除</button>`}</td>
     </tr>`).join('');
