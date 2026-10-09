@@ -76,9 +76,7 @@ function showNoAccessScreen(){
       <div class="no-access-divider"></div>
       <p>用 Discord 帳號登入，就能建立自己的行程、邀請朋友一起記帳；<br>之後也可以綁定到 Discord 伺服器，用 Mousebot 的面板操作。</p>
       <button class="btn btn-brass no-access-login" type="button" onclick="loginWithDiscord()">用 Discord 登入</button>
-      <p class="no-access-note">只會讀取你的 Discord 名稱與頭像。<br>朋友傳給你的是分享連結的話，直接點開那個連結即可，不需要登入。</p>
-      <button class="btn btn-ghost btn-sm" type="button" onclick="hideNoAccessScreen(); showMainTab('settings'); showSettingsSub('io');">不登入，先用本機檔案記帳</button>
-    </div>
+      <p class="no-access-note">只會讀取你的 Discord 名稱與頭像。<br>朋友傳給你的是分享連結的話，直接點開那個連結即可，不需要登入。</p>    </div>
   ` : `
     <div class="no-access-card">
       <svg class="no-access-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
