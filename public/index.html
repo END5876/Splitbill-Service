@@ -390,7 +390,7 @@
           <button class="btn btn-brass" id="btnSaveTrip" onclick="withLoading(this,'儲存中…',()=>saveTripToApi())">⬆ 儲存目前的行程</button>
           <button class="btn btn-ghost btn-sm" onclick="withLoading(this,'讀取中…',()=>refreshTripList())">重新整理清單</button>
         </div>
-        <p class="hint">「儲存」會把畫面上的內容寫回雲端；如果別人剛好也改過，會先自動合併，無法合併時才會詢問你。</p>
+        <p class="hint">成員、匯率、行程名稱等設定變更會自動寫入雲端（畫面是什麼，JSON 就是什麼），不需要另外按儲存；「儲存」按鈕可手動再寫入一次。如果別人剛好也改過，會先自動合併，無法合併時才會詢問你。</p>
 
         <h2 class="section-title" style="font-size:14.5px; margin-top:20px;">建立新行程</h2>
         <div class="row">

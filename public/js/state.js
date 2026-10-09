@@ -57,7 +57,7 @@ function syncAdvDetailsState(){
 }
 
 /* ===================== cover fields ===================== */
-document.getElementById('tripName').addEventListener('input', e=>{ trip.name = e.target.value; scheduleAutoSave(); });
+document.getElementById('tripName').addEventListener('input', e=>{ trip.name = e.target.value; scheduleAutoSave(); scheduleCloudSave(1000); });
 document.addEventListener('DOMContentLoaded', ()=>{
   const details = document.getElementById('advFileDetails');
   if (details) details.addEventListener('toggle', ()=>{ details.dataset.userToggled = '1'; });

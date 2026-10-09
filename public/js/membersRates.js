@@ -9,10 +9,11 @@ function addMember(){
   input.value = '';
   toast(`已新增成員「${name}」`, 'success');
   renderAll();
+  scheduleCloudSave();
 }
 function renameMember(id, value){
   const m = trip.members.find(x=>x.id===id);
-  if (m) m.name = value;
+  if (m){ m.name = value; scheduleCloudSave(); }
 }
 async function removeMember(id){
   const idx = trip.members.findIndex(x=>x.id===id);
@@ -22,8 +23,8 @@ async function removeMember(id){
     const isMe = currentUser && trip.members[idx].discordId === currentUser.id;
     const ok = await confirmModal(
       isMe
-        ? `「${trip.members[idx].name}」是你自己。刪除後（儲存時）你會失去這個行程的存取權（除非你是建立者）。確定要刪除嗎？`
-        : `「${trip.members[idx].name}」已經連結 Discord 帳號，刪除後（儲存時）他就無法再存取這個行程。確定要刪除嗎？`,
+        ? `「${trip.members[idx].name}」是你自己。刪除後你會失去這個行程的存取權（除非你是建立者）。確定要刪除嗎？`
+        : `「${trip.members[idx].name}」已經連結 Discord 帳號，刪除後他就無法再存取這個行程。確定要刪除嗎？`,
       { confirmText:'刪除', danger:true }
     );
     if (!ok) return;
@@ -32,9 +33,10 @@ async function removeMember(id){
             || trip.deposits.some(d=>d.payerId===id||d.collectorId===id);
   const [removed] = trip.members.splice(idx,1);
   renderAll();
+  scheduleCloudSave();
   toastUndo(
     used ? `已刪除成員「${removed.name}」（他仍出現在部分支出／轉帳紀錄中）` : `已刪除成員「${removed.name}」`,
-    ()=>{ trip.members.splice(idx,0,removed); renderAll(); }
+    ()=>{ trip.members.splice(idx,0,removed); renderAll(); scheduleCloudSave(); }
   );
 }
 
@@ -50,11 +52,13 @@ function addRate(){
   codeInput.value=''; valInput.value='';
   toast(`已設定 ${code} = ${val}`, 'success');
   renderAll();
+  scheduleCloudSave();
 }
 function updateRate(code, value){
   const v = parseFloat(value);
   if (v>0) trip.rates[code] = v;
   renderAll();
+  if (v>0) scheduleCloudSave();
 }
 function removeRate(code){
   if (code === trip.baseCurrency){ toast('不能刪除目前的基準幣別', 'error'); return; }
@@ -62,9 +66,10 @@ function removeRate(code){
   const used = trip.expenses.some(e=>e.currency===code) || trip.deposits.some(d=>d.currency===code);
   delete trip.rates[code];
   renderAll();
+  scheduleCloudSave();
   toastUndo(
     used ? `已刪除 ${code} 匯率（有支出／轉帳正在使用這個幣別）` : `已刪除 ${code} 匯率`,
-    ()=>{ trip.rates[code] = usedValue; renderAll(); }
+    ()=>{ trip.rates[code] = usedValue; renderAll(); scheduleCloudSave(); }
   );
 }
 

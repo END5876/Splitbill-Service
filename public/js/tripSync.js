@@ -29,6 +29,27 @@ async function loadTripFromApi(opts){
     if (!opts.quiet) toast('載入失敗：' + err.message, 'error');
   }
 }
+// 🆕 [即時寫入] 設定頁（成員、匯率、行程名稱）改動後自動寫入雲端，畫面上是什麼 JSON 就是什麼。
+// 防抖＋序列化：連續操作只存一次；存檔進行中又有新改動，等這次結束後再補存一次。
+// 離線行程（沒有 currentTripId 且非分享連結）不處理，維持原本的本機／手動流程。
+let cloudSaveTimer = null;
+let cloudSaveRunning = false;
+let cloudSaveQueued = false;
+function scheduleCloudSave(delay){
+  if (!currentTripId && !shareMode) return;
+  if (shareMode && shareMode.permission !== 'write') return;
+  clearTimeout(cloudSaveTimer);
+  cloudSaveTimer = setTimeout(runCloudSave, delay == null ? 300 : delay);
+}
+async function runCloudSave(){
+  if (cloudSaveRunning){ cloudSaveQueued = true; return; }
+  cloudSaveRunning = true;
+  try{ await saveTripToApi(); }
+  finally{
+    cloudSaveRunning = false;
+    if (cloudSaveQueued){ cloudSaveQueued = false; scheduleCloudSave(0); }
+  }
+}
 async function saveTripToApi(){
   // 🆕 [分享連結] 分享連結模式下走完全不同的儲存路徑（見 saveSharedTripToApi()）：
   // 不需要登入、不需要 apiHeaders() 裡的金鑰，純粹用網址
