@@ -18,6 +18,8 @@
  */
 
 const path = require('path');
+const fs = require('fs');
+const crypto = require('crypto');
 const express = require('express');
 
 const storage = require('./lib/storage');
@@ -42,6 +44,19 @@ const createOAuthRouter = require('./routes/oauth');
 const createMembersRouter = require('./routes/members');
 const createAttachRouter = require('./routes/attach');
 
+// 把 index.html 裡 href="css/..." / src="js/..." 的本地資源加上 ?v=<檔案內容雜湊>
+function buildVersionedIndexHtml(publicDir) {
+  const html = fs.readFileSync(path.join(publicDir, 'index.html'), 'utf8');
+  return html.replace(/(href|src)="((?:css|js)\/[^"?#]+)"/g, (match, attr, rel) => {
+    try {
+      const hash = crypto.createHash('sha1').update(fs.readFileSync(path.join(publicDir, rel))).digest('hex').slice(0, 10);
+      return `${attr}="${rel}?v=${hash}"`;
+    } catch (err) {
+      return match;
+    }
+  });
+}
+
 function startWebApi(options = {}) {
   const port = options.port || process.env.PORT || process.env.SPLITBILL_WEB_PORT || 3000;
   const apiKey = options.apiKey || process.env.SPLITBILL_API_KEY || '';
@@ -53,7 +68,15 @@ function startWebApi(options = {}) {
   app.get('/healthz', (req, res) => res.json({ ok: true }));
 
   // 提供前端靜態頁面（public/index.html），同源存取可避免 CORS 問題
-  app.use(express.static(path.join(__dirname, 'public')));
+  // index.html 裡的 css/js 網址會加上內容雜湊（?v=xxxx），每次部署只要檔案有改，
+  // 網址就會變，手機瀏覽器或前面的 CDN 不會再拿舊的快取；index.html 本身一律不快取。
+  const publicDir = path.join(__dirname, 'public');
+  const versionedIndexHtml = buildVersionedIndexHtml(publicDir);
+  app.get(['/', '/index.html'], (req, res) => {
+    res.set('Cache-Control', 'no-cache');
+    res.type('html').send(versionedIndexHtml);
+  });
+  app.use(express.static(publicDir));
 
   // ---- 🆕 [行程獨立化] 舊網址 /api/trip/:guildId/:tripId → /api/trip/:tripId ----
   app.use('/api', createLegacyTripPathRewrite(storage));
