@@ -10,8 +10,19 @@ Mousebot 分帳系統的獨立服務：**網頁記帳介面（`public/`）＋ RE
   未連結的成員在 Discord 只顯示名字、不能操作面板。
 - `discordId` 只能經由受控流程寫入：本人用邀請連結認領、Bot 從 Discord 使用者選單加人／連結；
   網頁與分享連結的 PUT 一律無法改動它（`lib/members.js`）。
-- 舊版（v1，行程掛在伺服器底下）資料會在啟動時自動遷移，原檔備份為 `splitbill.json.v1-backup-<時間戳>`。
+- 舊版（v1，行程掛在伺服器底下）資料會在匯入 SQLite 時一併轉換。
   舊成員的 `id` 本身就是 Discord ID，遷移只補上 `discordId = id`，帳目不需改寫。
+
+## 資料儲存（SQLite）
+- 資料存在 `$SPLITBILL_DATA_DIR/splitbill.db`，使用 Node 內建的 `node:sqlite`（需要 Node ≥ 22.13，不必安裝原生模組）。
+- **從舊版升級**：第一次啟動時若找到 `splitbill.json`，會在一個交易裡整份匯入，成功後改名成
+  `splitbill.json.imported-<時間戳>`（之後不會再讀它，確認無誤後可以刪掉）。
+- **讀不懂就不啟動**：`splitbill.json` 或資料庫損毀時服務直接啟動失敗，不會以空資料上線。
+- **每日備份**：`backups/splitbill-YYYY-MM-DD.db`（UTC 日期），啟動時與之後每小時檢查一次，保留最近 7 份。
+  還原方式：停掉服務，把備份檔複製成 `splitbill.db`（並刪掉同名的 `-wal`／`-shm` 檔）再啟動。
+- **歷史版本**：每次行程內容變動（`updatedAt` 改變）會在 `trip_revisions` 留一份不含憑證的快照，每個行程保留最近 20 份。
+- `updatedAt` 是行程的版本號，保證嚴格遞增；SSE 的 `trip-updated` 事件在資料確實寫進資料庫之後才發出。
+- 用 sqlite3 查資料：`sqlite3 splitbill.db "select id, guild_id, owner_id, updated_at from trips"`。
 
 ## 權限
 | 身分 | 怎麼辨認 | 能做什麼 |
@@ -35,6 +46,9 @@ Mousebot 分帳系統的獨立服務：**網頁記帳介面（`public/`）＋ RE
    | `SPLITBILL_TRIP_LIMIT_PER_USER` | 選填。每人最多建立幾個行程，預設 100 |
    | `GEMINI_API_KEY` | 選填。網頁版帳單照片辨識（登入者每小時 30 次） |
    | `PORT` / `SPLITBILL_DATA_DIR` | 預設 3000 / Dockerfile 的 `/app/data` |
+   | `SPLITBILL_BACKUP_KEEP` | 選填。每日備份保留幾份，預設 7；`0` 關閉 |
+   | `SPLITBILL_REVISIONS_KEEP` | 選填。每個行程保留幾個歷史版本，預設 20；`0` 關閉 |
+   | `SPLITBILL_SQLITE_JOURNAL` | 選填。預設 `WAL`；Volume 若是不支援共享記憶體的網路檔案系統，改成 `DELETE` |
 3. 健康檢查路徑：`/healthz`。
 4. Bot 端：`SPLITBILL_SERVICE_URL=http://<本服務名稱>.zeabur.internal:3000`、`SPLITBILL_SERVICE_KEY=<同一把金鑰>`。
 5. **升級順序：先部署本服務，再更新 Mousebot。** 舊網址 `/api/trip/:guildId/:tripId` 仍可用，

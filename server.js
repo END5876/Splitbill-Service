@@ -13,7 +13,7 @@
  *                       網頁的 Discord 登入（見 routes/oauth.js）；沒設定時網頁只能用分享連結
  *   OWNER_USER_ID       Bot 擁有者的 Discord ID（逗號分隔），對所有行程有建立者權限
  *   PORT / SPLITBILL_WEB_PORT   監聽埠號，預設 3000
- *   SPLITBILL_DATA_DIR  資料目錄（放 splitbill.json），預設 ./data；請掛 Volume 到這裡
+ *   SPLITBILL_DATA_DIR  資料目錄（放 splitbill.db 與 backups/），預設 ./data；請掛 Volume 到這裡
  *   GEMINI_API_KEY      網頁版帳單照片辨識需要（沒設定只會停用該功能）
  */
 
@@ -102,7 +102,7 @@ function startWebApi(options = {}) {
     genAI,
     recognizeReceipt,
     // 🆕 [多人協作] 帳單辨識認領進度的共享狀態（見 lib/receiptSessions.js），
-    // 刻意跟 storage 分開、不落地寫進 splitbill.json。
+    // 刻意跟 storage 分開、不落地寫進資料庫。
     getReceiptSession,
     setReceiptSession,
     clearReceiptSession,
@@ -119,7 +119,18 @@ function startWebApi(options = {}) {
   app.use('/api', createMembersRouter(ctx));
   app.use('/api', createAttachRouter(ctx));
 
-  storage.loadAll(); // 啟動時就載入（必要時把 v1 資料遷移成 v2），不要等第一個請求進來
+  // 啟動時就載入，不要等第一個請求進來。🆕 [SQLite] 第一次啟動會把舊的 splitbill.json
+  // 匯入資料庫；資料庫或 JSON 讀不懂時這裡會丟例外，服務直接啟動失敗，不會用空資料上線。
+  storage.loadAll();
+  storage.startBackups();
+
+  // 🆕 [SQLite] 正常結束時關閉資料庫（WAL 會在關閉時合併回主檔）。
+  for (const sig of ['SIGTERM', 'SIGINT']) {
+    process.once(sig, () => {
+      try { storage.close(); } catch (err) { console.error('[splitbill-web] 關閉資料庫失敗：', err.message); }
+      process.exit(0);
+    });
+  }
 
   app.listen(port, () => {
     console.log(`[splitbill-web] 網頁記帳介面已啟動： http://0.0.0.0:${port}`);
