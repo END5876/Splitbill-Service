@@ -11,7 +11,11 @@
 function renderAccountArea(){
   const el = document.getElementById('accountArea');
   if (!el) return;
-  if (currentUser){
+  // 正在輸入暱稱時（例如 SSE 推播觸發 renderAll），不要把輸入框重繪掉
+  const editingNickname = document.activeElement && document.activeElement.id === 'myNicknameInput';
+  if (editingNickname){
+    // 只略過重繪帳號區塊，下面行程卡片的顯示狀態照常更新
+  } else if (currentUser){
     const avatar = currentUser.avatar
       ? `<img class="account-avatar" src="${escapeHtml(currentUser.avatar)}" alt="" referrerpolicy="no-referrer">`
       : `<span class="account-avatar account-avatar-fallback">${escapeHtml((currentUser.name || '?').slice(0,1))}</span>`;
@@ -23,7 +27,8 @@ function renderAccountArea(){
           <div class="hint" style="margin:0;">已用 Discord 登入</div>
         </div>
         <button class="btn btn-ghost btn-sm" type="button" onclick="logout()">登出</button>
-      </div>`;
+      </div>
+      ${myNicknameHtml()}`;
   } else if (oauthEnabled){
     el.innerHTML = `
       <p class="hint">用 Discord 帳號登入後，就能建立自己的行程、邀請朋友一起記帳。只會讀取你的 Discord 名稱與頭像。</p>
@@ -35,6 +40,39 @@ function renderAccountArea(){
   if (tripCard) tripCard.style.display = (currentUser || usingAdminKey()) ? '' : 'none';
   const uploadRow = document.getElementById('uploadLocalTripRow');
   if (uploadRow) uploadRow.style.display = (currentUser && !currentTripId && (trip.members.length || trip.expenses.length)) ? '' : 'none';
+}
+
+/* ===================== 我在這個行程的暱稱 ===================== */
+// 已連結 Discord 的成員可以自己改在行程裡顯示的名字（跟成員名單改名走同一條存檔流程）。
+function myTripMember(){
+  if (!currentUser || !currentTripId || shareMode) return null;
+  return trip.members.find(m => m.discordId === currentUser.id) || null;
+}
+function myNicknameHtml(){
+  const me = myTripMember();
+  if (!me) return '';
+  return `
+    <div class="my-nickname">
+      <label for="myNicknameInput">我在「${escapeHtml(trip.name || '這個行程')}」的暱稱</label>
+      <div class="btn-row">
+        <input type="text" id="myNicknameInput" maxlength="60" value="${escapeHtml(me.name)}" onkeydown="if(event.key==='Enter'){event.preventDefault(); saveMyNickname();}">
+        <button class="btn btn-brass btn-sm" type="button" onclick="saveMyNickname()">儲存</button>
+      </div>
+      <p class="hint" style="margin-bottom:0;">其他成員在帳目、結算與 Discord 面板上看到的都是這個名字。</p>
+    </div>`;
+}
+function saveMyNickname(){
+  const me = myTripMember();
+  const input = document.getElementById('myNicknameInput');
+  if (!me || !input) return;
+  const name = input.value.trim().slice(0, 60);
+  if (!name){ toast('暱稱不能是空的', 'error'); input.value = me.name; return; }
+  input.blur();
+  if (name === me.name) return;
+  me.name = name;
+  renderAll();
+  scheduleCloudSave();
+  toast(`暱稱已改成「${name}」`, 'success');
 }
 
 /* ===================== 成員邀請連結 ===================== */

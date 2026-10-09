@@ -791,7 +791,13 @@
     padding:8px 10px 8px 12px;
   }
   .member-tag .dot{width:9px; height:9px; border-radius:50%; background:var(--brass-soft); flex-shrink:0;}
-  .member-tag input{border:none; background:transparent; font-size:14px; width:100px; padding:2px;}
+  .member-tag input{border:none; background:transparent; font-size:14px; width:100px; min-width:0; padding:2px;}
+  .member-tag .btn{white-space:nowrap; flex-shrink:0;}
+  /* 手機：每位成員佔滿一列，名字欄位吃掉剩餘寬度，按鈕不會被擠成直排 */
+  @media (max-width:640px){
+    .member-tag{flex:1 1 100%; min-width:0;}
+    .member-tag input{flex:1 1 auto; width:auto;}
+  }
   .member-tag input:focus-visible{outline:none; border-bottom:1px solid var(--brass);}
 
   /* ---------- Overview / receipt ---------- */
@@ -1061,9 +1067,12 @@
   .account-avatar-fallback{display:inline-flex; align-items:center; justify-content:center; background:var(--brass-tint); color:var(--brass); font-weight:700;}
   .account-meta{flex:1; min-width:0;}
   .account-name{font-weight:700; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .my-nickname{margin-top:14px; padding-top:12px; border-top:1px dashed var(--card-line);}
+  .my-nickname .btn-row{flex-wrap:nowrap;}
+  .my-nickname input{flex:1 1 auto; min-width:0;}
 
   .member-tag .link-badge{
-    font-size:11px; padding:2px 8px; border-radius:20px; white-space:nowrap;
+    font-size:11px; padding:2px 8px; border-radius:20px; white-space:nowrap; flex-shrink:0;
     border:1px dashed var(--card-line); color:var(--ink-soft);
   }
   .member-tag .link-badge.linked{border-style:solid; border-color:var(--brass-soft); color:var(--brass); background:var(--brass-tint);}
