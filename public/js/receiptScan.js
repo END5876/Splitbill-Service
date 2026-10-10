@@ -239,7 +239,7 @@ async function maybeOfferReceiptDraftRestore(){
 
 // 把上傳的圖片縮小＋轉成 JPEG，避免原始照片太大，上傳慢、也浪費辨識費用
 async function fileToResizedDataUrl(file, maxDim, quality){
-  maxDim = maxDim || 1600; quality = quality || 0.85;
+  maxDim = maxDim || 1280; quality = quality || 0.85;
   const objUrl = URL.createObjectURL(file);
   try{
     const img = await new Promise((resolve, reject)=>{

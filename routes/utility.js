@@ -5,6 +5,7 @@ const { createRateLimiter } = require('../lib/rateLimit');
 // 帳單辨識會消耗共用的 Gemini 額度；任何 Discord 帳號都能登入網頁，因此每位呼叫者
 // （登入者／分享連結）每小時最多 30 次。Bot 有自己的限流（Mousebot billScan.js），不在此限。
 const receiptLimiter = createRateLimiter({ limit: 30, windowMs: 60 * 60 * 1000 });
+const MAX_RECEIPT_IMAGE_BYTES = 4 * 1024 * 1024; // 收到的 JPEG 檔案大小上限（base64 解碼後；前端已先縮圖壓縮）
 
 // 不綁定特定行程的共用工具端點：即時匯率查詢、帳單照片辨識。
 module.exports = function createUtilityRouter(ctx) {
@@ -60,8 +61,13 @@ module.exports = function createUtilityRouter(ctx) {
     if (!image || typeof image !== 'string') {
       return res.status(400).json({ error: '缺少圖片資料' });
     }
+    // 前端會先縮圖，這裡再擋一次，避免繞過前端直接送超大原圖耗用 Gemini 額度
+    if (image.length * 3 / 4 > MAX_RECEIPT_IMAGE_BYTES) {
+      return res.status(413).json({ error: `圖片太大，請壓縮到 ${MAX_RECEIPT_IMAGE_BYTES / 1024 / 1024}MB 以下再上傳` });
+    }
     try {
-      const sanitized = await recognizeReceipt(image, mediaType);
+      const who = p.kind === 'user' ? `u:${p.userId}` : p.kind === 'service' ? 'service' : 'share-link';
+      const sanitized = await recognizeReceipt(image, mediaType, who);
       res.json(sanitized);
     } catch (err) {
       res.status(500).json({ error: '帳單辨識失敗：' + err.message });
