@@ -78,7 +78,7 @@ module.exports = function createMeRouter(ctx) {
       if (p.kind === 'user') {
         const r = createLimiter.take(uid);
         if (!r.ok) return res.status(429).json({ error: '建立行程太頻繁了，請稍後再試' });
-        const owned = storage.listTrips().filter((t) => t.ownerId === uid).length;
+        const owned = storage.countTripsOwnedBy(uid);
         if (owned >= TRIP_LIMIT_PER_OWNER) {
           return res.status(400).json({ error: `每人最多建立 ${TRIP_LIMIT_PER_OWNER} 個行程，請先刪除不需要的行程` });
         }

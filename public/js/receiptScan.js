@@ -21,6 +21,9 @@ let receiptState = null; // { imageDataUrl, items:[{id,name,price,type,assignedT
 let receiptSessionJoined = false;      // 目前這個分頁的 receiptState 是否正在跟伺服器同步
 let receiptSessionPushDirty = false;   // 自從上次推播後，是否有新的變動待送出
 let remoteReceiptSessionInfo = null;   // 偵測到「其他人正在辨識中」時的摘要，用來畫加入提示
+// 🆕 [效能] 伺服器上這場協作已經有的照片（imageDataUrl）。照片整場協作都不會變，
+// 跟這個一樣時推播就不重送照片，伺服器會沿用它手上那張（見 lib/receiptSessions.js）。
+let receiptSessionImageOnServer = null;
 
 function receiptSessionUrl(suffix){
   suffix = suffix || '';
@@ -31,11 +34,22 @@ function receiptSessionUrl(suffix){
 async function pushReceiptSessionToServer(){
   if (!receiptState) return;
   try{
-    await fetch(receiptSessionUrl(), {
+    const image = receiptState.imageDataUrl;
+    const omitImage = !!image && image === receiptSessionImageOnServer;
+    const state = omitImage ? Object.assign({}, receiptState, { imageDataUrl: undefined }) : receiptState;
+    const res = await fetch(receiptSessionUrl(), {
       method: 'PUT',
       headers: Object.assign({ 'Content-Type': 'application/json' }, apiHeadersAny()),
-      body: JSON.stringify({ state: receiptState, writerId: CLIENT_INSTANCE_ID })
+      body: JSON.stringify({ state, writerId: CLIENT_INSTANCE_ID })
     });
+    if (!res.ok) return;
+    const body = await res.json().catch(()=>({}));
+    if (omitImage && body.needImage){
+      // 伺服器上的協作已經過期或被清掉，手上沒有照片了：補送一次完整的
+      receiptSessionImageOnServer = null;
+      return pushReceiptSessionToServer();
+    }
+    receiptSessionImageOnServer = image || null;
   }catch(e){
     // 廣播失敗不影響自己本地繼續操作，下一輪偵測到還有變動時會再試一次
   }
@@ -122,6 +136,7 @@ async function joinReceiptSession(){
       return;
     }
     receiptState = body.state;
+    receiptSessionImageOnServer = receiptState.imageDataUrl || null;
     receiptSessionJoined = true;
     remoteReceiptSessionInfo = null;
     renderReceiptWorkArea();
@@ -214,6 +229,7 @@ async function maybeOfferReceiptDraftRestore(){
         const body = await res.json();
         if (body && body.active){
           receiptState = body.state;
+          receiptSessionImageOnServer = receiptState.imageDataUrl || null;
           usedServerState = true;
         }
       }
@@ -377,6 +393,7 @@ function receiptResetUpload(){
   receiptDraftDirty = false;
   receiptSessionJoined = false;      // 🆕 [多人協作] 離開這次的認領畫面（不會結束其他人的協作，見上方說明）
   receiptSessionPushDirty = false;   // 🆕
+  receiptSessionImageOnServer = null;
   document.getElementById('receiptWorkArea').style.display = 'none';
   document.getElementById('receiptWorkArea').innerHTML = '';
   const trigger = document.getElementById('receiptScanTrigger');

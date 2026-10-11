@@ -33,14 +33,14 @@ Mousebot 分帳系統的獨立服務：**網頁記帳介面（`public/`）＋ RE
 | Bot | `x-api-key: SPLITBILL_API_KEY`＋`x-actor-id` | 依 `x-actor-id` 那位使用者套用上面的規則 |
 | 管理端 | `x-api-key: SPLITBILL_API_KEY`（不帶 `x-actor-id`） | 全部 |
 
-## 部署（Zeabur）
+## 部署
 1. 部署成與 Mousebot **同一個 Project** 底下的獨立服務，掛 Volume 到 `/app/data`（`SPLITBILL_DATA_DIR`）。
 2. 環境變數：
    | 變數 | 說明 |
    |---|---|
    | `SPLITBILL_API_KEY` | Bot 連線用的共用金鑰（`x-api-key`）。沒設定時 Bot 無法連線 |
    | `DISCORD_CLIENT_ID` / `DISCORD_CLIENT_SECRET` | Discord Developer Portal → OAuth2（可以直接用 Mousebot 那個 Application） |
-   | `PUBLIC_BASE_URL` | 網頁對外網址，例如 `https://splitbill.zeabur.app`。Discord 後台 OAuth2 → Redirects 要加上 `<PUBLIC_BASE_URL>/auth/discord/callback` |
+   | `PUBLIC_BASE_URL` | 網頁對外網址，例如 `https://splitbill.app`。Discord 後台 OAuth2 → Redirects 要加上 `<PUBLIC_BASE_URL>/auth/discord/callback` |
    | `SESSION_SECRET` | 至少 32 字元的隨機字串（簽登入 cookie）；換掉會讓所有人被登出 |
    | `OWNER_USER_ID` | 選填。Bot 擁有者的 Discord ID（逗號分隔），對所有行程有建立者權限 |
    | `SPLITBILL_TRIP_LIMIT_PER_USER` | 選填。每人最多建立幾個行程，預設 100 |
@@ -50,7 +50,7 @@ Mousebot 分帳系統的獨立服務：**網頁記帳介面（`public/`）＋ RE
    | `SPLITBILL_REVISIONS_KEEP` | 選填。每個行程保留幾個歷史版本，預設 20；`0` 關閉 |
    | `SPLITBILL_SQLITE_JOURNAL` | 選填。預設 `WAL`；Volume 若是不支援共享記憶體的網路檔案系統，改成 `DELETE` |
 3. 健康檢查路徑：`/healthz`。
-4. Bot 端：`SPLITBILL_SERVICE_URL=http://<本服務名稱>.zeabur.internal:3000`、`SPLITBILL_SERVICE_KEY=<同一把金鑰>`。
+4. Bot 端：`SPLITBILL_SERVICE_URL=http://<本服務名稱>.internal:3000`、`SPLITBILL_SERVICE_KEY=<同一把金鑰>`。
 5. **升級順序：先部署本服務，再更新 Mousebot。** 舊網址 `/api/trip/:guildId/:tripId` 仍可用，
    過渡期間舊版 Mousebot 照常運作；新版 Mousebot 需要本服務的新端點。
 

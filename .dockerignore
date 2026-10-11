@@ -1,0 +1,13 @@
+# 不要把本機的依賴、資料、測試與版本控制資訊打包進映像
+node_modules
+data
+test
+.git
+.gitignore
+.env
+.env.*
+.claude
+*.log
+Dockerfile
+.dockerignore
+README.md

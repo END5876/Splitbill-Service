@@ -87,7 +87,11 @@ async function connectTripEventStream(){
         const payload = JSON.parse(evt.data);
         if (payload && payload.writerId && payload.writerId === CLIENT_INSTANCE_ID) return; // 自己剛推播的回音
         if (typeof receiptSessionJoined !== 'undefined' && receiptSessionJoined){
+          // 照片沒變時伺服器不會夾帶（省流量），沿用手上這張
+          const prevImage = receiptState && receiptState.imageDataUrl;
           receiptState = payload.state;
+          if (receiptState && receiptState.imageDataUrl === undefined && prevImage) receiptState.imageDataUrl = prevImage;
+          receiptSessionImageOnServer = (receiptState && receiptState.imageDataUrl) || null;
           renderReceiptWorkArea();
         } else if (typeof receiptSessionAnnounceUpdate === 'function') {
           receiptSessionAnnounceUpdate(payload.updatedAt);

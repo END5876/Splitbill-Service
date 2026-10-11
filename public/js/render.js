@@ -180,6 +180,10 @@ function resetListFilters(){
   const dt = document.getElementById('depositFilterText'); if (dt) dt.value = '';
 }
 
+function renderJsonPreview(){
+  document.getElementById('jsonPreview').value = JSON.stringify(trip, null, 2);
+}
+
 function renderAll(){
   // cover
   document.getElementById('tripName').value = trip.name;
@@ -296,8 +300,8 @@ function renderAll(){
   // --- 3. 每位成員多幣別逐筆明細 ---
   renderMemberDetails(net);
 
-  // json preview
-  document.getElementById('jsonPreview').value = JSON.stringify(trip, null, 2);
+  // json preview：只在「匯入／匯出」分頁開著時才更新（整份行程序列化成大字串很花時間）
+  if (currentSettingsSub === 'io') renderJsonPreview();
   updateLocalFileStatus();
   scheduleAutoSave();
 

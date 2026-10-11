@@ -54,7 +54,7 @@ module.exports = function createReceiptSessionRouter(ctx) {
       const writerId = typeof body.writerId === 'string' ? body.writerId.slice(0, 64) : null;
       const entry = setReceiptSession(trip.id, body.state, writerId);
       broadcastReceiptSession(trip.id, entry);
-      res.json({ ok: true, updatedAt: entry.updatedAt });
+      res.json({ ok: true, updatedAt: entry.updatedAt, needImage: !entry.state.imageDataUrl });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
@@ -108,7 +108,7 @@ module.exports = function createReceiptSessionRouter(ctx) {
       const writerId = typeof body.writerId === 'string' ? body.writerId.slice(0, 64) : null;
       const entry = setReceiptSession(found.trip.id, body.state, writerId);
       broadcastReceiptSession(found.trip.id, entry);
-      res.json({ ok: true, updatedAt: entry.updatedAt });
+      res.json({ ok: true, updatedAt: entry.updatedAt, needImage: !entry.state.imageDataUrl });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }

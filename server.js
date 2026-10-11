@@ -21,6 +21,7 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const express = require('express');
+const compression = require('compression');
 
 const storage = require('./lib/storage');
 
@@ -62,7 +63,16 @@ function startWebApi(options = {}) {
   const apiKey = options.apiKey || process.env.SPLITBILL_API_KEY || '';
 
   const app = express();
-  app.use(express.json({ limit: '12mb' })); // 帳單照片辨識會傳一張壓縮過的 base64 圖片，2mb 太小
+  // gzip：index.html／js／css／JSON 回應都很適合壓縮（手機網路差很多）。
+  // SSE 一定要排除，否則事件會被壓縮緩衝卡住、不會即時送出。
+  app.use(compression({
+    filter: (req, res) => !/^text\/event-stream/i.test(String(res.getHeader('Content-Type') || '')) && compression.filter(req, res),
+  }));
+  // 帳單照片辨識會傳一張壓縮過的 base64 圖片，只有這個端點需要放寬到 12mb；
+  // 其他端點（行程整包 PUT 最多 5000 筆支出＋5000 筆轉帳）5mb 綽綽有餘。
+  // 先跑的 parser 解析過之後，後面的 express.json() 會直接略過。
+  app.use('/api/parse-receipt', express.json({ limit: '12mb' }));
+  app.use(express.json({ limit: '5mb' }));
 
   // 健康檢查：不經金鑰驗證，讓平台的 health probe 可以直接探測
   app.get('/healthz', (req, res) => res.json({ ok: true }));
@@ -76,7 +86,12 @@ function startWebApi(options = {}) {
     res.set('Cache-Control', 'no-cache');
     res.type('html').send(versionedIndexHtml);
   });
-  app.use(express.static(publicDir));
+  // 帶 ?v=<雜湊> 的網址內容永遠不變，可以讓瀏覽器長期快取、不必每次回來驗證
+  app.use(express.static(publicDir, {
+    setHeaders(res) {
+      if (res.req && res.req.query && res.req.query.v) res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    },
+  }));
 
   // ---- 🆕 [行程獨立化] 舊網址 /api/trip/:guildId/:tripId → /api/trip/:tripId ----
   app.use('/api', createLegacyTripPathRewrite(storage));

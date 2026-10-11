@@ -42,7 +42,7 @@ function showSettingsSub(sub){
   currentSettingsSub = sub;
   document.querySelectorAll('.settings-subnav .subtab-btn').forEach(b=>b.classList.toggle('active', b.dataset.subtab===sub));
   document.querySelectorAll('.subpanel[data-subpanel]').forEach(p=>p.classList.toggle('active', p.dataset.subpanel===sub));
-  if (sub === 'io') syncAdvDetailsState();
+  if (sub === 'io'){ syncAdvDetailsState(); renderJsonPreview(); }
   if (sub === 'share') renderShareLinksPanel();
   if (sub === 'discord') renderDiscordPanel();
   if (sub === 'members') renderInviteCard();

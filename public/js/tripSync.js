@@ -79,7 +79,11 @@ async function saveTripToApi(){
     // 不是真正的併發保護——它跟下面的 PUT 是兩個分開的請求，兩者之間仍有
     // 極短的競爭視窗。真正的保護在於 PUT 請求本身帶了 expectedUpdatedAt，
     // 由伺服器端原子化比對＋拒絕（見下方 409 處理）。
-    try{
+    // 🆕 [效能] 本地已經有伺服器給的版本號（updatedAt）時跳過這次預先檢查：PUT 帶的
+    // expectedUpdatedAt 會由伺服器原子化比對，版本不同就回 409 並附上最新內容，
+    // 下面的 409 處理一樣會自動合併後重試，不必每次存檔都多打一次 GET。
+    // 第一次儲存、或舊資料還沒有版本號時才需要這一步。
+    if (!lastSyncedTripJSON || typeof trip.updatedAt !== 'number') try{
       const checkRes = await fetch(tripApiUrl(), { headers: apiHeaders() });
       if (checkRes.ok){
         const serverTrip = await checkRes.json();

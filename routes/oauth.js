@@ -8,13 +8,14 @@ const session = require('../lib/session');
 //
 // 環境變數：
 //   DISCORD_CLIENT_ID / DISCORD_CLIENT_SECRET   Discord Developer Portal → OAuth2
-//   PUBLIC_BASE_URL     網頁對外網址（例如 https://splitbill.zeabur.app），用來組 redirect_uri；
+//   PUBLIC_BASE_URL     網頁對外網址（例如 https://splitbill.app），用來組 redirect_uri；
 //                       Discord 後台的 Redirects 要填 <PUBLIC_BASE_URL>/auth/discord/callback
 //   SESSION_SECRET      至少 32 字元的隨機字串，用來簽 cookie
 //   DISCORD_API_BASE / DISCORD_AUTHORIZE_URL    （測試用）覆寫 Discord 端點
 
 const API_BASE = (process.env.DISCORD_API_BASE || 'https://discord.com/api').replace(/\/+$/, '');
 const AUTHORIZE_URL = process.env.DISCORD_AUTHORIZE_URL || 'https://discord.com/oauth2/authorize';
+const DISCORD_FETCH_TIMEOUT_MS = 10000; // Discord 卡住時讓使用者看到錯誤，而不是一直轉圈
 
 function config() {
   const clientId = process.env.DISCORD_CLIENT_ID || '';
@@ -73,11 +74,15 @@ module.exports = function createOAuthRouter() {
           code,
           redirect_uri: cfg.redirectUri,
         }),
+        signal: AbortSignal.timeout(DISCORD_FETCH_TIMEOUT_MS),
       });
       const tok = await tokenRes.json().catch(() => ({}));
       if (!tokenRes.ok || !tok.access_token) throw new Error(tok.error_description || tok.error || `token HTTP ${tokenRes.status}`);
 
-      const meRes = await fetch(`${API_BASE}/users/@me`, { headers: { Authorization: `Bearer ${tok.access_token}` } });
+      const meRes = await fetch(`${API_BASE}/users/@me`, {
+        headers: { Authorization: `Bearer ${tok.access_token}` },
+        signal: AbortSignal.timeout(DISCORD_FETCH_TIMEOUT_MS),
+      });
       const me = await meRes.json().catch(() => ({}));
       if (!meRes.ok || !/^\d{17,20}$/.test(String(me.id || ''))) throw new Error(`users/@me HTTP ${meRes.status}`);
 
