@@ -61,71 +61,63 @@ module.exports = function createAttachRouter(ctx) {
   // ---- POST /api/attach：用綁定碼把行程綁到伺服器（Bot 專用，必須宣告操作者） ----
   // body: { code, guildId, actorName? }
   router.post('/attach', (req, res) => {
-    try {
-      const p = req.principal;
-      if (!p || p.kind !== 'service' || !p.actorId) {
-        return res.status(403).json({ error: '綁定只能從 Discord 執行 /splitbill-attach' });
-      }
-      const actor = p.actorId;
-      const r = attachLimiter.take(actor);
-      if (!r.ok) return res.status(429).json({ error: '嘗試太多次了，請稍後再試' });
-
-      const body = (req.body && typeof req.body === 'object') ? req.body : {};
-      const guildId = body.guildId;
-      if (!storage.isSnowflake(guildId)) return res.status(400).json({ error: '缺少或錯誤的 guildId' });
-
-      prune();
-      const code = normalizeCode(body.code);
-      const entry = code ? bindCodes.get(code) : null;
-      if (!entry) return res.status(404).json({ error: '綁定碼錯誤或已過期，請回到網頁重新產生一組' });
-
-      const trip = storage.getTrip(entry.tripId);
-      if (!trip) {
-        bindCodes.delete(code);
-        return res.status(404).json({ error: '這個行程已經被刪除了' });
-      }
-      if (userRoleInTrip(actor, trip) !== 'owner') {
-        return res.status(403).json({ error: '只有行程建立者可以把行程綁定到伺服器' });
-      }
-      if (trip.guildId && trip.guildId !== guildId) {
-        return res.status(409).json({ error: '這個行程已經綁定在另一個伺服器，請先到網頁解除綁定' });
-      }
-
-      bindCodes.delete(code);
-      const alreadyHere = trip.guildId === guildId;
-      if (!alreadyHere) storage.attachTripToGuild(trip, guildId);
-
-      let joined = false;
-      if (!trip.members.some((m) => m.discordId === actor)) {
-        const name = typeof body.actorName === 'string' && body.actorName.trim() ? body.actorName.trim().slice(0, 60) : '成員';
-        trip.members.push({ id: storage.genId('mem'), name, discordId: actor });
-        joined = true;
-      }
-      storage.ensureGuildState(guildId).activeTripByUser[actor] = trip.id;
-
-      if (!alreadyHere || joined) storage.touchTrip(trip);
-      storage.persist();
-      res.json({ ok: true, alreadyAttached: alreadyHere, joined, trip: storage.toPublicTrip(trip) });
-    } catch (err) {
-      res.status(500).json({ error: err.message });
+    const p = req.principal;
+    if (!p || p.kind !== 'service' || !p.actorId) {
+      return res.status(403).json({ error: '綁定只能從 Discord 執行 /splitbill-attach' });
     }
+    const actor = p.actorId;
+    const r = attachLimiter.take(actor);
+    if (!r.ok) return res.status(429).json({ error: '嘗試太多次了，請稍後再試' });
+
+    const body = (req.body && typeof req.body === 'object') ? req.body : {};
+    const guildId = body.guildId;
+    if (!storage.isSnowflake(guildId)) return res.status(400).json({ error: '缺少或錯誤的 guildId' });
+
+    prune();
+    const code = normalizeCode(body.code);
+    const entry = code ? bindCodes.get(code) : null;
+    if (!entry) return res.status(404).json({ error: '綁定碼錯誤或已過期，請回到網頁重新產生一組' });
+
+    const trip = storage.getTrip(entry.tripId);
+    if (!trip) {
+      bindCodes.delete(code);
+      return res.status(404).json({ error: '這個行程已經被刪除了' });
+    }
+    if (userRoleInTrip(actor, trip) !== 'owner') {
+      return res.status(403).json({ error: '只有行程建立者可以把行程綁定到伺服器' });
+    }
+    if (trip.guildId && trip.guildId !== guildId) {
+      return res.status(409).json({ error: '這個行程已經綁定在另一個伺服器，請先到網頁解除綁定' });
+    }
+
+    bindCodes.delete(code);
+    const alreadyHere = trip.guildId === guildId;
+    if (!alreadyHere) storage.attachTripToGuild(trip, guildId);
+
+    let joined = false;
+    if (!trip.members.some((m) => m.discordId === actor)) {
+      const name = typeof body.actorName === 'string' && body.actorName.trim() ? body.actorName.trim().slice(0, 60) : '成員';
+      trip.members.push({ id: storage.genId('mem'), name, discordId: actor });
+      joined = true;
+    }
+    storage.ensureGuildState(guildId).activeTripByUser[actor] = trip.id;
+
+    if (!alreadyHere || joined) storage.touchTrip(trip);
+    storage.persist();
+    res.json({ ok: true, alreadyAttached: alreadyHere, joined, trip: storage.toPublicTrip(trip) });
   });
 
   // ---- POST /api/trip/:tripId/detach：解除綁定（建立者） ----
   router.post('/trip/:tripId/detach', (req, res) => {
-    try {
-      const trip = storage.getTrip(req.params.tripId);
-      if (!trip) return res.status(404).json({ error: '找不到這個行程' });
-      if (!requireTripAccess(req, res, trip, 'owner')) return;
-      if (trip.guildId) {
-        storage.detachTripFromGuild(trip);
-        storage.touchTrip(trip);
-        storage.persist();
-      }
-      res.json({ ok: true, trip: storage.toPublicTrip(trip) });
-    } catch (err) {
-      res.status(500).json({ error: err.message });
+    const trip = storage.getTrip(req.params.tripId);
+    if (!trip) return res.status(404).json({ error: '找不到這個行程' });
+    if (!requireTripAccess(req, res, trip, 'owner')) return;
+    if (trip.guildId) {
+      storage.detachTripFromGuild(trip);
+      storage.touchTrip(trip);
+      storage.persist();
     }
+    res.json({ ok: true, trip: storage.toPublicTrip(trip) });
   });
 
   return router;

@@ -56,81 +56,77 @@ module.exports = function createMeRouter(ctx) {
   //   - Bot（金鑰＋x-actor-id）：額外必須帶 guildId，建立後直接綁在該伺服器
   //     （Bot 是在該伺服器的面板裡建立的，伺服器身分由 Discord 保證）
   router.post('/trips', (req, res) => {
-    try {
-      const uid = requireUser(req, res);
-      if (!uid) return;
-      const p = req.principal;
-      const body = (req.body && typeof req.body === 'object') ? req.body : {};
+    const uid = requireUser(req, res);
+    if (!uid) return;
+    const p = req.principal;
+    const body = (req.body && typeof req.body === 'object') ? req.body : {};
 
-      const name = cleanName(body.name, 60);
-      if (!name) return res.status(400).json({ error: '請輸入行程名稱' });
-      const baseCurrency = cleanName(body.baseCurrency || 'TWD', 6).toUpperCase();
-      if (!CURRENCY_RE.test(baseCurrency)) return res.status(400).json({ error: '基準幣別格式錯誤（2～6 個英文字母）' });
+    const name = cleanName(body.name, 60);
+    if (!name) return res.status(400).json({ error: '請輸入行程名稱' });
+    const baseCurrency = cleanName(body.baseCurrency || 'TWD', 6).toUpperCase();
+    if (!CURRENCY_RE.test(baseCurrency)) return res.status(400).json({ error: '基準幣別格式錯誤（2～6 個英文字母）' });
 
-      let guildId = null;
-      if (p.kind === 'service') {
-        if (!storage.isSnowflake(body.guildId)) return res.status(400).json({ error: '缺少或錯誤的 guildId' });
-        guildId = body.guildId;
-      } else if (body.guildId) {
-        return res.status(400).json({ error: '網頁建立的行程請之後再用綁定碼綁定到 Discord 伺服器' });
-      }
-
-      if (p.kind === 'user') {
-        const r = createLimiter.take(uid);
-        if (!r.ok) return res.status(429).json({ error: '建立行程太頻繁了，請稍後再試' });
-        const owned = storage.countTripsOwnedBy(uid);
-        if (owned >= TRIP_LIMIT_PER_OWNER) {
-          return res.status(400).json({ error: `每人最多建立 ${TRIP_LIMIT_PER_OWNER} 個行程，請先刪除不需要的行程` });
-        }
-      }
-
-      const rates = { [baseCurrency]: 1 };
-      if (body.rates && typeof body.rates === 'object') {
-        for (const [cur, rate] of Object.entries(body.rates)) {
-          if (CURRENCY_RE.test(cur) && cur !== baseCurrency && typeof rate === 'number' && rate > 0 && Number.isFinite(rate)) {
-            rates[cur] = rate;
-          }
-        }
-      }
-
-      const memberName = cleanName(body.memberName, 60) || (p.kind === 'user' ? p.name : '') || '我';
-      let tripId;
-      do { tripId = storage.genId('trip'); } while (storage.getTrip(tripId));
-
-      let members = [{ id: storage.genId('mem'), name: memberName, discordId: uid }];
-      let expenses = [];
-      let deposits = [];
-      const content = p.kind === 'user' && body.content && typeof body.content === 'object' ? body.content : null;
-      if (content) {
-        // 🔒 匯入的成員一律先去掉 discordId（網頁不能替人連結），再只把 selfMemberId 連到自己
-        members = storage.repairMembers((Array.isArray(content.members) ? content.members : []).slice(0, 100)
-          .map((m) => (m && typeof m === 'object' ? { id: m.id, name: m.name } : m)));
-        const self = members.find((m) => m.id === body.selfMemberId);
-        if (self) self.discordId = uid;
-        else members.push({ id: storage.genId('mem'), name: memberName, discordId: uid });
-        expenses = Array.isArray(content.expenses) ? content.expenses.slice(0, 5000) : [];
-        deposits = Array.isArray(content.deposits) ? content.deposits.slice(0, 5000) : [];
-      }
-
-      const trip = storage.repairTrip({
-        id: tripId,
-        name,
-        baseCurrency,
-        rates,
-        ownerId: uid,
-        members,
-        expenses,
-        deposits,
-        createdAt: Date.now(),
-      });
-      storage.setTrip(trip);
-      if (guildId) storage.attachTripToGuild(trip, guildId);
-      storage.touchTrip(trip);
-      storage.persist();
-      res.status(201).json(storage.toPublicTrip(trip));
-    } catch (err) {
-      res.status(500).json({ error: err.message });
+    let guildId = null;
+    if (p.kind === 'service') {
+      if (!storage.isSnowflake(body.guildId)) return res.status(400).json({ error: '缺少或錯誤的 guildId' });
+      guildId = body.guildId;
+    } else if (body.guildId) {
+      return res.status(400).json({ error: '網頁建立的行程請之後再用綁定碼綁定到 Discord 伺服器' });
     }
+
+    if (p.kind === 'user') {
+      const r = createLimiter.take(uid);
+      if (!r.ok) return res.status(429).json({ error: '建立行程太頻繁了，請稍後再試' });
+      const owned = storage.countTripsOwnedBy(uid);
+      if (owned >= TRIP_LIMIT_PER_OWNER) {
+        return res.status(400).json({ error: `每人最多建立 ${TRIP_LIMIT_PER_OWNER} 個行程，請先刪除不需要的行程` });
+      }
+    }
+
+    const rates = { [baseCurrency]: 1 };
+    if (body.rates && typeof body.rates === 'object') {
+      for (const [cur, rate] of Object.entries(body.rates)) {
+        if (CURRENCY_RE.test(cur) && cur !== baseCurrency && typeof rate === 'number' && rate > 0 && Number.isFinite(rate)) {
+          rates[cur] = rate;
+        }
+      }
+    }
+
+    const memberName = cleanName(body.memberName, 60) || (p.kind === 'user' ? p.name : '') || '我';
+    let tripId;
+    do { tripId = storage.genId('trip'); } while (storage.getTrip(tripId));
+
+    let members = [{ id: storage.genId('mem'), name: memberName, discordId: uid }];
+    let expenses = [];
+    let deposits = [];
+    const content = p.kind === 'user' && body.content && typeof body.content === 'object' ? body.content : null;
+    if (content) {
+      // 🔒 匯入的成員一律先去掉 discordId（網頁不能替人連結），再只把 selfMemberId 連到自己
+      members = storage.repairMembers((Array.isArray(content.members) ? content.members : []).slice(0, 100)
+        .map((m) => (m && typeof m === 'object' ? { id: m.id, name: m.name } : m)));
+      const self = members.find((m) => m.id === body.selfMemberId);
+      if (self) self.discordId = uid;
+      else members.push({ id: storage.genId('mem'), name: memberName, discordId: uid });
+      expenses = Array.isArray(content.expenses) ? content.expenses.slice(0, 5000) : [];
+      deposits = Array.isArray(content.deposits) ? content.deposits.slice(0, 5000) : [];
+    }
+
+    const trip = storage.repairTrip({
+      id: tripId,
+      name,
+      baseCurrency,
+      rates,
+      ownerId: uid,
+      members,
+      expenses,
+      deposits,
+      createdAt: Date.now(),
+    });
+    storage.setTrip(trip);
+    if (guildId) storage.attachTripToGuild(trip, guildId);
+    storage.touchTrip(trip);
+    storage.persist();
+    res.status(201).json(storage.toPublicTrip(trip));
   });
 
   return router;

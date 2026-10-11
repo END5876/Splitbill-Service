@@ -25,11 +25,11 @@ function emptyState(icon, text, ctaLabel, ctaOnclick){
 // 筆數量級下（數百筆內）效能沒有問題，也不用另外維護局部更新的邏輯。
 function toggleExpenseExpand(id){
   if (expandedExpenseIds.has(id)) expandedExpenseIds.delete(id); else expandedExpenseIds.add(id);
-  renderAll();
+  renderExpenseList();
 }
 function toggleDepositExpand(id){
   if (expandedDepositIds.has(id)) expandedDepositIds.delete(id); else expandedDepositIds.add(id);
-  renderAll();
+  renderDepositList();
 }
 
 // 單筆支出列：收合時顯示「時間徽章 + 說明 + 代墊/分攤人數預覽」與金額；
@@ -146,30 +146,30 @@ function filterDeposits(list){
 // 所以重繪不會讓使用者正在打的字或游標位置跑掉。
 function onExpenseFilterChange(){
   expenseFilterText = document.getElementById('expenseFilterText').value;
-  renderAll();
+  renderExpenseList();
 }
 function onDepositFilterChange(){
   depositFilterText = document.getElementById('depositFilterText').value;
-  renderAll();
+  renderDepositList();
 }
 // 🆕 成員 chip 點擊：切換該成員是否在篩選集合中，可同時勾選多位。
 function toggleExpenseFilterMember(id){
   if (expenseFilterMemberIds.has(id)) expenseFilterMemberIds.delete(id); else expenseFilterMemberIds.add(id);
-  renderAll();
+  renderExpenseList();
 }
 function toggleDepositFilterMember(id){
   if (depositFilterMemberIds.has(id)) depositFilterMemberIds.delete(id); else depositFilterMemberIds.add(id);
-  renderAll();
+  renderDepositList();
 }
 function clearExpenseFilter(){
   expenseFilterText = ''; expenseFilterMemberIds.clear();
   document.getElementById('expenseFilterText').value = '';
-  renderAll();
+  renderExpenseList();
 }
 function clearDepositFilter(){
   depositFilterText = ''; depositFilterMemberIds.clear();
   document.getElementById('depositFilterText').value = '';
-  renderAll();
+  renderDepositList();
 }
 // 🆕 換行程（載入／匯入／清空重開／進入分享模式）時呼叫：清空篩選條件，
 // 避免用舊行程篩出來的成員 id、關鍵字誤套用到新行程上。
@@ -178,6 +178,52 @@ function resetListFilters(){
   depositFilterText = ''; depositFilterMemberIds.clear();
   const et = document.getElementById('expenseFilterText'); if (et) et.value = '';
   const dt = document.getElementById('depositFilterText'); if (dt) dt.value = '';
+}
+
+// 支出清單（🆕 依日期分組＋預設收合明細＋篩選／搜尋）。篩選與展開／收合只影響這一區，
+// 只重繪清單就好，不必整頁 renderAll()（打字搜尋時才不會卡）。
+function renderExpenseList(){
+  document.getElementById('expenseFilterMemberChips').innerHTML = renderFilterMemberChips(expenseFilterMemberIds, 'toggleExpenseFilterMember');
+  const allExpenses = trip.expenses.slice().sort((a,b)=>b.createdAt-a.createdAt);
+  const filteredExpenses = filterExpenses(allExpenses);
+  const filterActive = !!(expenseFilterText.trim() || expenseFilterMemberIds.size);
+  document.getElementById('expenseCount').textContent = `(${allExpenses.length})`;
+  document.getElementById('expenseFilterClearBtn').style.display = filterActive ? '' : 'none';
+  const expSummaryEl = document.getElementById('expenseFilterSummary');
+  if (filterActive){
+    const filteredSubtotal = round2(filteredExpenses.reduce((s,e)=>s+(typeof e.amountInBase==='number'?e.amountInBase:(e.amount||0)),0));
+    expSummaryEl.style.display = '';
+    expSummaryEl.textContent = `顯示 ${filteredExpenses.length} / ${allExpenses.length} 筆・小計 ${fmtMoney(filteredSubtotal, trip.baseCurrency)} ${trip.baseCurrency}`;
+  } else {
+    expSummaryEl.style.display = 'none';
+  }
+  document.getElementById('expenseList').innerHTML = filteredExpenses.length
+    ? renderDateGroupedList(filteredExpenses, renderExpenseRow)
+    : (allExpenses.length
+        ? emptyState('🔍', '沒有符合篩選條件的支出', '清除篩選 →', "clearExpenseFilter()")
+        : emptyState('🧾', '還沒有任何支出', '新增第一筆 →', "showMainTab('expenses'); document.getElementById('expDesc').focus();"));
+}
+// 轉帳／預收清單，同上。
+function renderDepositList(){
+  document.getElementById('depositFilterMemberChips').innerHTML = renderFilterMemberChips(depositFilterMemberIds, 'toggleDepositFilterMember');
+  const allDeposits = trip.deposits.slice().sort((a,b)=>b.createdAt-a.createdAt);
+  const filteredDeposits = filterDeposits(allDeposits);
+  const filterActive = !!(depositFilterText.trim() || depositFilterMemberIds.size);
+  document.getElementById('depositCount').textContent = `(${allDeposits.length})`;
+  document.getElementById('depositFilterClearBtn').style.display = filterActive ? '' : 'none';
+  const depSummaryEl = document.getElementById('depositFilterSummary');
+  if (filterActive){
+    const filteredSubtotal = round2(filteredDeposits.reduce((s,d)=>s+(typeof d.amountInBase==='number'?d.amountInBase:(d.amount||0)),0));
+    depSummaryEl.style.display = '';
+    depSummaryEl.textContent = `顯示 ${filteredDeposits.length} / ${allDeposits.length} 筆・小計 ${fmtMoney(filteredSubtotal, trip.baseCurrency)} ${trip.baseCurrency}`;
+  } else {
+    depSummaryEl.style.display = 'none';
+  }
+  document.getElementById('depositList').innerHTML = filteredDeposits.length
+    ? renderDateGroupedList(filteredDeposits, renderDepositRow)
+    : (allDeposits.length
+        ? emptyState('🔍', '沒有符合篩選條件的轉帳／預收紀錄', '清除篩選 →', "clearDepositFilter()")
+        : emptyState('💸', '還沒有任何轉帳／預收紀錄', '新增第一筆 →', "showMainTab('deposits'); document.getElementById('depPayer').focus();"));
 }
 
 function renderJsonPreview(){
@@ -218,28 +264,7 @@ function renderAll(){
   if (!hasUnsavedExpenseFormContent()) { buildChips('payerChips','payer'); buildChips('participantChips','participant'); }
   renderExpenseHint();
 
-  // expense list（🆕 依日期分組＋預設收合明細＋篩選／搜尋，完整重新設計版面）
-  {
-    document.getElementById('expenseFilterMemberChips').innerHTML = renderFilterMemberChips(expenseFilterMemberIds, 'toggleExpenseFilterMember');
-    const allExpenses = trip.expenses.slice().sort((a,b)=>b.createdAt-a.createdAt);
-    const filteredExpenses = filterExpenses(allExpenses);
-    const filterActive = !!(expenseFilterText.trim() || expenseFilterMemberIds.size);
-    document.getElementById('expenseCount').textContent = `(${allExpenses.length})`;
-    document.getElementById('expenseFilterClearBtn').style.display = filterActive ? '' : 'none';
-    const expSummaryEl = document.getElementById('expenseFilterSummary');
-    if (filterActive){
-      const filteredSubtotal = round2(filteredExpenses.reduce((s,e)=>s+(typeof e.amountInBase==='number'?e.amountInBase:(e.amount||0)),0));
-      expSummaryEl.style.display = '';
-      expSummaryEl.textContent = `顯示 ${filteredExpenses.length} / ${allExpenses.length} 筆・小計 ${fmtMoney(filteredSubtotal, trip.baseCurrency)} ${trip.baseCurrency}`;
-    } else {
-      expSummaryEl.style.display = 'none';
-    }
-    document.getElementById('expenseList').innerHTML = filteredExpenses.length
-      ? renderDateGroupedList(filteredExpenses, renderExpenseRow)
-      : (allExpenses.length
-          ? emptyState('🔍', '沒有符合篩選條件的支出', '清除篩選 →', "clearExpenseFilter()")
-          : emptyState('🧾', '還沒有任何支出', '新增第一筆 →', "showMainTab('expenses'); document.getElementById('expDesc').focus();"));
-  }
+  renderExpenseList();
 
   // deposit form selects
   renderDepositSelects();
@@ -251,27 +276,7 @@ function renderAll(){
       document.getElementById('depCurrency').innerHTML = currencyOptions(dep.currency);
     }
   }
-  {
-    document.getElementById('depositFilterMemberChips').innerHTML = renderFilterMemberChips(depositFilterMemberIds, 'toggleDepositFilterMember');
-    const allDeposits = trip.deposits.slice().sort((a,b)=>b.createdAt-a.createdAt);
-    const filteredDeposits = filterDeposits(allDeposits);
-    const filterActive = !!(depositFilterText.trim() || depositFilterMemberIds.size);
-    document.getElementById('depositCount').textContent = `(${allDeposits.length})`;
-    document.getElementById('depositFilterClearBtn').style.display = filterActive ? '' : 'none';
-    const depSummaryEl = document.getElementById('depositFilterSummary');
-    if (filterActive){
-      const filteredSubtotal = round2(filteredDeposits.reduce((s,d)=>s+(typeof d.amountInBase==='number'?d.amountInBase:(d.amount||0)),0));
-      depSummaryEl.style.display = '';
-      depSummaryEl.textContent = `顯示 ${filteredDeposits.length} / ${allDeposits.length} 筆・小計 ${fmtMoney(filteredSubtotal, trip.baseCurrency)} ${trip.baseCurrency}`;
-    } else {
-      depSummaryEl.style.display = 'none';
-    }
-    document.getElementById('depositList').innerHTML = filteredDeposits.length
-      ? renderDateGroupedList(filteredDeposits, renderDepositRow)
-      : (allDeposits.length
-          ? emptyState('🔍', '沒有符合篩選條件的轉帳／預收紀錄', '清除篩選 →', "clearDepositFilter()")
-          : emptyState('💸', '還沒有任何轉帳／預收紀錄', '新增第一筆 →', "showMainTab('deposits'); document.getElementById('depPayer').focus();"));
-  }
+  renderDepositList();
 
   // overview
   document.getElementById('kvMembers').textContent = trip.members.length;

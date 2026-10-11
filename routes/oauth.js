@@ -2,6 +2,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const session = require('../lib/session');
+const { isSnowflake } = require('../lib/snowflake');
 
 // 🆕 [Discord 登入] OAuth2 授權碼流程（scope 只要 identify：只拿 Discord 使用者 ID、
 // 名稱、頭像，不讀伺服器清單、不讀 email）。登入只證明身分，不授予任何權限。
@@ -84,7 +85,7 @@ module.exports = function createOAuthRouter() {
         signal: AbortSignal.timeout(DISCORD_FETCH_TIMEOUT_MS),
       });
       const me = await meRes.json().catch(() => ({}));
-      if (!meRes.ok || !/^\d{17,20}$/.test(String(me.id || ''))) throw new Error(`users/@me HTTP ${meRes.status}`);
+      if (!meRes.ok || !isSnowflake(String(me.id || ''))) throw new Error(`users/@me HTTP ${meRes.status}`);
 
       session.writeSession(res, { id: String(me.id), name: me.global_name || me.username || '', avatar: avatarUrl(me) });
       res.redirect(302, safeNext(saved.next));

@@ -75,70 +75,62 @@ module.exports = function createMembersRouter(ctx) {
   // body: { memberId }        認領一位尚未連結的成員
   //    或 { newMemberName }   以新成員身分加入
   router.post('/invite/:token/claim', (req, res) => {
-    try {
-      if (!req.principal || req.principal.kind !== 'user') {
-        return res.status(401).json({ error: '請先用 Discord 登入', needLogin: true });
-      }
-      const uid = req.principal.userId;
-      const r = claimLimiter.take(uid);
-      if (!r.ok) return res.status(429).json({ error: '操作太頻繁了，請稍後再試' });
-
-      const trip = storage.findTripByInviteToken(req.params.token);
-      if (!trip) return res.status(404).json({ error: '這個邀請連結不存在或已經失效，請跟行程成員索取新的連結' });
-
-      const already = trip.members.find((m) => m.discordId === uid);
-      if (already) {
-        return res.status(409).json({ error: `你已經是這個行程的「${already.name}」了`, tripId: trip.id, memberId: already.id });
-      }
-
-      const body = (req.body && typeof req.body === 'object') ? req.body : {};
-      let member;
-      if (typeof body.memberId === 'string' && body.memberId) {
-        member = trip.members.find((m) => m.id === body.memberId);
-        if (!member) return res.status(404).json({ error: '找不到這位成員，可能已經被移除' });
-        if (member.discordId) return res.status(409).json({ error: `「${member.name}」已經被其他 Discord 帳號連結了` });
-        member.discordId = uid;
-      } else {
-        const name = typeof body.newMemberName === 'string' ? body.newMemberName.trim().slice(0, 60) : '';
-        if (!name) return res.status(400).json({ error: '請選擇你是哪一位，或輸入新成員的名字' });
-        if (trip.members.length >= 100) return res.status(400).json({ error: '這個行程的成員已達上限' });
-        member = { id: storage.genId('mem'), name, discordId: uid };
-        trip.members.push(member);
-      }
-
-      storage.touchTrip(trip);
-      storage.persist();
-      res.json({ ok: true, tripId: trip.id, memberId: member.id });
-    } catch (err) {
-      res.status(500).json({ error: err.message });
+    if (!req.principal || req.principal.kind !== 'user') {
+      return res.status(401).json({ error: '請先用 Discord 登入', needLogin: true });
     }
+    const uid = req.principal.userId;
+    const r = claimLimiter.take(uid);
+    if (!r.ok) return res.status(429).json({ error: '操作太頻繁了，請稍後再試' });
+
+    const trip = storage.findTripByInviteToken(req.params.token);
+    if (!trip) return res.status(404).json({ error: '這個邀請連結不存在或已經失效，請跟行程成員索取新的連結' });
+
+    const already = trip.members.find((m) => m.discordId === uid);
+    if (already) {
+      return res.status(409).json({ error: `你已經是這個行程的「${already.name}」了`, tripId: trip.id, memberId: already.id });
+    }
+
+    const body = (req.body && typeof req.body === 'object') ? req.body : {};
+    let member;
+    if (typeof body.memberId === 'string' && body.memberId) {
+      member = trip.members.find((m) => m.id === body.memberId);
+      if (!member) return res.status(404).json({ error: '找不到這位成員，可能已經被移除' });
+      if (member.discordId) return res.status(409).json({ error: `「${member.name}」已經被其他 Discord 帳號連結了` });
+      member.discordId = uid;
+    } else {
+      const name = typeof body.newMemberName === 'string' ? body.newMemberName.trim().slice(0, 60) : '';
+      if (!name) return res.status(400).json({ error: '請選擇你是哪一位，或輸入新成員的名字' });
+      if (trip.members.length >= 100) return res.status(400).json({ error: '這個行程的成員已達上限' });
+      member = { id: storage.genId('mem'), name, discordId: uid };
+      trip.members.push(member);
+    }
+
+    storage.touchTrip(trip);
+    storage.persist();
+    res.json({ ok: true, tripId: trip.id, memberId: member.id });
   });
 
   // ---- POST /api/trip/:tripId/members/:memberId/unlink：解除成員的 Discord 連結 ----
   // 建立者可以解除任何人；其他人只能解除自己。成員本身與帳目都保留，只是變回未連結。
   router.post('/trip/:tripId/members/:memberId/unlink', (req, res) => {
-    try {
-      const trip = loadTripOr404(req, res);
-      if (!trip) return;
-      if (!requireTripAccess(req, res, trip, 'member')) return;
-      const uid = requireUser(req, res);
-      if (!uid) return;
+    const trip = loadTripOr404(req, res);
+    if (!trip) return;
+    if (!requireTripAccess(req, res, trip, 'member')) return;
+    const uid = requireUser(req, res);
+    if (!uid) return;
 
-      const member = trip.members.find((m) => m.id === req.params.memberId);
-      if (!member) return res.status(404).json({ error: '找不到這位成員' });
-      if (!member.discordId) return res.json({ ok: true, trip: storage.toPublicTrip(trip) });
+    const member = trip.members.find((m) => m.id === req.params.memberId);
+    if (!member) return res.status(404).json({ error: '找不到這位成員' });
+    if (!member.discordId) return res.json({ ok: true, trip: storage.toPublicTrip(trip) });
 
-      const isOwner = userRoleInTrip(uid, trip) === 'owner';
-      if (!isOwner && member.discordId !== uid) {
-        return res.status(403).json({ error: '只有行程建立者可以解除其他成員的連結' });
-      }
-      delete member.discordId;
-      storage.touchTrip(trip);
-      storage.persist();
-      res.json({ ok: true, trip: storage.toPublicTrip(trip) });
-    } catch (err) {
-      res.status(500).json({ error: err.message });
+    const isOwner = userRoleInTrip(uid, trip) === 'owner';
+    if (!isOwner && member.discordId !== uid) {
+      return res.status(403).json({ error: '只有行程建立者可以解除其他成員的連結' });
     }
+    delete member.discordId;
+    storage.touchTrip(trip);
+    storage.persist();
+    res.json({ ok: true, trip: storage.toPublicTrip(trip) });
   });
 
   return router;

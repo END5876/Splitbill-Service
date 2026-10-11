@@ -5,7 +5,7 @@ const crypto = require('crypto');
 // SSE 換票與事件串流端點。底層的訂閱表/廣播機制在 webui/lib/sse.js。
 module.exports = function createSseRouter(ctx) {
   const {
-    storage, requireTripAccess,
+    storage, requireTripAccess, requireShareLink,
     sseTickets, pruneSseTickets, SSE_TICKET_TTL_MS, openTripSseStream,
   } = ctx;
   const router = express.Router();
@@ -53,11 +53,8 @@ module.exports = function createSseRouter(ctx) {
 
   // ---- GET /api/shared-trip/:token/events：SSE，分享連結版本 ----
   router.get('/shared-trip/:token/events', (req, res) => {
-    const found = storage.findTripByShareToken(req.params.token);
-    if (!found) return res.status(404).json({ error: '這個分享連結不存在，可能已經被撤銷或網址有誤' });
-    if (storage.isShareLinkExpired(found.shareLink)) {
-      return res.status(403).json({ error: '這個分享連結已經過期，請跟建立連結的人索取新的連結' });
-    }
+    const found = requireShareLink(req, res);
+    if (!found) return;
     openTripSseStream(res, found.trip.id);
   });
 

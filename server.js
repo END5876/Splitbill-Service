@@ -134,6 +134,17 @@ function startWebApi(options = {}) {
   app.use('/api', createMembersRouter(ctx));
   app.use('/api', createAttachRouter(ctx));
 
+  // ---- 統一的錯誤回應：路由裡丟出的例外（例如寫入資料庫失敗）都在這裡轉成
+  // { error } JSON，路由不用各自包 try/catch。body 解析錯誤（JSON 格式錯、太大）
+  // 沿用它本身的狀態碼。
+  // eslint-disable-next-line no-unused-vars
+  app.use('/api', (err, req, res, next) => {
+    const status = Number.isInteger(err.status) && err.status >= 400 && err.status < 600 ? err.status : 500;
+    if (status >= 500) console.error(`[splitbill-web] ${req.method} ${req.originalUrl} 失敗：`, err);
+    if (res.headersSent) return res.end();
+    res.status(status).json({ error: err.message });
+  });
+
   // 啟動時就載入，不要等第一個請求進來。🆕 [SQLite] 第一次啟動會把舊的 splitbill.json
   // 匯入資料庫；資料庫或 JSON 讀不懂時這裡會丟例外，服務直接啟動失敗，不會用空資料上線。
   storage.loadAll();
