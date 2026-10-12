@@ -5,7 +5,7 @@
    ---------------------------------------------------------------------
    兩種檢視共用一張卡片、一個幣別換算下拉選單：
    - debtViewMode 決定目前顯示哪一份清單，預設 'transfer'（建議轉帳），
-     由卡片標題那顆 <select>（#debtViewSelect）切換，不再各自佔一張卡。
+     由卡片標題列的分段按鈕（.seg-tab）切換，不再各自佔一張卡。
    - debtDisplayCurrency 是兩種檢視共用的顯示幣別，切換檢視模式不會重置
      使用者選好的幣別；换算邏輯（resolveDisplayRate）跟換算前一致。
    - 清單本身（simplifyDebts / calcPairwiseDebts 的計算結果）永遠是用
@@ -54,11 +54,10 @@ async function renderDebtSectionUI(){
   const listEl = document.getElementById('debtSettleList');
   const selectEl = document.getElementById('debtCurrencySelect');
   const noteEl = document.getElementById('debtRateNote');
-  const viewSelect = document.getElementById('debtViewSelect');
   const subtitleEl = document.getElementById('debtViewSubtitle');
   if (!listEl) return;
 
-  if (viewSelect) viewSelect.value = debtViewMode;
+  document.querySelectorAll('.seg-tab[data-view]').forEach(b=>b.setAttribute('aria-selected', b.dataset.view === debtViewMode ? 'true' : 'false'));
 
   const isTransfer = debtViewMode !== 'pairwise';
   const sourceList = isTransfer ? lastTransferTx : lastPairwiseDebts;
@@ -99,7 +98,72 @@ async function renderDebtSectionUI(){
         <span>${escapeHtml(memberName(t.to))}</span>
       </span>
       <span class="settle-amt">${fmtMoney(t.amount, effectiveCurrency)}<span class="settle-amt-cur">${effectiveCurrency}</span></span>
+      ${isTransfer ? markPaidButtonHtml(t) : ''}
     </div>`).join('') : `<p class="empty-state" style="padding:16px;">${emptyMsg}</p>`;
+}
+
+/* =====================================================================
+   「標記已付款」：建議轉帳的每一列都可以一鍵記成一筆轉帳紀錄，
+   讓「看結算 → 實際轉錢 → 回來記帳」在同一個地方完成。
+   金額一律用基準幣別（清單計算本來就是基準幣別），不受換算幣別影響。
+===================================================================== */
+function markPaidButtonHtml(t){
+  return `<button type="button" class="btn btn-ghost btn-sm settle-paid-btn" data-write-only
+    onclick="withLoading(this,'記錄中…',()=>markTransferPaid('${t.from}','${t.to}'))">標記已付</button>`;
+}
+async function markTransferPaid(fromId, toId){
+  const t = lastTransferTx.find(x => x.from === fromId && x.to === toId);
+  if (!t) return;
+  const amount = round2(t.amount);
+  const base = trip.baseCurrency;
+  const ok = await confirmModal(
+    `確認「${memberName(fromId)}」已經轉 ${fmtMoney(amount, base)} ${base} 給「${memberName(toId)}」了嗎？會新增一筆轉帳紀錄，結算結果也會跟著更新。`,
+    { title: '標記為已付款', confirmText: '已付款' }
+  );
+  if (!ok) return;
+  trip.deposits.push({
+    id: genId('dep'), payerId: fromId, collectorId: toId,
+    amount, currency: base, amountInBase: amount, note: '結算轉帳', createdAt: Date.now()
+  });
+  renderAll();
+  toast(`已記錄：${memberName(fromId)} → ${memberName(toId)} ${fmtMoney(amount, base)} ${base}`, 'success');
+  if (currentTripId || shareMode) await saveTripToApi();
+}
+
+/* =====================================================================
+   「你的狀態」：登入且是這個行程的成員時，總覽最上方直接告訴你
+   「你要付誰多少／誰要付你多少」，不用自己在長條圖跟清單裡找自己。
+===================================================================== */
+function renderMyStatusCard(net){
+  const el = document.getElementById('myStatusCard');
+  if (!el) return;
+  const me = typeof myTripMember === 'function' ? myTripMember() : null;
+  if (!me || !trip.expenses.length){ el.style.display = 'none'; el.innerHTML = ''; return; }
+  const base = trip.baseCurrency;
+  const v = round2(net[me.id] || 0);
+  const mine = lastTransferTx.filter(t => t.from === me.id || t.to === me.id);
+  const headline = v < -0.01 ? `你還需要付 ${fmtMoney(-v, base)} ${base}`
+    : v > 0.01 ? `大家還欠你 ${fmtMoney(v, base)} ${base}`
+    : '你已經結清了 🎉';
+  const rows = mine.map(t => {
+    const paying = t.from === me.id;
+    return `<div class="settle-item">
+      <span class="settle-who">${paying
+        ? `<span class="settle-arrow">付給 →</span><span>${escapeHtml(memberName(t.to))}</span>`
+        : `<span>${escapeHtml(memberName(t.from))}</span><span class="settle-arrow">應付你</span>`}</span>
+      <span class="settle-amt">${fmtMoney(t.amount, base)}<span class="settle-amt-cur">${base}</span></span>
+      ${markPaidButtonHtml(t)}
+    </div>`;
+  }).join('');
+  el.innerHTML = `
+    <div class="receipt-head">
+      <div>
+        <div class="t2">你（${escapeHtml(me.name)}）在這個行程</div>
+        <div class="t1 my-status-headline ${v < -0.01 ? 'neg' : v > 0.01 ? 'pos' : ''}">${headline}</div>
+      </div>
+    </div>
+    ${rows ? `<div class="settle-list">${rows}</div>` : ''}`;
+  el.style.display = '';
 }
 
 /* =====================================================================

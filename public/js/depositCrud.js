@@ -50,11 +50,15 @@ function renderDepositHint(){
 }
 document.getElementById('depAmount').addEventListener('input', renderDepositHint);
 document.getElementById('depAmountInBase').addEventListener('input', renderDepositHint);
+document.getElementById('depPayer').addEventListener('change', ()=>syncDepositPartyOptions());
+document.getElementById('depCollector').addEventListener('change', ()=>syncDepositPartyOptions());
 document.getElementById('depCurrency').addEventListener('change', ()=>{ document.getElementById('depAmountInBase').value = ''; renderDepositHint(); refreshDepositLiveRate(); });
 
 function resetDepositForm(){
   editingDepositId = null;
   document.getElementById('depositFormTitle').textContent = '新增一筆轉帳／預收款';
+  setFormCardEditing('depositFormCard', 'btnSaveDepositSync', 'btnResetDeposit', false);
+  document.getElementById('depDate').value = toDateInputValue(Date.now());
   document.getElementById('depAmount').value = '';
   document.getElementById('depAmountInBase').value = '';
   document.getElementById('depNote').value = '';
@@ -67,6 +71,7 @@ function saveDeposit(){
   const amount = parseFloat(document.getElementById('depAmount').value);
   const currency = document.getElementById('depCurrency').value;
   const note = document.getElementById('depNote').value.trim();
+  const dateStr = document.getElementById('depDate').value;
   if (!payerId || !collectorId){ toast('請選擇付款人與收款人', 'error'); return false; }
   if (payerId === collectorId){ toast('付款人與收款人不能是同一人', 'error'); return false; }
   if (!(amount>0)){ toast('請輸入大於 0 的金額', 'error'); return false; }
@@ -84,10 +89,10 @@ function saveDeposit(){
 
   if (editingDepositId){
     const dep = trip.deposits.find(d=>d.id===editingDepositId);
-    Object.assign(dep, { payerId, collectorId, amount, currency, amountInBase, note });
+    Object.assign(dep, { payerId, collectorId, amount, currency, amountInBase, note, createdAt: applyDateToTimestamp(dateStr, dep.createdAt) });
     toast('已更新轉帳紀錄', 'success');
   } else {
-    trip.deposits.push({ id: genId('dep'), payerId, collectorId, amount, currency, amountInBase, note, createdAt: Date.now() });
+    trip.deposits.push({ id: genId('dep'), payerId, collectorId, amount, currency, amountInBase, note, createdAt: applyDateToTimestamp(dateStr, Date.now()) });
     toast('已新增轉帳紀錄', 'success');
   }
   resetDepositForm();
@@ -102,9 +107,12 @@ function editDeposit(id){
   if (!dep) return;
   editingDepositId = id;
   document.getElementById('depositFormTitle').textContent = '編輯轉帳紀錄';
+  setFormCardEditing('depositFormCard', 'btnSaveDepositSync', 'btnResetDeposit', true);
+  document.getElementById('depDate').value = toDateInputValue(dep.createdAt);
   renderDepositSelects();
   document.getElementById('depPayer').value = dep.payerId;
   document.getElementById('depCollector').value = dep.collectorId;
+  syncDepositPartyOptions();
   document.getElementById('depCurrency').innerHTML = currencyOptions(dep.currency);
   document.getElementById('depAmount').value = dep.amount;
   document.getElementById('depAmountInBase').value = dep.currency !== trip.baseCurrency ? dep.amountInBase : '';
@@ -112,7 +120,7 @@ function editDeposit(id){
   renderDepositHint();
   refreshDepositLiveRate();
   showMainTab('deposits');
-  document.getElementById('panel-deposits').scrollIntoView({behavior:'smooth'});
+  document.getElementById('depositFormCard').scrollIntoView({behavior:'smooth'});
 }
 async function deleteDeposit(id){
   const idx = trip.deposits.findIndex(d => d.id === id);

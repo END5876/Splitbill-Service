@@ -3,6 +3,8 @@
 /* init */
 window.addEventListener('beforeunload', disconnectTripEventStream); // 🆕 [即時同步] 離開頁面時主動關閉 SSE 連線，讓伺服器能立即釋放資源
 initFsApiUi();
+document.getElementById('expDate').value = toDateInputValue(Date.now());
+document.getElementById('depDate').value = toDateInputValue(Date.now());
 renderAll();
 
 // 🆕 [行程獨立化] 一般模式的啟動流程：

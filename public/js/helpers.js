@@ -43,6 +43,23 @@ function fmtTime(ts){
   return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+// 表單上的 <input type="date"> 用本地時區的 YYYY-MM-DD。
+function toDateInputValue(ts){
+  const d = new Date(ts);
+  const pad = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+// 把表單選的日期套到時間戳上：只換年月日，保留 baseTs 原本的時:分
+// （新增時傳 Date.now()，編輯時傳原本的 createdAt），同一天內的先後順序不會亂掉。
+// 日期欄位空白或格式不對時原樣回傳 baseTs。
+function applyDateToTimestamp(dateStr, baseTs){
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr || '');
+  if (!m) return baseTs;
+  const d = new Date(baseTs);
+  d.setFullYear(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return d.getTime();
+}
+
 // 🆕 [日期分組] 把一組帳目（支出／轉帳，需已依 createdAt 由新到舊排序）
 // 依「日曆日期」分組，回傳 [{ label, items, subtotal }]。
 // label：今天／昨天／M-D（同年）／Y/M/D（跨年）。

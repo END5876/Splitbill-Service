@@ -39,7 +39,10 @@ function resetExpenseForm(){
   editingExpenseId = null;
   participantsDirty = false;
   document.getElementById('expenseFormTitle').textContent = '新增一筆支出';
+  setFormCardEditing('expenseFormCard', 'btnSaveExpenseSync', 'btnResetExpense', false);
   document.getElementById('expDesc').value = '';
+  document.getElementById('expDesc').removeAttribute('aria-invalid');
+  document.getElementById('expDate').value = toDateInputValue(Date.now());
   document.getElementById('expAmount').value = '';
   document.getElementById('expAmountInBase').value = '';
   buildChips('payerChips','payer');
@@ -53,7 +56,15 @@ function resolveExpenseRate(currency){
   return trip.rates[currency];
 }
 function saveExpense(){
-  const description = document.getElementById('expDesc').value.trim() || '（無說明）';
+  const descEl = document.getElementById('expDesc');
+  const description = descEl.value.trim();
+  if (!description){
+    descEl.setAttribute('aria-invalid', 'true');
+    descEl.focus();
+    toast('請填寫項目說明，之後查帳才認得出這筆是什麼', 'error');
+    return false;
+  }
+  const dateStr = document.getElementById('expDate').value;
   const amount = parseFloat(document.getElementById('expAmount').value);
   const currency = document.getElementById('expCurrency').value;
   if (!(amount>0)){ toast('請輸入大於 0 的金額', 'error'); return false; }
@@ -82,12 +93,12 @@ function saveExpense(){
 
   if (editingExpenseId){
     const exp = trip.expenses.find(e=>e.id===editingExpenseId);
-    Object.assign(exp, { description, amount, currency, amountInBase, payers, participants });
+    Object.assign(exp, { description, amount, currency, amountInBase, payers, participants, createdAt: applyDateToTimestamp(dateStr, exp.createdAt) });
     toast('已更新支出', 'success');
   } else {
     trip.expenses.push({
       id: genId('exp'), description, amount, currency, amountInBase,
-      payers, participants, createdAt: Date.now(), createdBy: 'web-ui'
+      payers, participants, createdAt: applyDateToTimestamp(dateStr, Date.now()), createdBy: 'web-ui'
     });
     toast('已新增支出', 'success');
   }
@@ -104,7 +115,10 @@ function editExpense(id){
   editingExpenseId = id;
   participantsDirty = true; // 編輯既有支出時，尊重原本已經存好的分攤金額，不要自動覆蓋
   document.getElementById('expenseFormTitle').textContent = '編輯支出';
+  setFormCardEditing('expenseFormCard', 'btnSaveExpenseSync', 'btnResetExpense', true);
   document.getElementById('expDesc').value = exp.description;
+  document.getElementById('expDesc').removeAttribute('aria-invalid');
+  document.getElementById('expDate').value = toDateInputValue(exp.createdAt);
   document.getElementById('expAmount').value = exp.amount;
   document.getElementById('expCurrency').innerHTML = currencyOptions(exp.currency);
   document.getElementById('expAmountInBase').value = exp.currency !== trip.baseCurrency ? exp.amountInBase : '';
@@ -139,7 +153,7 @@ function editExpense(id){
   renderExpenseHint();
   refreshExpenseLiveRate();
   showMainTab('expenses');
-  document.getElementById('panel-expenses').scrollIntoView({behavior:'smooth'});
+  document.getElementById('expenseFormCard').scrollIntoView({behavior:'smooth'});
 }
 async function deleteExpense(id){
   const idx = trip.expenses.findIndex(e => e.id === id);

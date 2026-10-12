@@ -67,11 +67,36 @@
 
   <!-- ================= OVERVIEW ================= -->
   <div class="panel active" id="panel-overview" data-panel="overview">
+    <!-- 版面順序依「打開總覽最想知道什麼」排列：我的狀態 → 怎麼結清 → 統計 → 圖表 → 逐筆明細。
+         「你的狀態」只有在能辨識出你是哪位成員（登入且已連結）時才會顯示，見 js/overview.js 的 renderMyStatusCard()。 -->
+    <div class="receipt my-status-card" id="myStatusCard" style="display:none; margin-bottom:14px;"></div>
+
+    <!-- 🆕 [總覽簡化] 「建議轉帳」與「彼此累計欠款總額」合併成同一張卡片，
+         用標題列右側的分段按鈕切換兩種檢視，共用同一個「換算幣別」下拉選單與匯率查詢。 -->
+    <div class="receipt" style="margin-bottom:14px;">
+      <div class="receipt-head">
+        <div>
+          <div class="t1">怎麼結清</div>
+          <div class="t2" id="debtViewSubtitle">最少轉帳次數，一次結清</div>
+        </div>
+        <div class="seg-tabs" role="tablist" aria-label="切換要顯示的結算方式">
+          <button type="button" role="tab" class="seg-tab" data-view="transfer" aria-selected="true" onclick="onDebtViewChange('transfer')">建議轉帳</button>
+          <button type="button" role="tab" class="seg-tab" data-view="pairwise" aria-selected="false" onclick="onDebtViewChange('pairwise')">彼此欠款</button>
+        </div>
+      </div>
+      <div class="convert-bar">
+        <label class="convert-label" for="debtCurrencySelect">換算幣別</label>
+        <select id="debtCurrencySelect" class="convert-select" onchange="onDebtCurrencyChange(this.value)"></select>
+        <span class="convert-note" id="debtRateNote"></span>
+      </div>
+      <div class="settle-list" id="debtSettleList"></div>
+    </div>
+
     <div class="kv-summary">
-      <div class="kv-card"><div class="k">成員</div><div class="v" id="kvMembers">0</div></div>
+      <div class="kv-card"><div class="k">總花費（基準幣）</div><div class="v" id="kvTotal">0</div></div>
+      <div class="kv-card"><div class="k">每人平均</div><div class="v" id="kvAvg">0</div></div>
       <div class="kv-card"><div class="k">支出筆數</div><div class="v" id="kvExpenses">0</div></div>
       <div class="kv-card"><div class="k">轉帳筆數</div><div class="v" id="kvDeposits">0</div></div>
-      <div class="kv-card"><div class="k">總花費（基準幣）</div><div class="v" id="kvTotal">0</div></div>
     </div>
 
     <div class="receipt" style="margin-bottom:14px;">
@@ -89,27 +114,6 @@
         </div>
         <div id="balanceBarChart"></div>
       </div>
-    </div>
-
-    <!-- 🆕 [總覽簡化] 「建議轉帳」與「彼此累計欠款總額」合併成同一張卡片：
-         預設顯示「建議轉帳」，用標題旁的下拉選單切換兩種檢視，共用同一個
-         「換算幣別」下拉選單與匯率查詢，不用再各自佔一張卡、各自選一次幣別。 -->
-    <div class="receipt" style="margin-bottom:14px;">
-      <div class="receipt-head">
-        <div>
-          <select id="debtViewSelect" class="t1-select" onchange="onDebtViewChange(this.value)" aria-label="切換要顯示的結算方式">
-            <option value="transfer">建議轉帳（最少筆數結清）</option>
-            <option value="pairwise">彼此累計欠款總額</option>
-          </select>
-          <div class="t2" id="debtViewSubtitle">最少轉帳次數，一次結清</div>
-        </div>
-      </div>
-      <div class="convert-bar">
-        <label class="convert-label" for="debtCurrencySelect">換算幣別</label>
-        <select id="debtCurrencySelect" class="convert-select" onchange="onDebtCurrencyChange(this.value)"></select>
-        <span class="convert-note" id="debtRateNote"></span>
-      </div>
-      <div class="settle-list" id="debtSettleList"></div>
     </div>
 
     <div class="receipt">
@@ -147,11 +151,26 @@
       <div id="receiptWorkArea" style="display:none;"></div>
     </div>
 
-    <div class="card" data-write-only>
-      <h2 class="section-title" id="expenseFormTitle">新增一筆支出</h2>
-      <div class="field">
-        <label>項目說明</label>
-        <input type="text" id="expDesc" placeholder="例如：晚餐、租車費">
+    <!-- 表單卡片可收合（手機預設收合，讓明細清單不會被推到很下面）；
+         編輯既有一筆時會加上 .editing 標示，並自動展開。見 js/uiKit.js 的 setFormCardOpen()。 -->
+    <div class="card form-card" id="expenseFormCard" data-write-only>
+      <h2 class="section-title form-card-head">
+        <button type="button" class="form-card-toggle" aria-expanded="true" aria-controls="expenseFormBody" onclick="toggleFormCard('expenseFormCard')">
+          <span id="expenseFormTitle">新增一筆支出</span>
+          <span class="form-card-badge">編輯中</span>
+          <span class="form-card-chevron" aria-hidden="true">▾</span>
+        </button>
+      </h2>
+      <div class="form-card-body" id="expenseFormBody">
+      <div class="row">
+        <div class="field" style="flex:2;">
+          <label for="expDesc">項目說明</label>
+          <input type="text" id="expDesc" placeholder="例如：晚餐、租車費" oninput="this.removeAttribute('aria-invalid')">
+        </div>
+        <div class="field date-field">
+          <label for="expDate">日期</label>
+          <input type="date" id="expDate">
+        </div>
       </div>
       <div class="row">
         <div class="field" style="max-width:160px;">
@@ -201,7 +220,8 @@
 
       <div class="btn-row">
         <button class="btn btn-brass btn-block" id="btnSaveExpenseSync" onclick="withLoading(this,'儲存中…',saveExpenseAndSync)">儲存</button>
-        <button class="btn btn-ghost" onclick="resetExpenseForm()">清空表單</button>
+        <button class="btn btn-ghost" id="btnResetExpense" onclick="resetExpenseForm()">清空表單</button>
+      </div>
       </div>
     </div>
 
@@ -222,8 +242,16 @@
 
   <!-- ================= DEPOSITS ================= -->
   <div class="panel" id="panel-deposits" data-panel="deposits">
-    <div class="card" data-write-only>
-      <h2 class="section-title" id="depositFormTitle">新增一筆轉帳／預收款</h2>
+    <div class="card form-card" id="depositFormCard" data-write-only>
+      <h2 class="section-title form-card-head">
+        <button type="button" class="form-card-toggle" aria-expanded="true" aria-controls="depositFormBody" onclick="toggleFormCard('depositFormCard')">
+          <span id="depositFormTitle">新增一筆轉帳／預收款</span>
+          <span class="form-card-badge">編輯中</span>
+          <span class="form-card-chevron" aria-hidden="true">▾</span>
+        </button>
+      </h2>
+      <div class="form-card-body" id="depositFormBody">
+      <p class="hint" style="margin:0 0 12px;">轉帳：結算時 A 把錢轉給 B。預收：出發前先跟大家收團費、公基金。</p>
       <div class="row">
         <div class="field">
           <label>付款人（轉出的人）</label>
@@ -250,13 +278,20 @@
         <p class="hint">若實際轉帳金額和匯率換算的結果不同，可以直接填入正確金額，結算會以這裡填寫的基準幣別金額計算。</p>
       </div>
       <p class="hint" id="depBaseHint"></p>
-      <div class="field">
-        <label>備註（選填）</label>
-        <input type="text" id="depNote" placeholder="例如：提前收團費">
+      <div class="row">
+        <div class="field" style="flex:2;">
+          <label for="depNote">備註（選填）</label>
+          <input type="text" id="depNote" placeholder="例如：提前收團費">
+        </div>
+        <div class="field date-field">
+          <label for="depDate">日期</label>
+          <input type="date" id="depDate">
+        </div>
       </div>
       <div class="btn-row">
         <button class="btn btn-brass btn-block" id="btnSaveDepositSync" onclick="withLoading(this,'儲存中…',saveDepositAndSync)">儲存</button>
-        <button class="btn btn-ghost" onclick="resetDepositForm()">清空表單</button>
+        <button class="btn btn-ghost" id="btnResetDeposit" onclick="resetDepositForm()">清空表單</button>
+      </div>
       </div>
     </div>
 

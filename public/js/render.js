@@ -11,6 +11,15 @@ function renderDepositSelects(){
   document.getElementById('depCurrency').innerHTML = currencyOptions(prevCurrency);
   if (prevPayer && trip.members.some(m=>m.id===prevPayer)) document.getElementById('depPayer').value = prevPayer;
   if (prevCollector && trip.members.some(m=>m.id===prevCollector)) document.getElementById('depCollector').value = prevCollector;
+  syncDepositPartyOptions();
+}
+// 付款人與收款人不能是同一人：在另一邊的選單裡停用已被選走的成員，
+// 從源頭避免選錯，而不是等按下儲存才跳錯誤提示。
+function syncDepositPartyOptions(){
+  const payerSel = document.getElementById('depPayer');
+  const collectorSel = document.getElementById('depCollector');
+  [...collectorSel.options].forEach(o=>{ o.disabled = !!o.value && o.value === payerSel.value; });
+  [...payerSel.options].forEach(o=>{ o.disabled = !!o.value && o.value === collectorSel.value; });
 }
 function emptyState(icon, text, ctaLabel, ctaOnclick){
   return `<div class="empty-state">
@@ -201,7 +210,7 @@ function renderExpenseList(){
     ? renderDateGroupedList(filteredExpenses, renderExpenseRow)
     : (allExpenses.length
         ? emptyState('🔍', '沒有符合篩選條件的支出', '清除篩選 →', "clearExpenseFilter()")
-        : emptyState('🧾', '還沒有任何支出', '新增第一筆 →', "showMainTab('expenses'); document.getElementById('expDesc').focus();"));
+        : emptyState('🧾', '還沒有任何支出', '新增第一筆 →', "showMainTab('expenses'); setFormCardOpen('expenseFormCard', true); document.getElementById('expDesc').focus();"));
 }
 // 轉帳／預收清單，同上。
 function renderDepositList(){
@@ -223,7 +232,7 @@ function renderDepositList(){
     ? renderDateGroupedList(filteredDeposits, renderDepositRow)
     : (allDeposits.length
         ? emptyState('🔍', '沒有符合篩選條件的轉帳／預收紀錄', '清除篩選 →', "clearDepositFilter()")
-        : emptyState('💸', '還沒有任何轉帳／預收紀錄', '新增第一筆 →', "showMainTab('deposits'); document.getElementById('depPayer').focus();"));
+        : emptyState('💸', '還沒有任何轉帳／預收紀錄', '新增第一筆 →', "showMainTab('deposits'); setFormCardOpen('depositFormCard', true); document.getElementById('depPayer').focus();"));
 }
 
 function renderJsonPreview(){
@@ -257,6 +266,16 @@ function renderAll(){
       <td data-label="">${code===trip.baseCurrency?'':`<button class="btn btn-danger btn-sm" onclick="removeRate('${code}')">刪除</button>`}</td>
     </tr>`).join('');
 
+  // 換行程／匯入時會直接把 editingExpenseId 清成 null，這裡把表單的「編輯中」外觀一起還原
+  if (!editingExpenseId && document.getElementById('expenseFormCard').classList.contains('editing')){
+    document.getElementById('expenseFormTitle').textContent = '新增一筆支出';
+    setFormCardEditing('expenseFormCard', 'btnSaveExpenseSync', 'btnResetExpense', false);
+  }
+  if (!editingDepositId && document.getElementById('depositFormCard').classList.contains('editing')){
+    document.getElementById('depositFormTitle').textContent = '新增一筆轉帳／預收款';
+    setFormCardEditing('depositFormCard', 'btnSaveDepositSync', 'btnResetDeposit', false);
+  }
+
   // expense form selects
   const curSel = document.getElementById('expCurrency');
   const prevCur = curSel.value || trip.baseCurrency;
@@ -273,17 +292,18 @@ function renderAll(){
     if (dep){
       document.getElementById('depPayer').value = dep.payerId;
       document.getElementById('depCollector').value = dep.collectorId;
+      syncDepositPartyOptions();
       document.getElementById('depCurrency').innerHTML = currencyOptions(dep.currency);
     }
   }
   renderDepositList();
 
   // overview
-  document.getElementById('kvMembers').textContent = trip.members.length;
   document.getElementById('kvExpenses').textContent = trip.expenses.length;
   document.getElementById('kvDeposits').textContent = trip.deposits.length;
   const totalBase = round2(trip.expenses.reduce((s,e)=>s+e.amountInBase,0));
   document.getElementById('kvTotal').textContent = fmtMoney(totalBase, trip.baseCurrency);
+  document.getElementById('kvAvg').textContent = trip.members.length ? fmtMoney(round2(totalBase / trip.members.length), trip.baseCurrency) : '-';
 
   const net = calcNetBalances(trip);
 
@@ -301,6 +321,7 @@ function renderAll(){
   lastPairwiseDebts = calcPairwiseDebts(trip);
   if (!debtDisplayCurrency) debtDisplayCurrency = trip.baseCurrency;
   renderDebtSectionUI();
+  renderMyStatusCard(net);
 
   // --- 3. 每位成員多幣別逐筆明細 ---
   renderMemberDetails(net);

@@ -185,7 +185,7 @@ function handleIncomingTripDeleted(){
   currentTripId = null;
   clearOwnerConnectionState();
   updateBotStatusPill(false);
-  toast('⚠️ 這個行程已經在別處被刪除了。畫面上仍保留刪除前的最後一份資料（現在是離線內容），需要的話可以到「設定 → 🧳 行程」重新上傳成雲端行程。', 'error', { duration: 10000 });
+  toast('這個行程已經在別處被刪除了。畫面上仍保留刪除前的最後一份資料（現在是離線內容），需要的話可以到「設定 → 🧳 行程」重新上傳成雲端行程。', 'error', { duration: 10000 });
   refreshTripList({ silent: true }).catch(()=>{});
 }
 

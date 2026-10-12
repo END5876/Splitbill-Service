@@ -22,7 +22,7 @@
        彈出視窗要畫成亮還是暗，跟這個網站自己用 data-theme 手動切換的主題
        無關，兩者不同步時就會出現「選單本體（closed 狀態）已經是深色，但
        點開後的選項清單本體卻還是預設亮色」的不一致——「建議轉帳／彼此累計
-       欠款總額」標題那顆 <select>（.t1-select）跟換算幣別選單最明顯，但
+       欠款總額」的換算幣別選單最明顯，但
        實際上影響全站所有 select。 */
     color-scheme: light;
 
@@ -187,7 +187,7 @@
   /* 無權限阻擋頁 */
   #noAccessScreen{
     display:none; position:fixed; inset:0; z-index:9999;
-    background:var(--bg); align-items:center; justify-content:center;
+    background:var(--paper); align-items:center; justify-content:center;
   }
   #noAccessScreen.visible{ display:flex; }
   .no-access-card{
@@ -300,9 +300,32 @@
     font-size:11.5px; color:var(--brass); font-weight:700; font-family:inherit;
   }
   .field-head .link-btn:hover{ text-decoration:underline; }
+  .field-head .field-meta[data-state="ok"]{ color:var(--credit); }
+  .field-head .field-meta[data-state="off"]{ color:var(--debt); font-weight:600; }
+  input[aria-invalid="true"]{ border-color:var(--debt); background:var(--debt-bg); }
+  .date-field{ flex:1; min-width:150px; max-width:190px; }
+
+  /* 可收合表單卡片（支出／轉帳）：標題列本身就是展開/收合按鈕；
+     .editing 表示正在編輯既有一筆，用左側色條＋「編輯中」徽章提醒。 */
+  h2.section-title.form-card-head{ margin:0; }
+  .form-card-toggle{
+    display:flex; align-items:center; gap:8px; width:100%;
+    background:none; border:none; padding:0; margin:0; cursor:pointer;
+    font:inherit; color:inherit; text-align:left;
+  }
+  .form-card-chevron{ margin-left:auto; font-size:12px; color:var(--ink-soft); transition:transform .15s; }
+  .form-card.collapsed .form-card-chevron{ transform:rotate(-90deg); }
+  .form-card-body{ margin-top:12px; }
+  .form-card.collapsed .form-card-body{ display:none; }
+  .form-card-badge{
+    display:none; font-family:'Noto Sans TC',sans-serif; font-size:11px; font-weight:700;
+    color:#fff; background:var(--brass-bg); padding:2px 8px; border-radius:20px;
+  }
+  .form-card.editing{ border-color:var(--brass-bg); box-shadow:inset 4px 0 0 var(--brass-bg), var(--shadow); }
+  .form-card.editing .form-card-badge{ display:inline-block; }
   .row{display:flex; gap:12px; flex-wrap:wrap;}
   .row > .field{flex:1; min-width:130px;}
-  input[type=text], input[type=number], input[type=password], select, textarea{
+  input[type=text], input[type=number], input[type=password], input[type=date], select, textarea{
     width:100%; border:1px solid var(--card-line); background:var(--surface);
     padding:11px 12px; border-radius:8px; font-size:15px;
     font-family:'Noto Sans TC',sans-serif; color:var(--ink);
@@ -636,7 +659,7 @@
     text-align:left; width:100%; background:var(--surface); border:1.5px solid var(--card-line);
     border-radius:10px; padding:12px 14px; cursor:pointer; font-family:inherit; font-size:14px; color:var(--ink);
   }
-  .modal-list-item:hover{border-color:var(--brass-bg); background:#FBF4E4;}
+  .modal-list-item:hover{border-color:var(--brass-bg); background:var(--brass-tint);}
   .modal-list-item .mli-title{font-weight:700;}
   .modal-list-item .mli-sub{font-size:12px; color:var(--ink-soft); margin-top:3px; font-family:'IBM Plex Mono',monospace;}
   @media (min-width:640px){
@@ -834,24 +857,32 @@
   }
   .receipt-head{
     padding:16px 18px 13px; border-bottom:1px dashed var(--card-line);
-    display:flex; justify-content:space-between; align-items:center; gap:10px;
+    display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;
   }
   .receipt-head .t1{font-family:'Noto Serif TC',serif; font-weight:700; font-size:16px;}
   .receipt-head .t2{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-soft);}
-  /* 🆕 [總覽簡化] 「建議轉帳／彼此累計欠款總額」合併卡片：標題本身就是一個
-     <select>，樣式盡量貼近 .t1（同樣粗體/字級/無邊框），維持「看起來像標題」
-     的觀感，但保留瀏覽器原生下拉箭頭，讓使用者能一眼看出這裡可以點開切換
-     （跟頁首 .header-currency 幣別選單是同一套「看起來低調但可互動」的做法）。
-     這裡靠 class 選擇器的優先度覆蓋掉全站 select 的預設外框樣式，不需要
-     額外的 !important 或調整規則順序。 */
-  .t1-select{
-    font-family:'Noto Serif TC',serif; font-weight:700; font-size:16px;
-    color:var(--ink); background:transparent; border:none;
-    padding:0 4px 0 0; margin:0; width:auto; max-width:100%;
-    cursor:pointer;
+  /* 🆕 [總覽簡化] 「建議轉帳／彼此欠款」切換：標題列右側的分段按鈕，
+     取代原本「標題本身是 <select>」的做法——看起來像純文字，很難發現能切換。 */
+  .seg-tabs{
+    display:inline-flex; flex-shrink:0; padding:3px; gap:2px;
+    background:var(--chip-bg); border-radius:9px;
   }
-  .t1-select:hover{color:var(--brass);}
-  .t1-select:focus-visible{outline:2px solid var(--brass); outline-offset:3px; border-radius:4px;}
+  .seg-tab{
+    font-family:'Noto Sans TC',sans-serif; font-size:12.5px; font-weight:700;
+    background:none; border:none; border-radius:7px; padding:6px 11px;
+    color:var(--ink-soft); cursor:pointer; white-space:nowrap;
+  }
+  .seg-tab:hover{ color:var(--ink); }
+  .seg-tab[aria-selected="true"]{ background:var(--card); color:var(--ink); box-shadow:0 1px 2px rgba(30,42,51,0.12); }
+
+  /* 建議轉帳／你的狀態：每列右側的「標記已付」按鈕 */
+  .settle-paid-btn{ flex-shrink:0; min-height:30px; padding:5px 10px; font-size:12px; }
+
+  /* 你的狀態卡片：標題直接寫出「你要付／你應收」的金額 */
+  .my-status-card{ border-color:var(--brass-soft); }
+  .my-status-headline{ font-size:18px; margin-top:3px; }
+  .my-status-headline.neg{ color:var(--debt); }
+  .my-status-headline.pos{ color:var(--credit); }
   .balance-row{
     display:flex; justify-content:space-between; align-items:center;
     padding:13px 18px; border-bottom:1px dashed var(--card-line); gap:10px;
@@ -1087,6 +1118,7 @@
   @media (max-width:640px){
     /* 並排欄位（例如金額＋幣別）在手機上平分整列寬度，右緣對齊上下欄位 */
     .row > .field{max-width:none !important; min-width:0;}
+    .row > .date-field{flex-basis:100%;}
     .share-link-options > .field{flex-basis:100%;}
     .add-rate-row input{flex:1 1 0; min-width:0; max-width:none !important;}
     .add-rate-row .btn{flex-basis:100%;}

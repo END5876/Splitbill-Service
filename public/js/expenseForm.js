@@ -51,8 +51,19 @@ function updateChipFieldMeta(containerOrId){
   const field = container.closest('.field');
   const meta = field && field.querySelector('.field-meta');
   if (!meta) return;
-  const n = container.querySelectorAll('.chip.checked').length;
-  meta.textContent = `已選 ${n} 人`;
+  const checked = [...container.querySelectorAll('.chip.checked')];
+  const n = checked.length;
+  // 即時顯示金額分配是否平衡（取代按下儲存才跳「總和不相符」的錯誤 toast）
+  const total = parseFloat(document.getElementById('expAmount').value);
+  let status = '', state = '';
+  if (n && total > 0){
+    const sum = checked.reduce((s, c)=>s + (parseFloat(c.querySelector('.amt').value) || 0), 0);
+    const diff = round2(total - sum);
+    if (Math.abs(diff) <= 0.01){ status = '・✓ 已分配完'; state = 'ok'; }
+    else { status = diff > 0 ? `・還差 ${fmtMoney(diff)}` : `・超出 ${fmtMoney(-diff)}`; state = 'off'; }
+  }
+  meta.textContent = `已選 ${n} 人${status}`;
+  meta.dataset.state = state;
 }
 function buildChips(containerId, prefix){
   const container = document.getElementById(containerId);
@@ -300,6 +311,8 @@ function renderExpenseHint(){
   if (!participantsDirty){
     rebalanceParticipantAmounts();
   }
+  updateChipFieldMeta('payerChips');
+  updateChipFieldMeta('participantChips');
 }
 document.getElementById('expAmount').addEventListener('input', renderExpenseHint);
 document.getElementById('expAmountInBase').addEventListener('input', renderExpenseHint);
