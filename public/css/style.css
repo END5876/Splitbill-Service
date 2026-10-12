@@ -861,14 +861,6 @@
     .ledger-entry-amt{ font-size:13.5px; }
   }
 
-  /* 🆕 分享連結列表：沿用跟支出/轉帳明細一致的 .ledger-row 版面（而不是獨立卡片），
-     權限改用跟「換算幣別」小選單一致的 .convert-select 樣式（寬度固定縮小、inline
-     顯示在到期日期旁邊），維持整體介面語彙一致、也不會把一整排撐得過長。 */
-  .link-options{display:flex; flex-wrap:wrap; align-items:center; gap:6px 14px; margin-top:6px;}
-  .link-options .check-row{font-size:13px;}
-  .share-link-footer{display:flex; gap:8px;}
-  .share-link-footer .btn{flex:1;}
-
   .empty-state{
     text-align:center; padding:30px 16px; color:var(--ink-soft);
   }
@@ -1180,7 +1172,6 @@
     /* 並排欄位（例如金額＋幣別）在手機上平分整列寬度，右緣對齊上下欄位 */
     .row > .field{max-width:none !important; min-width:0;}
     .row > .date-field{flex-basis:100%;}
-    .share-link-options > .field{flex-basis:100%;}
     .add-rate-row input{flex:1 1 0; min-width:0; max-width:none !important;}
     .add-rate-row .btn{flex-basis:100%;}
     /* 「輸入框＋按鈕」維持同一行，由輸入框縮放 */
@@ -1253,4 +1244,61 @@
     html{ scroll-behavior:auto; }
     *, *::before, *::after{ animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; }
     .spinner{ animation-duration:.7s !important; animation-iteration-count:infinite !important; }
+  }
+
+  /* ---------- 🆕 [行程連結] 邀請與分享卡片（js/tripLinks.js） ---------- */
+  .tl-hero{
+    display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+    padding:14px; border-radius:10px; background:var(--brass-tint); border:1px solid var(--brass-soft);
+  }
+  .tl-hero-ic{font-size:24px; line-height:1; flex-shrink:0;}
+  .tl-hero-text{flex:1 1 220px; min-width:0;}
+  .tl-hero-title{font-weight:700; color:var(--ink); font-size:15px;}
+  .tl-hero-sub{margin:4px 0 0; font-size:13px; line-height:1.65; color:var(--ink-soft);}
+  .tl-hero-btn{flex-shrink:0;}
+  .tl-foot{margin:10px 0 0;}
+  .tl-section-head{display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:20px;}
+  .tl-section-head h3.section-subtitle{margin:0;}
+  .tl-empty{margin:10px 0 0;}
+  .tl-list{display:flex; flex-direction:column; gap:8px; margin-top:10px;}
+  .tl-row{background:var(--surface); border:1px solid var(--card-line); border-radius:10px; padding:10px 12px;}
+  .tl-row.open{border-color:var(--brass-soft);}
+  .tl-row.expired .tl-row-main{opacity:.6;}
+  .tl-row-main{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
+  .tl-row-ic{font-size:18px; line-height:1; flex-shrink:0; width:24px; text-align:center;}
+  .tl-row-text{flex:1 1 160px; min-width:0;}
+  .tl-row-title{font-weight:700; font-size:14px; color:var(--ink); display:flex; align-items:center; gap:6px; flex-wrap:wrap; overflow-wrap:anywhere;}
+  .tl-row-actions{display:flex; gap:6px; flex-shrink:0; margin-left:auto;}
+  .tl-badge{font-size:11px; font-weight:500; padding:1px 7px; border-radius:20px; background:var(--chip-bg); color:var(--ink-soft);}
+  .tl-tags{display:flex; flex-wrap:wrap; gap:4px; margin-top:4px;}
+  .tl-tag{font-size:11.5px; padding:1px 8px; border-radius:20px; border:1px solid var(--brass-soft); color:var(--brass); background:var(--brass-tint); white-space:nowrap;}
+  .tl-tag.warn{border-color:var(--debt-bg); color:var(--debt); background:var(--debt-bg);}
+  .tl-tag.muted{border-color:var(--card-line); color:var(--ink-soft); background:transparent;}
+  .tl-tag.off{border-color:var(--card-line); color:var(--ink-soft); background:var(--zero-bg);}
+  .tl-editor, .tl-composer{margin-top:12px; padding-top:12px; border-top:1px dashed var(--card-line);}
+  .tl-composer{margin-top:10px; padding:14px; border:1px solid var(--card-line); border-radius:10px; background:var(--surface);}
+  .tl-field{margin:0 0 12px;}
+  .tl-label{font-size:12.5px; color:var(--ink-soft); font-weight:500; margin-bottom:6px;}
+  .tl-seg{display:flex; flex-wrap:wrap;}
+  .tl-seg .seg-tab{flex:1 1 auto;}
+  .tl-summary{margin:0 0 12px; color:var(--ink);}
+  .tl-editor-actions{display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
+  .tl-editor-actions .tl-revoke{margin-left:auto;}
+  .tl-presets{display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:8px; margin-bottom:12px;}
+  .tl-preset{
+    display:flex; flex-direction:column; align-items:flex-start; gap:3px; text-align:left;
+    padding:10px 12px; border-radius:10px; border:1px solid var(--card-line); background:var(--card);
+    color:var(--ink); font:inherit; cursor:pointer;
+  }
+  .tl-preset:hover{border-color:var(--brass-soft);}
+  .tl-preset:focus-visible{outline:none; box-shadow:var(--focus-ring);}
+  .tl-preset.on{border-color:var(--brass-bg); background:var(--brass-tint); box-shadow:inset 0 0 0 1px var(--brass-bg);}
+  .tl-preset-ic{font-size:18px; line-height:1;}
+  .tl-preset-title{font-weight:700; font-size:13.5px;}
+  .tl-preset-sub{font-size:12px; line-height:1.5; color:var(--ink-soft);}
+  @media (max-width:560px){
+    .tl-presets{grid-template-columns:1fr;}
+    .tl-preset{flex-direction:row; flex-wrap:wrap; align-items:center; column-gap:8px;}
+    .tl-preset-sub{flex-basis:100%;}
+    .tl-hero-btn{width:100%;}
   }
