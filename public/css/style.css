@@ -775,9 +775,8 @@
         改成可橫向捲動的單行列，避免成員一多把工具列撐得過高。
      2. 分組清單：每天一個小標頭（日期＋筆數＋當日小計）加一個圓角區塊，
         區塊內用內縮分隔線隔開每一筆，層次清楚。
-     3. 條目列：左邊標題／摘要（誰付・幾人分・時間）／「你應收或應付多少」，
-        右邊原幣金額與換算後金額，最右邊展開箭頭。展開後是一句「怎麼分」
-        加上每位成員一行的應收／應付清單，窄螢幕也只會往下長、不會擠。
+     3. 條目列：收合時只有兩行「項目｜金額」「誰付的｜你應收或應付」，
+        時間、換算金額、每個人怎麼分都收進展開後，手機上不會一次塞太多資訊。
      ════════════════════════════════════════════════════════════════ */
 
   /* --- 搜尋／篩選工具列 --- */
@@ -830,7 +829,7 @@
   .amt-neg{ color:var(--debt); }
   .amt-zero{ color:var(--ink-soft); }
 
-  /* --- 日期分組（分組清單樣式）：小標頭「日期｜N 筆・小計」＋一個圓角區塊裝當天所有項目，
+  /* --- 日期分組（分組清單樣式）：小標頭「日期｜當日小計」＋一個圓角區塊裝當天所有項目，
          區塊內用內縮分隔線隔開每一筆，層次清楚、手機上也很好掃 --- */
   .ledger-day-head{
     display:flex; align-items:baseline; justify-content:space-between; gap:12px;
@@ -843,38 +842,32 @@
     background:var(--surface); border:1px solid var(--card-line); border-radius:12px; overflow:hidden;
   }
 
-  /* --- 條目列：左邊「標題／摘要／你應收或應付」三行，右邊原幣金額與換算金額，最右展開箭頭 --- */
+  /* --- 條目列：收合時固定兩行、左右對齊——「項目｜金額」與「誰付的（轉帳是備註）｜你應收或應付」。
+         時間、換算金額、每個人怎麼分都收進展開後，手機的窄畫面一次只放最需要的資訊 --- */
   .ledger-entry + .ledger-entry{ border-top:1px solid var(--card-line); margin-left:14px; }
   .ledger-entry + .ledger-entry .ledger-entry-row,
   .ledger-entry + .ledger-entry .ledger-entry-detail{ padding-left:0; }
   .ledger-entry.open{ background:color-mix(in srgb, var(--brass) 5%, var(--surface)); }
   .ledger-entry-row{
-    display:flex; align-items:center; gap:12px;
+    display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:baseline; gap:3px 14px;
     padding:12px 14px; cursor:pointer; user-select:none;
     background:none; border:none; width:100%; text-align:left; font:inherit; color:inherit;
   }
-  .ledger-entry-main{ flex:1; min-width:0; }
   .ledger-entry-title{
-    display:block; font-weight:700; font-size:14.5px; line-height:1.45;
+    font-weight:700; font-size:15px; line-height:1.4;
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
   .ledger-entry-row:hover .ledger-entry-title{ color:var(--brass); }
   .ledger-entry-arrow{ color:var(--ink-soft); font-weight:400; margin:0 6px; }
-  .ledger-entry-meta{
-    display:block; margin-top:2px; font-size:12.5px; color:var(--ink-soft);
-    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-  }
-  .ledger-entry-meta .sep{ opacity:.5; margin:0 5px; }
-  .ledger-entry-meta .muted{ font-style:italic; opacity:.75; }
-  .ledger-entry-me{ display:block; margin-top:3px; font-size:12.5px; font-weight:700; white-space:nowrap; }
-  .ledger-entry-me .num{ font-family:'IBM Plex Mono',monospace; }
-  .ledger-entry-amt{ flex-shrink:0; text-align:right; white-space:nowrap; }
-  .ledger-entry-amt b{ display:block; font:600 15px/1.45 'IBM Plex Mono',monospace; }
+  .ledger-entry-amt{ text-align:right; white-space:nowrap; font:600 15px/1.4 'IBM Plex Mono',monospace; }
   .ledger-entry-amt .cur{ font-size:10.5px; color:var(--ink-soft); font-weight:500; margin-left:4px; }
-  .ledger-entry-amt small{ display:block; margin-top:2px; font:12px 'IBM Plex Mono',monospace; color:var(--ink-soft); }
-  .ledger-entry-chev{ flex-shrink:0; width:12px; text-align:center; color:var(--ink-soft); font-size:10px; transition:transform .15s ease; }
-  .ledger-entry.open .ledger-entry-chev{ transform:rotate(180deg); }
+  .ledger-entry-sub{ font-size:12.5px; color:var(--ink-soft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ledger-entry-sub .muted{ font-style:italic; opacity:.75; }
+  .ledger-entry-me{ text-align:right; font-size:12.5px; font-weight:700; white-space:nowrap; }
+  .ledger-entry-me .num{ font-family:'IBM Plex Mono',monospace; }
   .ledger-entry-detail{ padding:0 14px 14px; }
+  .ledger-entry-facts{ font-size:12.5px; color:var(--ink-soft); margin-bottom:10px; }
+  .ledger-entry-facts .sep{ opacity:.5; margin:0 4px; }
   .ledger-entry-detail .ledger-actions{ margin-top:12px; }
 
   /* 展開明細：一個小框，上方一句「怎麼分」，底下每位成員一行（名字｜這筆應收／應付），見 render.js 的 renderExpenseSplit() */
@@ -890,10 +883,9 @@
   .split-net .num{ font-family:'IBM Plex Mono',monospace; }
 
   @media (max-width:520px){
-    .ledger-entry-row{ gap:10px; padding:11px 12px; }
+    .ledger-entry-row{ column-gap:10px; padding:11px 12px; }
     .ledger-entry + .ledger-entry{ margin-left:12px; }
     .ledger-entry-detail{ padding:0 12px 14px; }
-    .ledger-entry-amt b{ font-size:14px; }
   }
 
   .empty-state{

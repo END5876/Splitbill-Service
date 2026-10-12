@@ -55,22 +55,25 @@ function netPhraseHtml(net, currency, who){
   return `<span class="${net > 0 ? 'amt-pos' : 'amt-neg'}">${prefix}${net > 0 ? '應收' : '應付'} <span class="num">${fmtMoneyCompact(Math.abs(net))}${unit}</span></span>`;
 }
 
-// 這筆支出對「我」的影響（先付 − 分攤，換算成基準幣別）；我沒參與、或沒有連結成員時回傳空字串。
+// 這筆支出對「我」的影響（先付 − 分攤），用這筆的幣別、不標單位——跟同一列右上的金額同幣別，
+// 對照起來最直覺；換算成基準幣別的數字放在展開後。我沒參與、或沒有連結成員時回傳空字串。
 function ledgerMeHtml(e){
   const me = myTripMember();
   if (!me) return '';
   const paid = e.payers.filter(p=>p.userId===me.id).reduce((s,p)=>s+p.amount,0);
   const share = e.participants.filter(p=>p.userId===me.id).reduce((s,p)=>s+p.amount,0);
   if (!paid && !share) return '';
-  const net = e.amount ? round2((paid - share) * e.amountInBase / e.amount) : 0;
-  return `<span class="ledger-entry-me">${netPhraseHtml(net, trip.baseCurrency, '你')}</span>`;
+  return netPhraseHtml(round2(paid - share), '', '你');
 }
 
-// 金額欄：原幣金額；外幣另外顯示換算成基準幣別的金額（整數不顯示 .00，手機上才不會擠掉標題）
-function ledgerAmountHtml(amount, currency, amountInBase){
-  const base = currency !== trip.baseCurrency && typeof amountInBase === 'number'
-    ? `<small>≈ ${fmtMoneyCompact(amountInBase)} ${trip.baseCurrency}</small>` : '';
-  return `<span class="ledger-entry-amt"><b>${fmtMoneyCompact(amount)}<span class="cur">${currency}</span></b>${base}</span>`;
+// 原幣金額（整數不顯示 .00）
+function ledgerAmountHtml(amount, currency){
+  return `${fmtMoneyCompact(amount)}<span class="cur">${currency}</span>`;
+}
+// 外幣換算成基準幣別的說明，放在展開後
+function ledgerBaseNote(amount, currency, amountInBase){
+  return currency !== trip.baseCurrency && typeof amountInBase === 'number'
+    ? `約 ${fmtMoneyCompact(amountInBase)} ${trip.baseCurrency}` : '';
 }
 
 // 展開明細：一個小框，上方一句說明怎麼分，底下每位相關成員一行，右側是這筆的「應收／應付」
@@ -89,19 +92,23 @@ function renderExpenseSplit(e, evenShare){
   return `<div class="split-box"><div class="split-caption">${caption}</div><ul class="split-list">${rows}</ul></div>`;
 }
 
-// 單筆支出列：左邊三行「說明／誰付・幾人分・時間／你應收或應付多少」，右邊原幣與換算金額；
-// 摘要單行、太長就截斷（窄螢幕上被截掉的是最不重要的時間）。
-// 展開後才顯示每位成員的分攤清單與編輯/刪除按鈕，避免筆數一多畫面被撐開。
+// 展開後最上方的一行補充資訊（時間、換算金額…），用「・」串起來
+function ledgerFactsHtml(parts){
+  const list = parts.filter(Boolean);
+  return list.length ? `<div class="ledger-entry-facts">${list.join('<span class="sep">・</span>')}</div>` : '';
+}
+
+// 單筆支出列：收合時只有兩行——「項目｜金額」與「誰付的｜你應收或應付」，手機上一眼掃得完；
+// 時間、換算金額、每個人怎麼分都收進展開後，避免筆數一多畫面被撐開。
 function renderExpenseRow(e){
   const expanded = expandedExpenseIds.has(e.id);
   // 多人代墊時只列第一位
   const firstPayer = e.payers[0] ? escapeHtml(memberName(e.payers[0].userId)) : '?';
   const payerText = e.payers.length > 1 ? `${firstPayer} 等 ${e.payers.length} 人付` : `${firstPayer} 付`;
-  const allShare = e.participants.length === trip.members.length && trip.members.length > 1;
-  const shareText = `${allShare ? '全員' : `${e.participants.length} 人`}分攤`;
   const evenShare = e.participants.length > 1 && e.participants.every(p=>Math.abs(p.amount - e.participants[0].amount) < 0.005);
   const detailHtml = expanded ? `
       <div class="ledger-entry-detail">
+        ${ledgerFactsHtml([`${fmtTime(e.createdAt)} 記錄`, ledgerBaseNote(e.amount, e.currency, e.amountInBase)])}
         ${renderExpenseSplit(e, evenShare)}
         <div class="ledger-actions" data-write-only>
           <button class="btn btn-ghost btn-sm" onclick="editExpense('${e.id}')">編輯</button>
@@ -111,24 +118,21 @@ function renderExpenseRow(e){
   return `
     <div class="ledger-entry ${expanded?'open':''}">
       <button type="button" class="ledger-entry-row" onclick="toggleExpenseExpand('${e.id}')" aria-expanded="${expanded}">
-        <span class="ledger-entry-main">
-          <span class="ledger-entry-title">${escapeHtml(e.description)}</span>
-          <span class="ledger-entry-meta">${payerText}<span class="sep">·</span>${shareText}<span class="sep">·</span>${fmtTime(e.createdAt)}</span>
-          ${ledgerMeHtml(e)}
-        </span>
-        ${ledgerAmountHtml(e.amount, e.currency, e.amountInBase)}
-        <span class="ledger-entry-chev" aria-hidden="true">▼</span>
+        <span class="ledger-entry-title">${escapeHtml(e.description)}</span>
+        <span class="ledger-entry-amt">${ledgerAmountHtml(e.amount, e.currency)}</span>
+        <span class="ledger-entry-sub">${payerText}</span>
+        <span class="ledger-entry-me">${ledgerMeHtml(e)}</span>
       </button>
       ${detailHtml}
     </div>`;
 }
 
-// 單筆轉帳列：收合時顯示「付款人 → 收款人」、備註與時間（無備註時顯示淡化的提示文字），
-// 展開後才顯示編輯/刪除按鈕。
+// 單筆轉帳列：收合時兩行——「付款人 → 收款人｜金額」與備註；時間、換算金額與編輯/刪除收進展開後。
 function renderDepositRow(d){
   const expanded = expandedDepositIds.has(d.id);
   const detailHtml = expanded ? `
       <div class="ledger-entry-detail">
+        ${ledgerFactsHtml([`${fmtTime(d.createdAt)} 記錄`, ledgerBaseNote(d.amount, d.currency, d.amountInBase)])}
         <div class="ledger-actions" data-write-only>
           <button class="btn btn-ghost btn-sm" onclick="editDeposit('${d.id}')">編輯</button>
           <button class="btn btn-danger btn-sm" onclick="deleteDeposit('${d.id}')">刪除</button>
@@ -137,26 +141,23 @@ function renderDepositRow(d){
   return `
     <div class="ledger-entry ${expanded?'open':''}">
       <button type="button" class="ledger-entry-row" onclick="toggleDepositExpand('${d.id}')" aria-expanded="${expanded}">
-        <span class="ledger-entry-main">
-          <span class="ledger-entry-title">${ledgerWho(d.payerId)}<span class="ledger-entry-arrow">→</span>${ledgerWho(d.collectorId)}</span>
-          <span class="ledger-entry-meta">${d.note ? escapeHtml(d.note) : '<span class="muted">無備註</span>'}<span class="sep">·</span>${fmtTime(d.createdAt)}</span>
-        </span>
-        ${ledgerAmountHtml(d.amount, d.currency, d.amountInBase)}
-        <span class="ledger-entry-chev" aria-hidden="true">▼</span>
+        <span class="ledger-entry-title">${ledgerWho(d.payerId)}<span class="ledger-entry-arrow">→</span>${ledgerWho(d.collectorId)}</span>
+        <span class="ledger-entry-amt">${ledgerAmountHtml(d.amount, d.currency)}</span>
+        <span class="ledger-entry-sub">${d.note ? escapeHtml(d.note) : '<span class="muted">無備註</span>'}</span>
       </button>
       ${detailHtml}
     </div>`;
 }
 
-// 🆕 把一組已排序好的帳目依日期分組渲染成 HTML：每組一個小標頭（左邊日期，右邊
-// 「N 筆・小計」），底下是一個圓角區塊裝著該日期所有項目（用 rowRenderer 渲染單筆）。
+// 🆕 把一組已排序好的帳目依日期分組渲染成 HTML：每組一個小標頭（左邊日期，右邊當日小計），
+// 底下是一個圓角區塊裝著該日期所有項目（用 rowRenderer 渲染單筆）。
 function renderDateGroupedList(items, rowRenderer){
   const groups = groupItemsByDate(items);
   return groups.map(g=>`
     <div class="ledger-day">
       <div class="ledger-day-head">
         <span class="ledger-day-date">${escapeHtml(g.label)}</span>
-        <span class="ledger-day-sum">${g.items.length} 筆・${fmtMoneyCompact(g.subtotal)} ${trip.baseCurrency}</span>
+        <span class="ledger-day-sum">${fmtMoneyCompact(g.subtotal)} ${trip.baseCurrency}</span>
       </div>
       <div class="ledger-day-box">${g.items.map(rowRenderer).join('')}</div>
     </div>`).join('');
