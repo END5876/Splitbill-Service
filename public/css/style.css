@@ -1,17 +1,18 @@
 :root{
-    /* 配色：「Discord 靛藍」——冷灰中性色＋靛藍主色，暗色模式沿用 Discord 的灰階。
+    /* 配色：「琥珀金」——冷灰中性色＋琥珀金主色，暗色模式沿用 Discord 的灰階。
+       主色刻意避開綠／紅（那兩個顏色代表應收／應付金額），用暖色跟冷灰中性色拉出層次。
        原則：中性色（paper／card／surface／line／chip）只用同一個色相、只改明度；
        強調色的淡底（tint／credit-bg／debt-bg／fee-bg）一律用 color-mix() 從主色
        混進卡片色推導，不另外挑 hex——這樣兩個主題的色調一定一致，改主色也會連動。
-       （--brass* 這組名稱是歷史包袱，現在代表的是「主色／跟 Bot 雲端同步」，不是黃銅色。） */
+       （--brass* 這組變數就是主色，同時代表「跟 Bot 雲端同步」。） */
     --ink:#1F2330;
     --ink-soft:#4F5566;
     --paper:#F2F3F7;
     --card:#FFFFFF;
     --card-line:#DCDFE8;
-    --brass:#4752C4;         /* 主色文字／連結（白底 6.3:1），此後只代表「跟 Bot 雲端同步」 */
-    --brass-bg:#4752C4;      /* 填色徽章／按鈕底；上面疊 --on-brass */
-    --brass-soft:#A5ACF5;    /* 邊框／焦點框用的淡主色 */
+    --brass:#8A5A12;         /* 主色文字／連結（白底 5.9:1），此後只代表「跟 Bot 雲端同步」 */
+    --brass-bg:#8A5A12;      /* 填色徽章／按鈕底；上面疊 --on-brass（白字 5.9:1） */
+    --brass-soft:#D6B271;    /* 邊框／焦點框用的淡主色 */
     --credit:#1E7A4C;
     --credit-bg:color-mix(in srgb, var(--credit) 11%, var(--card));
     --debt:#C0392B;
@@ -49,15 +50,15 @@
     --scrim:rgba(17,19,27,0.55);  /* Modal 遮罩層 */
     --paper-stripe:color-mix(in srgb, var(--brass) 4%, transparent); /* 背景那道很淡的直紋線 */
 
-    /* 頁首：淺色模式是深靛灰漸層；暗色模式改成跟頁面同色系的平面＋細底線。
+    /* 頁首：淺色模式是中性深灰漸層；暗色模式改成跟頁面同色系的平面＋細底線。
        頁首上的文字一律用 --on-dark 系列。 */
-    --header-bg:linear-gradient(155deg,#30334A,#2B2D42 60%,#25273A);
+    --header-bg:linear-gradient(155deg,#2B2E38,#24272F 60%,#1F2128);
     --header-line:transparent;
     --header-shadow:0 2px 10px rgba(0,0,0,0.18);
     --on-dark:#F2F3F7;
     --on-dark-muted:#C3C6D4;
     --on-dark-faint:#8C90A6;
-    --header-accent:#A5B0FF;      /* 頁首品牌字／頁首內焦點框 */
+    --header-accent:#E3BE78;      /* 頁首品牌字／頁首內焦點框 */
 
     /* 主要按鈕／作用中分頁／toast 的「強調面」：淺色模式是深底淺字，暗色模式翻成
        淺底深字（固定深色放在暗色卡片上會幾乎看不見）。 */
@@ -80,9 +81,9 @@
     --paper:#1E1F22;
     --card:#2B2D31;
     --card-line:#3F4147;
-    --brass:#A5B0FF;
-    --brass-bg:#4A55D6;          /* 上面疊 --on-brass（白字） */
-    --brass-soft:#5C64B8;        /* 暗色下當邊框用，壓低亮度避免框線搶眼 */
+    --brass:#E2B65E;
+    --brass-bg:#D6A646;          /* 上面疊 --on-brass（深字 7.4:1） */
+    --brass-soft:#8A6D3A;        /* 暗色下當邊框用，壓低亮度避免框線搶眼 */
     --credit:#57D28B;
     --credit-bg:color-mix(in srgb, var(--credit) 14%, var(--card));
     --debt:#F28B82;
@@ -106,12 +107,12 @@
     --header-bg:#1E1F22;
     --header-line:#2B2D31;
     --header-shadow:0 2px 10px rgba(0,0,0,0.3);
-    --header-accent:#A5B0FF;
+    --header-accent:var(--brass);
 
     --emphasis:#F2F3F5;
     --emphasis-hover:#FFFFFF;
     --on-emphasis:#1E1F22;
-    --on-brass:#FFFFFF;
+    --on-brass:#1E1F22;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
   html,body{margin:0;padding:0;}
