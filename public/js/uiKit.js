@@ -170,7 +170,7 @@ function setButtonLabel(btnEl, text){
 }
 
 /* =====================================================================
-   可收合的表單卡片（支出／轉帳）：手機上預設收合，只露出標題列，
+   可收合的表單卡片（支出／轉帳）：預設展開，點標題列可以收合，
    讓明細清單不會被一整張表單推到很下面；編輯既有一筆時自動展開。
 ===================================================================== */
 function setFormCardOpen(cardId, open){
@@ -192,9 +192,5 @@ function setFormCardEditing(cardId, saveBtnId, resetBtnId, editing){
   setButtonLabel(document.getElementById(saveBtnId), editing ? '更新' : '儲存');
   setButtonLabel(document.getElementById(resetBtnId), editing ? '取消編輯' : '清空表單');
   if (editing) setFormCardOpen(cardId, true);
-}
-if (window.matchMedia && window.matchMedia('(max-width:859px)').matches){
-  setFormCardOpen('expenseFormCard', false);
-  setFormCardOpen('depositFormCard', false);
 }
 
