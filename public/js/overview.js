@@ -61,7 +61,7 @@ async function renderDebtSectionUI(){
 
   const isTransfer = debtViewMode !== 'pairwise';
   const sourceList = isTransfer ? lastTransferTx : lastPairwiseDebts;
-  const arrowLabel = isTransfer ? '應付給 →' : '欠';
+  const verb = isTransfer ? '付給' : '欠';
   const emptyMsg = isTransfer ? '🎉 目前沒有需要結算的款項' : '🎉 目前彼此之間沒有任何累計欠款';
   if (subtitleEl){
     subtitleEl.textContent = isTransfer
@@ -90,16 +90,9 @@ async function renderDebtSectionUI(){
   }
   if (noteEl) noteEl.textContent = rateNote;
 
-  listEl.innerHTML = sourceList.length ? displayList.map(t => `
-    <div class="settle-item">
-      <span class="settle-who">
-        <span>${escapeHtml(memberName(t.from))}</span>
-        <span class="settle-arrow">${arrowLabel}</span>
-        <span>${escapeHtml(memberName(t.to))}</span>
-      </span>
-      <span class="settle-amt">${fmtMoney(t.amount, effectiveCurrency)}<span class="settle-amt-cur">${effectiveCurrency}</span></span>
-      ${isTransfer ? markPaidButtonHtml(t) : ''}
-    </div>`).join('') : `<p class="empty-state" style="padding:16px;">${emptyMsg}</p>`;
+  listEl.innerHTML = sourceList.length ? displayList.map(t => settleRowHtml(t,
+      `${ledgerWho(t.from)}<span class="settle-verb">${verb}</span>${ledgerWho(t.to)}`,
+      t.amount, effectiveCurrency, isTransfer)).join('') : `<p class="empty-state" style="padding:16px;">${emptyMsg}</p>`;
 }
 
 /* =====================================================================
@@ -107,6 +100,16 @@ async function renderDebtSectionUI(){
    讓「看結算 → 實際轉錢 → 回來記帳」在同一個地方完成。
    金額一律用基準幣別（清單計算本來就是基準幣別），不受換算幣別影響。
 ===================================================================== */
+// 結算列：頭像（付款人 → 收款人）＋一行文字（太長截斷）＋金額＋「標記已付」。
+// 手機上按鈕固定換到金額正下方（見 style.css 的 .settle-item），不再讓名字被擠成好幾行。
+function settleRowHtml(t, whoHtml, amount, currency, withPaidBtn){
+  return `<div class="settle-item">
+      <span class="settle-flow">${memberAvatarHtml(t.from,'sm')}${ICON_ARROW_RIGHT}${memberAvatarHtml(t.to,'sm')}</span>
+      <span class="settle-who">${whoHtml}</span>
+      <span class="settle-amt">${fmtMoney(amount, currency)}<span class="settle-amt-cur">${currency}</span></span>
+      ${withPaidBtn ? markPaidButtonHtml(t) : ''}
+    </div>`;
+}
 function markPaidButtonHtml(t){
   return `<button type="button" class="btn btn-ghost btn-sm settle-paid-btn" data-write-only
     onclick="withLoading(this,'記錄中…',()=>markTransferPaid('${t.from}','${t.to}'))">標記已付</button>`;
@@ -147,13 +150,10 @@ function renderMyStatusCard(net){
     : '你已經結清了 🎉';
   const rows = mine.map(t => {
     const paying = t.from === me.id;
-    return `<div class="settle-item">
-      <span class="settle-who">${paying
-        ? `<span class="settle-arrow">付給 →</span><span>${escapeHtml(memberName(t.to))}</span>`
-        : `<span>${escapeHtml(memberName(t.from))}</span><span class="settle-arrow">應付你</span>`}</span>
-      <span class="settle-amt">${fmtMoney(t.amount, base)}<span class="settle-amt-cur">${base}</span></span>
-      ${markPaidButtonHtml(t)}
-    </div>`;
+    const who = paying
+      ? `<span class="settle-verb">付給</span>${escapeHtml(memberName(t.to))}`
+      : `${escapeHtml(memberName(t.from))}<span class="settle-verb">應付你</span>`;
+    return settleRowHtml(t, who, t.amount, base, true);
   }).join('');
   el.innerHTML = `
     <div class="receipt-head">

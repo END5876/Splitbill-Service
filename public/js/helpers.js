@@ -44,9 +44,6 @@ function memberAvatarHtml(memberId, size){
     : '';
   return `<span class="av${size==='sm'?' sm':''}" style="--av:${avatarColor(memberId)}" title="${escapeHtml(name)}" aria-hidden="true">${initial}${img}</span>`;
 }
-function memberAvatarStack(ids){
-  return `<span class="av-stack">${ids.map(id=>memberAvatarHtml(id,'sm')).join('')}</span>`;
-}
 
 // 🆕 [時間資訊] 支出／轉帳明細列需要顯示「這筆是什麼時候記的」，同一年只顯示
 // 月/日 時:分（多天行程最常見的情境，不需要年份佔版面）；跨年（例如年底/年初

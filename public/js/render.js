@@ -66,9 +66,29 @@ function ledgerAmountHtml(amount, currency, amountInBase){
   return `<span class="ledger-entry-amt"><b>${fmtMoneyCompact(amount)} <span class="cur">${currency}</span></b>${base}</span>`;
 }
 
+// 展開明細：一句說明怎麼分，底下每位相關成員一行，右側是這筆的差額（先付 − 分攤，
+// 正＝別人要給他、負＝他要給別人）。有先付錢的人，名字下方補一行「先付 X・分攤 Y」。
+// 直式清單只會往下長，不會像膠囊那樣在窄螢幕上擠成好幾行。
+function renderExpenseSplit(e, evenShare){
+  const ids = [...new Set([...e.payers.map(p=>p.userId), ...e.participants.map(p=>p.userId)])];
+  const sum = (list, id) => list.filter(p=>p.userId===id).reduce((s,p)=>s+p.amount, 0);
+  const caption = evenShare
+    ? `${e.participants.length} 人平均分攤，每人 <b>${fmtMoneyCompact(e.participants[0].amount)} ${e.currency}</b>`
+    : `依金額分攤（${e.currency}）`;
+  const rows = ids.map(id=>{
+    const paid = sum(e.payers, id), share = sum(e.participants, id);
+    const net = round2(paid - share);
+    const cls = Math.abs(net) < 0.005 ? 'zero' : (net > 0 ? 'pos' : 'neg');
+    const netText = cls === 'zero' ? '±0' : `${net > 0 ? '+' : '−'}${fmtMoneyCompact(Math.abs(net))}`;
+    const note = paid ? `<small>先付 ${fmtMoneyCompact(paid)}・${share ? `分攤 ${fmtMoneyCompact(share)}` : '不分攤'}</small>` : '';
+    return `<li>${memberAvatarHtml(id,'sm')}<span class="split-name">${ledgerWho(id)}${note}</span><span class="split-net ${cls}">${netText}</span></li>`;
+  }).join('');
+  return `<div class="split-caption">${caption}</div><ul class="split-list">${rows}</ul>`;
+}
+
 // 單筆支出列：收合時顯示「付款人頭像 + 說明 + 誰付・幾人分・時間 + 對你的影響」與金額；
 // 摘要文字單行、太長就截斷（手機上被截掉的是最不重要的時間），對你的影響在手機上自成一行。
-// 展開後才顯示「先付／分攤」膠囊與編輯/刪除按鈕，避免筆數一多畫面被撐開。
+// 展開後才顯示每位成員的分攤清單與編輯/刪除按鈕，避免筆數一多畫面被撐開。
 function renderExpenseRow(e){
   const expanded = expandedExpenseIds.has(e.id);
   // 多人代墊時只列第一位，頭像疊上第二位
@@ -79,12 +99,7 @@ function renderExpenseRow(e){
   const evenShare = e.participants.length > 1 && e.participants.every(p=>Math.abs(p.amount - e.participants[0].amount) < 0.005);
   const detailHtml = expanded ? `
       <div class="ledger-entry-detail">
-        <div class="split-line"><span class="split-lbl">先付</span><span class="split-chips">${e.payers.map(p=>`
-          <span class="split-chip paid">${memberAvatarHtml(p.userId,'sm')}${ledgerWho(p.userId)} <span class="num">${fmtMoneyCompact(p.amount)}</span></span>`).join('')}</span></div>
-        <div class="split-line"><span class="split-lbl">分攤</span><span class="split-chips">${evenShare
-          ? `<span class="split-even">${memberAvatarStack(e.participants.map(p=>p.userId))}<span>${e.participants.length} 人，每人 <span class="num">${fmtMoneyCompact(e.participants[0].amount)} ${e.currency}</span></span></span>`
-          : e.participants.map(p=>`
-          <span class="split-chip">${memberAvatarHtml(p.userId,'sm')}${ledgerWho(p.userId)} <span class="num">${fmtMoneyCompact(p.amount)}</span></span>`).join('')}</span></div>
+        ${renderExpenseSplit(e, evenShare)}
         <div class="ledger-actions" data-write-only>
           <button class="btn btn-ghost btn-sm" onclick="editExpense('${e.id}')">編輯</button>
           <button class="btn btn-danger btn-sm" onclick="deleteExpense('${e.id}')">刪除</button>

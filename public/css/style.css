@@ -829,9 +829,6 @@
   }
   .av img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
   .av.sm{ width:22px; height:22px; font-size:10.5px; }
-  .av-stack{ display:inline-flex; vertical-align:middle; }
-  .av-stack .av{ box-shadow:0 0 0 2px var(--card); }
-  .av-stack .av + .av{ margin-left:-6px; }
   .you-tag{
     display:inline-block; margin-left:4px; padding:0 5px; border-radius:4px;
     font-size:10.5px; font-weight:700; line-height:16px; vertical-align:1px;
@@ -886,17 +883,21 @@
   .ledger-entry-amt small{ display:block; margin-top:2px; font:12px 'IBM Plex Mono',monospace; color:var(--ink-soft); }
   .ledger-entry-detail{ padding:0 4px 14px 46px; }
 
-  /* 展開明細：先付／分攤兩行膠囊；平均分攤時合併成「N 人，每人 X」 */
-  .split-line{ display:flex; align-items:flex-start; gap:10px; font-size:13px; }
-  .split-line + .split-line{ margin-top:8px; }
-  .split-lbl{ flex-shrink:0; width:30px; padding-top:4px; font-size:11.5px; font-weight:700; color:var(--ink-soft); }
-  .split-chips{ display:flex; flex-wrap:wrap; gap:6px; align-items:center; min-height:28px; }
-  .split-chip{ display:inline-flex; align-items:center; gap:6px; padding:3px 10px 3px 3px; border-radius:20px; background:var(--chip-bg); }
-  .split-chip .num{ font-family:'IBM Plex Mono',monospace; color:var(--ink-soft); }
-  .split-chip.paid{ background:var(--credit-bg); }
-  .split-chip.paid .num{ color:var(--credit); }
-  .split-even{ display:inline-flex; align-items:center; gap:8px; }
-  .split-even .num{ font-family:'IBM Plex Mono',monospace; font-weight:600; }
+  /* 展開明細：一句說明怎麼分＋每位成員一行（名字｜這筆的差額），見 render.js 的 renderExpenseSplit() */
+  .split-caption{ font-size:12.5px; color:var(--ink-soft); margin-bottom:4px; }
+  .split-caption b{ font-family:'IBM Plex Mono',monospace; font-weight:600; color:var(--ink); }
+  .split-list{ list-style:none; margin:0; padding:0; }
+  .split-list li{
+    display:flex; align-items:center; gap:10px; padding:7px 0;
+    border-bottom:1px dashed var(--card-line); font-size:13.5px;
+  }
+  .split-list li:last-child{ border-bottom:none; }
+  .split-name{ flex:1; min-width:0; overflow-wrap:anywhere; }
+  .split-name small{ display:block; margin-top:1px; font:11.5px 'IBM Plex Mono',monospace; color:var(--ink-soft); }
+  .split-net{ flex-shrink:0; font:600 13.5px 'IBM Plex Mono',monospace; white-space:nowrap; }
+  .split-net.pos{ color:var(--credit); }
+  .split-net.neg{ color:var(--debt); }
+  .split-net.zero{ color:var(--ink-soft); }
 
   @media (max-width:520px){
     .ledger-entry-detail{ padding-left:4px; }
@@ -993,15 +994,23 @@
   .stamp.settled{color:var(--credit); border-color:var(--credit);}
 
   .settle-list{padding:4px 18px 16px;}
+  /* 結算列：頭像（付款人 → 收款人）｜文字（單行，太長截斷）｜金額｜標記已付。
+     手機上「標記已付」固定換到金額正下方，列高一致，名字不會被擠成好幾行。 */
   .settle-item{
-    display:flex; align-items:center; gap:8px; font-size:13.5px;
+    display:grid; grid-template-columns:auto minmax(0,1fr) auto auto; align-items:center;
+    gap:6px 10px; font-size:13.5px;
     padding:10px 0; border-bottom:1px dashed var(--card-line);
   }
   .settle-item:last-child{border-bottom:none;}
-  /* 名字太長時只在左側區塊內換行，金額固定留在同一列的右側 */
-  .settle-who{flex:1; min-width:0; display:flex; align-items:center; flex-wrap:wrap; gap:2px 8px; overflow-wrap:anywhere;}
-  .settle-arrow{color:var(--brass); font-family:'IBM Plex Mono',monospace; white-space:nowrap;}
-  .settle-amt{margin-left:auto; flex-shrink:0; white-space:nowrap; font-family:'IBM Plex Mono',monospace; font-weight:700;}
+  .settle-flow{display:inline-flex; align-items:center; gap:3px; color:var(--ink-soft);}
+  .settle-flow svg{width:14px; height:14px;}
+  .settle-who{min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:500;}
+  .settle-verb{color:var(--ink-soft); font-weight:400; margin:0 5px;}
+  .settle-amt{white-space:nowrap; font-family:'IBM Plex Mono',monospace; font-weight:700; text-align:right;}
+  @media (max-width:520px){
+    .settle-item{grid-template-columns:auto minmax(0,1fr) auto;}
+    .settle-item .settle-paid-btn{grid-column:3; justify-self:end;}
+  }
   .settle-amt-cur{font-size:11px; font-weight:500; color:var(--ink-soft); margin-left:3px;}
 
   /* 🆕「建議轉帳」「彼此累計欠款總額」的幣別換算列：小型下拉選單＋匯率提示文字
