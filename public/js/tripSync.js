@@ -18,8 +18,6 @@ async function loadTripFromApi(opts){
     resetListFilters();
     resetOverviewSectionCurrencyState();
     if (!opts.quiet) toast(`已載入「${trip.name}」（成員 ${trip.members.length} 人、支出 ${trip.expenses.length} 筆）`, 'success');
-    updateBotStatusPill(true, trip.name);
-    syncAdvDetailsState();
     if (currentSettingsSub === 'people') renderTripLinksPanel();
     if (currentSettingsSub === 'trip') renderDiscordPanel();
     saveOwnerConnectionState();
@@ -33,7 +31,7 @@ async function loadTripFromApi(opts){
 }
 // 🆕 [即時寫入] 設定頁（成員、匯率、行程名稱）改動後自動寫入雲端，畫面上是什麼 JSON 就是什麼。
 // 防抖＋序列化：連續操作只存一次；存檔進行中又有新改動，等這次結束後再補存一次。
-// 離線行程（沒有 currentTripId 且非分享連結）不處理，維持原本的本機／手動流程。
+// 還沒開啟雲端行程（沒有 currentTripId 且非分享連結）時不處理。
 let cloudSaveTimer = null;
 let cloudSavePending = false; // 已排程、但防抖計時還沒到（頁首同步狀態也算「儲存中」）
 let cloudSaveRunning = false;
@@ -63,7 +61,7 @@ async function runCloudSave(){
   }
 }
 /* ===================== 頁首同步狀態 ===================== */
-// 讓使用者隨時知道資料存了沒：已同步／儲存中／未儲存（點擊重試）／離線／唯讀。
+// 讓使用者隨時知道資料存了沒：已同步／儲存中／未儲存（點擊重試）／未開啟行程／唯讀。
 let syncSaving = 0;       // 進行中的儲存請求數
 let syncFailed = false;   // 最近一次儲存沒有成功（失敗、衝突或使用者取消覆蓋）
 function renderSyncStatus(){
@@ -73,7 +71,7 @@ function renderSyncStatus(){
   if (shareMode && shareMode.permission !== 'write'){
     state = 'readonly'; label = '唯讀'; hint = '這是唯讀的分享連結，只能看、不能修改';
   } else if (!currentTripId && !shareMode){
-    state = 'offline'; label = '離線'; hint = '目前是離線編輯，變更不會同步到雲端。點此開啟或上傳雲端行程';
+    state = 'offline'; label = '未開啟行程'; hint = '還沒開啟任何行程，變更不會被儲存。點此開啟或建立行程';
   } else if (syncSaving > 0 || cloudSavePending){
     state = 'saving'; label = '儲存中…'; hint = '正在把變更存到雲端';
   } else if (syncFailed){
@@ -116,11 +114,9 @@ async function saveTripToApiImpl(){
 
   if (!currentTripId){
     showMainTab('settings'); showSettingsSub('connect');
-    if (currentUser){
-      toast('目前是離線編輯的行程。可以在「設定 → 帳號」把它上傳成雲端行程，或開啟既有的行程。', 'error', { duration: 7000 });
-    } else {
-      toast('尚未登入：請先到「設定 → 帳號」用 Discord 登入並開啟行程，之後就能在這裡直接儲存。', 'error', { duration: 7000 });
-    }
+    toast(currentUser
+      ? '還沒開啟任何行程：請先在「設定 → 帳號」開啟或建立一個行程。'
+      : '尚未登入：請先到「設定 → 帳號」用 Discord 登入並開啟行程。', 'error', { duration: 7000 });
     return;
   }
 
@@ -219,7 +215,6 @@ async function saveTripToApiImpl(){
       trip = repairTrip(savedData); // 用伺服器回傳的版本（含最新 updatedAt）更新本地
       lastSyncedTripJSON = JSON.stringify(trip);
       toast('已儲存', 'success');
-      updateBotStatusPill(true, trip.name);
       saveOwnerConnectionState();
       renderAll();
       return true; // 成功，結束整個函式

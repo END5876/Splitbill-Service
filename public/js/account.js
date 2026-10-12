@@ -32,7 +32,7 @@ function renderAccountArea(){
       <p class="hint">用 Discord 帳號登入後，就能建立自己的行程、邀請朋友一起記帳。只會讀取你的 Discord 名稱與頭像。</p>
       <div class="btn-row"><button class="btn btn-brass" type="button" onclick="loginWithDiscord()">用 Discord 登入</button></div>`;
   } else {
-    el.innerHTML = `<p class="hint">這個網站尚未開啟 Discord 登入。可以到「進階」用本機檔案離線記帳，或使用朋友傳來的分享連結。</p>`;
+    el.innerHTML = `<p class="hint">這個網站尚未開啟 Discord 登入，只能用朋友傳來的連結開啟行程。</p>`;
   }
   const tripCard = document.getElementById('myTripsCard');
   if (tripCard) tripCard.style.display = currentUser ? '' : 'none';
@@ -41,8 +41,6 @@ function renderAccountArea(){
     allRow.style.display = currentUser && currentUser.admin ? '' : 'none';
     document.getElementById('showAllTripsToggle').checked = showAllTrips();
   }
-  const uploadRow = document.getElementById('uploadLocalTripRow');
-  if (uploadRow) uploadRow.style.display = (currentUser && !currentTripId && (trip.members.length || trip.expenses.length)) ? '' : 'none';
 }
 
 /* ===================== 頁首快速切換行程 ===================== */

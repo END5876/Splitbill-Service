@@ -62,17 +62,12 @@
       <input type="text" id="tripName" placeholder="行程名稱，例如：沖繩三天兩夜" title="點擊修改行程名稱" aria-label="行程名稱">
       <button class="header-icon-btn" id="tripSwitchBtn" type="button" onclick="openTripSwitcher()" aria-label="切換行程" title="切換行程" style="display:none;"><svg class="ic" aria-hidden="true"><use href="#i-switch"/></svg></button>
       <span class="header-currency" id="baseCurrencyLabel" title="基準幣別於建立行程時決定，之後無法更改"></span>
-      <!-- 同步狀態：已同步／儲存中／未儲存（點擊重試）／離線／唯讀，見 js/tripSync.js 的 renderSyncStatus() -->
+      <!-- 同步狀態：已同步／儲存中／未儲存（點擊重試）／未開啟行程／唯讀，見 js/tripSync.js 的 renderSyncStatus() -->
       <button class="sync-status" id="syncStatus" type="button" onclick="onSyncStatusClick()" data-state="offline">
-        <span class="sync-dot" aria-hidden="true"></span><span class="sync-label">離線</span>
+        <span class="sync-dot" aria-hidden="true"></span><span class="sync-label">未開啟行程</span>
       </button>
       <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" type="button" aria-label="切換深色/淺色模式" title="切換深色/淺色模式">
         <svg class="ic" aria-hidden="true"><use id="themeToggleIcon" href="#i-moon"/></svg>
-      </button>
-    </div>
-    <div class="status-pills" data-owner-only>
-      <button class="pill" id="fileStatusPill" onclick="showMainTab('settings'); showSettingsSub('io');" type="button">
-        <span class="dot"></span><span id="fileStatusText">未連結本機檔案</span>
       </button>
     </div>
   </div>
@@ -348,12 +343,7 @@
     <div class="subpanel active" id="panel-trip" data-subpanel="trip">
       <div class="card" id="tripInfoCard">
         <h2 class="section-title">基本資訊</h2>
-        <p class="hint" style="margin-top:0;">行程名稱可以直接點頁首的名稱修改。基準幣別在建立行程時決定，之後無法更改。</p>
-        <div class="field">
-          <label for="tripId">行程 ID</label>
-          <input type="text" id="tripId" readonly style="opacity:.7; cursor:default;">
-        </div>
-        <p class="hint">匯入／匯出 JSON、或呼叫 API 時用來識別這個行程的代碼。</p>
+        <p class="hint" style="margin:0;">行程名稱可以直接點頁首的名稱修改。基準幣別在建立行程時決定，之後無法更改。</p>
       </div>
 
       <div class="card" id="ratesCard">
@@ -448,64 +438,29 @@
           <button class="btn btn-primary" onclick="withLoading(this,'建立中…',createTripOnServer)">＋ 建立行程</button>
         </div>
         <p class="hint">你會是這個行程的建立者，也是第一位成員。之後可以到「成員與分享」邀請朋友，或到「行程」綁定 Discord 伺服器。</p>
-        <div id="uploadLocalTripRow" style="display:none; margin-top:12px;">
-          <p class="hint">目前畫面上是離線編輯（或匯入）的行程，可以把它整份上傳成新的雲端行程：</p>
-          <div class="btn-row"><button class="btn btn-ghost" onclick="withLoading(this,'上傳中…',uploadLocalTripToServer)">☁️ 把目前的行程上傳到雲端</button></div>
-        </div>
       </div>
     </div>
 
-    <!-- ---------- 🛠 進階：離線備援與維運用 ---------- -->
+    <!-- ---------- 🛠 進階：備份與匯入（js/importExport.js） ---------- -->
     <div class="subpanel" id="panel-advanced" data-subpanel="advanced">
-      <p class="hint" style="margin:0 0 14px;">開啟雲端行程時，資料會直接同步到雲端；以下是離線編輯、備份或維運用的功能，平常不一定會用到。</p>
-
-      <details class="adv" id="advFileDetails">
-        <summary>本機檔案與匯入匯出</summary>
-        <div class="adv-inner">
-          <div class="card" id="localFileCard">
-            <h2 class="section-title">直接覆寫本機檔案</h2>
-            <p class="hint" id="fsApiHint">檢查瀏覽器支援中...</p>
-            <div class="btn-row">
-              <button class="btn btn-primary" onclick="withLoading(this,'開啟中…',openLocalFile)" id="btnOpenLocal">📂 選擇 trip.json</button>
-              <button class="btn btn-primary" onclick="withLoading(this,'儲存中…',()=>saveToLocalFile())" id="btnSaveLocal">💾 儲存並覆寫檔案</button>
-            </div>
-            <label class="check-row" style="margin-top:10px;">
-              <input type="checkbox" id="autoSaveLocal" onchange="onAutoSaveToggle(this.checked)">
-              每次新增／編輯後自動覆寫（需先連結檔案）
-            </label>
-            <p class="hint" id="localFileStatus">尚未連結本機檔案</p>
-          </div>
-
-          <div class="card">
-            <h2 class="section-title">下載／複製備份</h2>
-            <p class="hint">匯出的 JSON 結構與 Mousebot <code class="inline">splitbill.js</code> 儲存格式相容。</p>
-            <div class="btn-row">
-              <button class="btn btn-ghost" onclick="downloadJson()">⬇ 下載 trip.json</button>
-              <button class="btn btn-ghost" onclick="copyJson()">複製 JSON 到剪貼簿</button>
-            </div>
-            <textarea id="jsonPreview" rows="8" readonly style="margin-top:12px;" aria-label="目前行程的 JSON"></textarea>
-          </div>
-
-          <div class="card">
-            <h2 class="section-title">匯入</h2>
-            <p class="hint">貼上單一 trip 的 JSON，或整個 <code class="inline">{ guildId: { trips: {...} } }</code> 檔案。</p>
-            <input type="file" id="fileInput" accept="application/json" onchange="handleFileImport(event)" aria-label="選擇 JSON 檔案">
-            <textarea id="jsonInput" rows="6" placeholder="貼上 JSON 內容..." style="margin-top:10px;" aria-label="貼上 JSON 內容"></textarea>
-            <div class="btn-row">
-              <button class="btn btn-primary" onclick="importJson()">載入這份 JSON</button>
-            </div>
-          </div>
-
-          <!-- 破壞性操作獨立成一張卡片，不跟「載入 JSON」擠在同一列，降低誤觸機會 -->
-          <div class="card danger-zone">
-            <h2 class="section-title">清空畫面</h2>
-            <p class="hint">清掉目前畫面上的所有資料，開一個空白的離線行程。</p>
-            <div class="btn-row">
-              <button class="btn btn-danger" onclick="confirmNewTrip()">清空並開新行程</button>
-            </div>
-          </div>
+      <div class="card">
+        <h2 class="section-title">下載備份</h2>
+        <p class="hint" style="margin-top:0;">行程的資料都存在雲端，平常不需要另外備份；想自己留一份，或要搬到別的地方時，可以下載成 JSON 檔。</p>
+        <div class="btn-row">
+          <button class="btn btn-brass" type="button" onclick="downloadJson()">⬇ 下載這個行程的 JSON</button>
+          <button class="btn btn-ghost" type="button" onclick="copyJson()">複製 JSON</button>
         </div>
-      </details>
+      </div>
+
+      <div class="card">
+        <h2 class="section-title">匯入成新行程</h2>
+        <p class="hint" style="margin-top:0;">選擇之前下載的 JSON 檔（或直接貼上內容），會建立成一個<b>新的</b>雲端行程，不會動到目前開著的行程。匯入時會問你是裡面的哪一位成員。</p>
+        <input type="file" id="fileInput" accept="application/json,.json" onchange="handleFileImport(event)" aria-label="選擇 JSON 檔案">
+        <textarea id="jsonInput" rows="6" placeholder="或把 JSON 內容貼在這裡…" style="margin-top:10px;" aria-label="貼上 JSON 內容"></textarea>
+        <div class="btn-row">
+          <button class="btn btn-primary" type="button" onclick="withLoading(this,'匯入中…',importJsonAsNewTrip)">匯入成新行程</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -530,7 +485,6 @@
 <script src="js/expenseCrud.js"></script>
 <script src="js/depositCrud.js"></script>
 <script src="js/importExport.js"></script>
-<script src="js/localFile.js"></script>
 <script src="js/render.js"></script>
 <script src="js/api.js"></script>
 <script src="js/sse.js"></script>

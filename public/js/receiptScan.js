@@ -15,8 +15,8 @@ let receiptState = null; // { imageDataUrl, items:[{id,name,price,type,assignedT
    行程裡其他擁有可編輯權限的人。不特別區分「你是誰」，任何人都可以直接
    幫任何人勾選——沿用既有的 receiptToggleClaim() 等函式，這裡只是額外把
    每次的變動同步推播出去。
-   這份協作狀態刻意不落地寫進 trip.json，只存在伺服器記憶體（見
-   webui/lib/receiptSessions.js），沒人更新一段時間後會自動過期。
+   這份協作狀態刻意不寫進資料庫，只存在伺服器記憶體（見
+   lib/receiptSessions.js），沒人更新一段時間後會自動過期。
 ===================================================================== */
 let receiptSessionJoined = false;      // 目前這個分頁的 receiptState 是否正在跟伺服器同步
 let receiptSessionPushDirty = false;   // 自從上次推播後，是否有新的變動待送出

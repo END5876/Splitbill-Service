@@ -190,22 +190,13 @@
     .sync-status:not([data-state="error"]):not([data-state="readonly"]){padding:0; width:34px; justify-content:center;}
     .sync-status:not([data-state="error"]):not([data-state="readonly"]) .sync-label{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap;}
   }
-  /* 🆕 [狀態 pill 精簡] 容器本身預設也先隱藏（避免 JS 尚未執行完成前，
-     margin-top 那段留白先閃現出來）；真正的顯示/隱藏交給
-     js/localFile.js 的 syncStatusPillsVisibility() 統一控制——它會在
-     兩顆 pill 都被判定為「不需要顯示」時，連容器一起收掉，不會只是
-     藏起裡面的文字、卻留著一段空白版位。 */
-  .status-pills{display:none; gap:6px; flex-wrap:wrap; margin-top:8px;}
-  .status-pills .pill {display: none;}
 
-  /* 🆕 [分享連結] 分享連結模式下的畫面收斂：
-     - data-owner-only：只有擁有者（用真正的 SPLITBILL_API_KEY 連線）才看得到的東西，
-       例如「連線 Bot／檔案」等技術性設定、帳單掃描（伺服器端本來就只准擁有者用）。
-       分享連結的朋友完全看不到、也點不到這些，畫面單純很多，不會誤觸也不會困惑。
-     - data-write-only：分享連結為「唯讀」時，這些會被隱藏——新增/編輯/刪除/儲存
+  /* 🆕 [行程連結] 訪客模式（用連結、不登入開啟）下的畫面收斂：
+     - data-owner-only：只有登入的成員才看得到的東西，例如「設定」分頁。
+     - data-write-only：連結為「唯讀」時，這些會被隱藏——新增/編輯/刪除/儲存
        等寫入類按鈕與表單，唯讀訪客只能看不能改。
-     這裡只負責畫面收斂（UX），真正的存取控制永遠由伺服器端把關（見 webui/server.js
-     的 authorizeTripAccess()），就算有人繞過前端硬送 API 請求，伺服器一樣會擋下來。 */
+     這裡只負責畫面收斂（UX），真正的存取控制永遠由伺服器端把關（見 lib/auth.js
+     的 requireTripAccess()／requireGuestLink()），繞過前端硬送 API 請求一樣會被擋下來。 */
   body.share-mode [data-owner-only]{display:none !important;}
   body.share-readonly [data-write-only]{display:none !important;}
 
@@ -254,17 +245,6 @@
     width:32px; height:2px; background:var(--brass-soft);
     margin:20px auto;
   }
-  .pill{
-    font-size:11px; padding:4px 10px; border-radius:20px;
-    display:inline-flex; align-items:center; gap:5px;
-    font-family:'IBM Plex Mono',monospace; cursor:pointer; border:none;
-    background:rgba(255,255,255,0.08); color:#C7CDC2;
-  }
-  .pill .dot{width:6px; height:6px; border-radius:50%; background:#7C8A80; flex-shrink:0;}
-  .pill.on{background:rgba(47,110,82,0.28); color:#B9EAC9;}
-  .pill.on .dot{background:#4FCB7E;}
-  .pill.warn{background:rgba(201,138,45,0.28); color:#F0D19B;}
-  .pill.warn .dot{background:#E2A23F;}
 
   /* ---------- Top tabs (desktop) ---------- */
   .top-nav{display:none; gap:2px; margin-top:22px; border-bottom:2px solid var(--card-line);}
@@ -327,7 +307,6 @@
     margin:20px 0 10px; display:flex; align-items:center; gap:8px;
   }
   h3.section-subtitle .n{font-family:'IBM Plex Mono',monospace; color:var(--brass); font-size:12.5px;}
-  .card.danger-zone{border-color:var(--debt-bg);}
   h2.section-title .n{font-family:'IBM Plex Mono',monospace; color:var(--brass); font-size:13px;}
 
   .card{
@@ -989,16 +968,6 @@
   .hint{font-size:12px; color:var(--ink-soft); margin-top:6px; line-height:1.6;}
   code.inline{background:var(--chip-bg); border-radius:4px; padding:1px 5px; font-family:'IBM Plex Mono',monospace; font-size:12px; word-break:break-all;}
 
-  details.adv{border:1px dashed var(--card-line); border-radius:10px; padding:2px 14px; margin-top:4px;}
-  details.adv > summary{
-    cursor:pointer; padding:10px 0; font-weight:700; font-size:13.5px; color:var(--ink-soft);
-    list-style:none; display:flex; align-items:center; gap:6px;
-  }
-  details.adv > summary::-webkit-details-marker{display:none;}
-  details.adv > summary::before{content:"▸"; font-size:11px; transition:transform .15s;}
-  details.adv[open] > summary::before{transform:rotate(90deg);}
-  details.adv > summary:focus-visible{outline:2px solid var(--brass); outline-offset:2px; border-radius:4px;}
-  details.adv .adv-inner{padding-bottom:14px;}
 
 
   /* ---------- Overview: Balance Bar Chart ---------- */

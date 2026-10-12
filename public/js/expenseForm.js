@@ -266,7 +266,7 @@ async function refreshExpenseLiveRate(){
   if (document.getElementById('expCurrency').value !== currency) return;
   if (result){
     expenseLiveRate = { currency, rate: result.rate, asOf: result.asOf };
-    trip.rates[currency] = result.rate; // 順便更新手動匯率表，離線時也有個還算新的備援值
+    trip.rates[currency] = result.rate; // 順便更新手動匯率表，之後查不到即時匯率時也有個還算新的備援值
   } else {
     expenseLiveRate = null;
   }

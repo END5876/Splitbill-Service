@@ -168,12 +168,15 @@ function handleIncomingTripDeleted(){
     showLinkError('這個行程已經被刪除了，連結也跟著失效。');
     return;
   }
-  // 🆕 刪除後就不再是「連線中的雲端行程」：畫面保留最後一份資料當成離線內容，
-  // 之後按「儲存」不會再寫回任何地方（需要的話可以重新上傳成新的雲端行程）。
+  // 刪除後畫面清空，帶回「我的行程」讓使用者換一個行程開
+  const deletedName = trip.name;
   currentTripId = null;
   clearOwnerConnectionState();
-  updateBotStatusPill(false);
-  toast('這個行程已經在別處被刪除了。畫面上仍保留刪除前的最後一份資料（現在是離線內容），需要的話可以到「設定 → 帳號」重新上傳成雲端行程。', 'error', { duration: 10000 });
+  trip = defaultTrip();
+  lastSyncedTripJSON = null;
+  renderAll();
+  showMainTab('settings'); showSettingsSub('account');
+  toast(`「${deletedName}」已經在別處被刪除了。請從「我的行程」開啟其他行程，或建立新的。`, 'error', { duration: 10000 });
   refreshTripList({ silent: true }).catch(()=>{});
 }
 

@@ -12,7 +12,7 @@
 let currentUser = null;      // { id, name, avatar, admin } | null
 let oauthEnabled = false;
 let myTrips = [];            // GET /api/my/trips 的結果（含 role）
-let currentTripId = null;    // 目前「連線中」的雲端行程；null＝離線編輯（本機檔案／匯入）
+let currentTripId = null;    // 目前開啟的雲端行程；null＝還沒開啟任何行程
 let lastSyncedTripJSON = null; // 用來做簡單的樂觀鎖：跟伺服器目前的版本比對，偵測是否被別人改過
 
 function apiHeaders(){
@@ -195,38 +195,38 @@ async function createTripOnServer(){
   }
 }
 
-// 把畫面上離線編輯（或從 JSON 匯入）的行程整份上傳成新的雲端行程。
+// 把一份行程資料（從 JSON 匯入）建立成新的雲端行程，建立後直接開啟。
 // 會先問「你是哪一位」，讓那位成員連結到自己的 Discord 帳號；其他人之後用邀請連結認領。
-async function uploadLocalTripToServer(){
-  if (!currentUser){ toast('請先用 Discord 登入', 'error'); return; }
+// 成功回傳建立的行程摘要，取消或失敗回傳 null。
+async function createCloudTripFrom(source){
+  if (!currentUser){ toast('請先用 Discord 登入', 'error'); return null; }
   let selfMemberId = '';
-  if (trip.members.length){
-    // 選中的成員會連結到自己的 Discord 帳號；其他成員之後可以用邀請連結自己認領
-    selfMemberId = await pickModal('上傳成雲端行程：這個行程裡哪一位是你？', [
-      ...trip.members.map(m => ({ value: m.id, title: m.name })),
+  if (source.members.length){
+    selfMemberId = await pickModal(`匯入「${source.name}」：這個行程裡哪一位是你？`, [
+      ...source.members.map(m => ({ value: m.id, title: m.name })),
       { value: '', title: '都不是', sub: '另外把我加成一位新成員' },
     ]);
-    if (selfMemberId === null) return; // 取消
+    if (selfMemberId === null) return null; // 取消
   }
   try{
-    const res = await fetch('/api/trips', {
+    const created = await apiJson(await fetch('/api/trips', {
       method: 'POST',
       headers: Object.assign({ 'Content-Type': 'application/json' }, apiHeaders()),
       body: JSON.stringify({
-        name: trip.name,
-        baseCurrency: trip.baseCurrency,
-        rates: trip.rates,
+        name: source.name,
+        baseCurrency: source.baseCurrency,
+        rates: source.rates,
         memberName: currentUser.name,
         selfMemberId: selfMemberId || undefined,
-        content: { members: trip.members, expenses: trip.expenses, deposits: trip.deposits },
+        content: { members: source.members, expenses: source.expenses, deposits: source.deposits },
       })
-    });
-    const created = await apiJson(res);
+    }));
     await refreshTripList({ silent: true });
-    document.getElementById('tripSelect').value = created.id;
-    await loadTripFromApi({ quiet: true });
-    toast(`已上傳成雲端行程「${created.name}」`, 'success');
+    await loadTripFromApi({ quiet: true, tripId: created.id });
+    toast(`已匯入成新行程「${created.name}」`, 'success');
+    return created;
   }catch(err){
-    toast('上傳失敗：' + err.message, 'error');
+    toast('匯入失敗：' + err.message, 'error');
+    return null;
   }
 }

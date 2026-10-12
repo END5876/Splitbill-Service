@@ -34,7 +34,7 @@ let currentSettingsSub = 'trip';
 // 會切到所屬分組並捲到對應卡片。
 const SETTINGS_SUB_ALIASES = {
   members:  { sub: 'people',   anchor: 'membersCard' },
-  share:    { sub: 'people',   anchor: 'shareCard' },
+  share:    { sub: 'people',   anchor: 'tripLinksCard' },
   rates:    { sub: 'trip',     anchor: 'ratesCard' },
   discord:  { sub: 'trip',     anchor: 'discordCard' },
   connect:  { sub: 'account',  anchor: null },
@@ -54,7 +54,6 @@ function showSettingsSub(sub){
   currentSettingsSub = sub;
   document.querySelectorAll('.settings-subnav .subtab-btn').forEach(b=>b.classList.toggle('active', b.dataset.subtab===sub));
   document.querySelectorAll('.subpanel[data-subpanel]').forEach(p=>p.classList.toggle('active', p.dataset.subpanel===sub));
-  if (sub === 'advanced'){ syncAdvDetailsState(); renderJsonPreview(); }
   if (sub === 'people') renderTripLinksPanel();
   if (sub === 'trip') renderDiscordPanel();
   // 有指定卡片就捲過去；否則切換分組後回到頂端，不要停在上一個分組的捲動位置
@@ -62,19 +61,7 @@ function showSettingsSub(sub){
   if (anchorEl) requestAnimationFrame(()=>anchorEl.scrollIntoView({ behavior:'smooth', block:'start' }));
   else if (document.getElementById('panel-settings').classList.contains('active')) window.scrollTo({ top:0 });
 }
-// 已開啟雲端行程時，把「本機檔案／下載貼上／匯入」這些備用方式預設收合，
-// 減少畫面雜訊；沒連線時預設展開，因為那時候本機方式就是主要路徑。
-function syncAdvDetailsState(){
-  const details = document.getElementById('advFileDetails');
-  if (!details) return;
-  const connected = isConnected();
-  if (!details.dataset.userToggled) details.open = !connected;
-}
 
 /* ===================== cover fields ===================== */
-document.getElementById('tripName').addEventListener('input', e=>{ trip.name = e.target.value; scheduleAutoSave(); scheduleCloudSave(1000); });
-document.addEventListener('DOMContentLoaded', ()=>{
-  const details = document.getElementById('advFileDetails');
-  if (details) details.addEventListener('toggle', ()=>{ details.dataset.userToggled = '1'; });
-});
+document.getElementById('tripName').addEventListener('input', e=>{ trip.name = e.target.value; scheduleCloudSave(1000); });
 

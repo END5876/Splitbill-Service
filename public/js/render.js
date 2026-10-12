@@ -239,14 +239,9 @@ function renderDepositList(){
         : emptyState('💸', '還沒有任何轉帳／預收紀錄', '新增第一筆 →', "showMainTab('deposits'); setFormCardOpen('depositFormCard', true); document.getElementById('depPayer').focus();"));
 }
 
-function renderJsonPreview(){
-  document.getElementById('jsonPreview').value = JSON.stringify(trip, null, 2);
-}
-
 function renderAll(){
   // cover
   document.getElementById('tripName').value = trip.name;
-  document.getElementById('tripId').value = trip.id;
   document.getElementById('baseCurrencyLabel').textContent = trip.baseCurrency;
   document.getElementById('baseLabel').textContent = trip.baseCurrency;
 
@@ -330,10 +325,6 @@ function renderAll(){
   // --- 3. 每位成員多幣別逐筆明細 ---
   renderMemberDetails(net);
 
-  // json preview：只在「匯入／匯出」分頁開著時才更新（整份行程序列化成大字串很花時間）
-  if (currentSettingsSub === 'advanced') renderJsonPreview();
-  updateLocalFileStatus();
-  scheduleAutoSave();
 
   // 🆕 [行程獨立化] 帳號／邀請／Discord 綁定區塊跟著目前的行程與身分更新
   renderAccountArea();

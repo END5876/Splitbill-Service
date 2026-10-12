@@ -2,7 +2,6 @@
 // 頁面載入時的啟動流程：resolveEntry() 判斷這個分頁該進入哪一種狀態，applyEntry() 畫出來。
 /* init */
 window.addEventListener('beforeunload', disconnectTripEventStream); // 🆕 [即時同步] 離開頁面時主動關閉 SSE 連線，讓伺服器能立即釋放資源
-initFsApiUi();
 document.getElementById('expDate').value = toDateInputValue(Date.now());
 document.getElementById('depDate').value = toDateInputValue(Date.now());
 renderAll();
@@ -74,7 +73,7 @@ async function bootstrapHome(){
       showMainTab('settings'); showSettingsSub('connect');
       toast('歡迎！先建立你的第一個行程吧', 'info');
     }
-    updateBotStatusPill(isConnected(), isConnected() ? trip.name : null);
+    renderSyncStatus();
     return;
   }
   showNoAccessScreen();
