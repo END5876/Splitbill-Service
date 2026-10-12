@@ -34,10 +34,15 @@ function renderAccountArea(){
       <p class="hint">用 Discord 帳號登入後，就能建立自己的行程、邀請朋友一起記帳。只會讀取你的 Discord 名稱與頭像。</p>
       <div class="btn-row"><button class="btn btn-brass" type="button" onclick="loginWithDiscord()">用 Discord 登入</button></div>`;
   } else {
-    el.innerHTML = `<p class="hint">這個網站尚未開啟 Discord 登入。可以到「進階」用管理員金鑰連線，或用本機檔案離線記帳。</p>`;
+    el.innerHTML = `<p class="hint">這個網站尚未開啟 Discord 登入。可以到「進階」用本機檔案離線記帳，或使用朋友傳來的分享連結。</p>`;
   }
   const tripCard = document.getElementById('myTripsCard');
-  if (tripCard) tripCard.style.display = (currentUser || usingAdminKey()) ? '' : 'none';
+  if (tripCard) tripCard.style.display = currentUser ? '' : 'none';
+  const allRow = document.getElementById('showAllTripsRow');
+  if (allRow){
+    allRow.style.display = currentUser && currentUser.admin ? '' : 'none';
+    document.getElementById('showAllTripsToggle').checked = showAllTrips();
+  }
   const uploadRow = document.getElementById('uploadLocalTripRow');
   if (uploadRow) uploadRow.style.display = (currentUser && !currentTripId && (trip.members.length || trip.expenses.length)) ? '' : 'none';
 }
@@ -99,7 +104,7 @@ function saveMyNickname(){
 
 /* ===================== 成員邀請連結 ===================== */
 function buildInviteUrl(token){
-  const url = new URL(apiBaseUrl() || location.href, location.href);
+  const url = new URL(location.href);
   url.search = '';
   url.hash = `invite=${token}`;
   return url.toString();
@@ -299,7 +304,7 @@ async function initInviteFlow(token){
   el.innerHTML = '<div class="invite-card"><p class="hint">載入中…</p></div>';
   let info;
   try{
-    info = await apiJson(await fetch(`${apiBaseUrl()}/api/invite/${encodeURIComponent(token)}`));
+    info = await apiJson(await fetch(`/api/invite/${encodeURIComponent(token)}`));
   }catch(err){
     clearInviteToken();
     el.innerHTML = `
@@ -378,7 +383,7 @@ async function claimInvite(token, body, btn){
   }
   const run = async ()=>{
     try{
-      const res = await fetch(`${apiBaseUrl()}/api/invite/${encodeURIComponent(token)}/claim`, {
+      const res = await fetch(`/api/invite/${encodeURIComponent(token)}/claim`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-requested-with': 'splitbill' },
         body: JSON.stringify(body)

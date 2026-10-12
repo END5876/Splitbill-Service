@@ -1,46 +1,33 @@
 'use strict';
-// 連線 splitbill-service 的基礎設施：身分（Discord 登入／管理員金鑰）、目前行程、
+// 連線 splitbill-service 的基礎設施：身分（Discord 登入）、目前行程、
 // 即時匯率查詢、「我的行程」清單、記住上次開的行程。
 /* ===================== connection ===================== */
 // 🆕 [行程獨立化] 行程以 tripId 為主鍵（/api/trip/:tripId），不再需要先選伺服器。
-// 身分有兩種：
-//   - Discord 登入（主要用法）：cookie 自動帶上，寫入請求另外帶 x-requested-with
-//     標頭（service 端的 CSRF 檢查，見 lib/auth.js）
-//   - 管理員金鑰（進階／維運）：在「行程 → 進階」填 SPLITBILL_API_KEY，可看到所有行程
-let currentUser = null;      // { id, name, avatar } | null
+// 網頁的身分只有兩種：
+//   - Discord 登入：cookie 自動帶上，寫入請求另外帶 x-requested-with 標頭
+//     （service 端的 CSRF 檢查，見 lib/auth.js）。Bot 擁有者（OWNER_USER_ID）
+//     登入後可以切換「列出所有行程」，不需要另外輸入金鑰。
+//   - 分享連結訪客：token 只放在網址路徑 /api/shared-trip/:token/...（見 shareGuest.js）
+// SPLITBILL_API_KEY 只給 Bot／維運腳本用，網頁不再接受。
+let currentUser = null;      // { id, name, avatar, admin } | null
 let oauthEnabled = false;
 let myTrips = [];            // GET /api/my/trips 的結果（含 role）
 let currentTripId = null;    // 目前「連線中」的雲端行程；null＝離線編輯（本機檔案／匯入）
 let lastSyncedTripJSON = null; // 用來做簡單的樂觀鎖：跟伺服器目前的版本比對，偵測是否被別人改過
 
-function apiBaseUrl(){
-  const v = document.getElementById('apiBase').value.trim();
-  return v ? v.replace(/\/+$/,'') : ''; // 空字串 = 使用目前網址（同源）
-}
-function usingAdminKey(){
-  return !!document.getElementById('apiKey').value.trim();
-}
 function apiHeaders(){
-  const key = document.getElementById('apiKey').value.trim();
-  return key ? { 'x-api-key': key } : { 'x-requested-with': 'splitbill' };
-}
-// 一定要以「Discord 登入者本人」身分呼叫的端點（建立／上傳行程）：只帶 cookie，
-// 不帶管理員金鑰——金鑰欄位有值（例如被瀏覽器密碼管理員自動填入）時，
-// 帶 x-api-key 會讓 service 端把請求當成管理端／分享連結，因而沒有 Discord 身分。
-function userHeaders(){
   return { 'x-requested-with': 'splitbill' };
 }
-// 🆕 [分享連結] 給「擁有者/分享連結都可能呼叫」的共用工具端點用（即時匯率、
-// 帳單辨識）：分享連結模式下用連結自己的 token 當憑證，否則沿用一般身分。
-function apiHeadersAny(){
-  if (shareMode) return { 'x-api-key': shareMode.token };
-  return apiHeaders();
+// 🆕 [分享連結] 「登入者／分享連結訪客都可能呼叫」的端點（即時匯率、帳單辨識、
+// 帳單辨識協作）：分享連結模式下改走 /api/shared-trip/:token/<path>，token 本身就是憑證。
+function utilityApiUrl(path){
+  return shareMode ? `/api/shared-trip/${encodeURIComponent(shareMode.token)}/${path}` : `/api/${path}`;
 }
 function isConnected(){ return !!currentTripId; }
 function tripApiUrl(suffix){
-  return `${apiBaseUrl()}/api/trip/${encodeURIComponent(currentTripId)}${suffix || ''}`;
+  return `/api/trip/${encodeURIComponent(currentTripId)}${suffix || ''}`;
 }
-// 目前行程裡「我」的身分：'admin' | 'owner' | 'member' | null
+// 目前行程裡「我」的身分：'admin'（Bot 擁有者看別人的行程）| 'owner' | 'member' | null
 function currentTripRole(){
   if (!currentTripId) return null;
   const entry = myTrips.find(t => t.id === currentTripId);
@@ -74,7 +61,7 @@ async function fetchLiveRate(from, to){
   const cached = liveRateCache[key];
   if (cached && (Date.now() - cached.fetchedAt) < LIVE_RATE_CACHE_TTL) return cached;
   try{
-    const res = await fetch(`${apiBaseUrl()}/api/fx-rate?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, { headers: apiHeadersAny() });
+    const res = await fetch(utilityApiUrl(`fx-rate?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`));
     const body = await apiJson(res);
     const entry = { rate: body.rate, asOf: body.asOf, fetchedAt: Date.now() };
     liveRateCache[key] = entry;
@@ -87,7 +74,7 @@ async function fetchLiveRate(from, to){
 /* ===================== 身分 ===================== */
 async function fetchMe(){
   try{
-    const res = await fetch(apiBaseUrl() + '/api/me', { credentials: 'same-origin' });
+    const res = await fetch('/api/me', { credentials: 'same-origin' });
     const body = await apiJson(res);
     currentUser = body.user || null;
     oauthEnabled = !!body.oauth;
@@ -99,21 +86,31 @@ async function fetchMe(){
 }
 function loginWithDiscord(next){
   const target = next || (location.pathname + location.search + location.hash);
-  location.href = `${apiBaseUrl()}/auth/discord/login?next=${encodeURIComponent(target)}`;
+  location.href = `/auth/discord/login?next=${encodeURIComponent(target)}`;
 }
 async function logout(){
   try{
-    await fetch(apiBaseUrl() + '/auth/logout', { method: 'POST', headers: { 'x-requested-with': 'splitbill' } });
+    await fetch('/auth/logout', { method: 'POST', headers: { 'x-requested-with': 'splitbill' } });
   }catch(e){}
   clearOwnerConnectionState();
   location.reload();
 }
 
 /* ===================== 我的行程 ===================== */
+// Bot 擁有者可以切換「列出所有行程」（GET /api/my/trips?all=1）；記在這台裝置上。
+const SHOW_ALL_TRIPS_STORAGE_KEY = 'splitbill-show-all-trips';
+function showAllTrips(){
+  if (!currentUser || !currentUser.admin) return false;
+  try{ return localStorage.getItem(SHOW_ALL_TRIPS_STORAGE_KEY) === '1'; }catch(e){ return false; }
+}
+async function setShowAllTrips(on){
+  try{ on ? localStorage.setItem(SHOW_ALL_TRIPS_STORAGE_KEY, '1') : localStorage.removeItem(SHOW_ALL_TRIPS_STORAGE_KEY); }catch(e){}
+  await refreshTripList().catch(()=>{});
+}
 async function refreshTripList(opts){
   opts = opts || {};
   try{
-    const res = await fetch(apiBaseUrl() + '/api/my/trips', { headers: apiHeaders() });
+    const res = await fetch('/api/my/trips' + (showAllTrips() ? '?all=1' : ''), { headers: apiHeaders() });
     const body = await apiJson(res);
     myTrips = body.trips || [];
     populateTripSelect();
@@ -138,33 +135,29 @@ function populateTripSelect(){
   if (prev && myTrips.some(t=>t.id===prev)) sel.value = prev;
 }
 
-// 🆕 記住上次開的行程（連同 API 位址與管理員金鑰），下次重新整理頁面時可以
-// 自動接回去。存在 localStorage：這是「你自己這台裝置」記住「你自己的」設定，
-// 資料不會被送到任何地方。
+// 🆕 記住上次開的行程，下次重新整理頁面時可以自動接回去。存在 localStorage：
+// 這是「你自己這台裝置」記住「你自己的」設定，資料不會被送到任何地方。
 const OWNER_CONNECTION_STORAGE_KEY = 'splitbill-owner-connection';
 function saveOwnerConnectionState(){
   try{
     if (!currentTripId) return;
-    localStorage.setItem(OWNER_CONNECTION_STORAGE_KEY, JSON.stringify({
-      apiBase: document.getElementById('apiBase').value.trim(),
-      apiKey: document.getElementById('apiKey').value.trim(),
-      tripId: currentTripId,
-    }));
+    localStorage.setItem(OWNER_CONNECTION_STORAGE_KEY, JSON.stringify({ tripId: currentTripId }));
   }catch(e){}
 }
 function clearOwnerConnectionState(){
   try{ localStorage.removeItem(OWNER_CONNECTION_STORAGE_KEY); }catch(e){}
 }
-// 頁面載入時「安靜地」嘗試接回上次的行程：接不回去（金鑰換過、行程被刪除、
-// 已經不是成員）就悄悄退回一般狀態，不跳錯誤訊息。
+// 頁面載入時「安靜地」嘗試接回上次的行程：接不回去（行程被刪除、已經不是成員）
+// 就悄悄退回一般狀態，不跳錯誤訊息。
 async function restoreOwnerConnectionState(){
   let saved = null;
   try{ saved = JSON.parse(localStorage.getItem(OWNER_CONNECTION_STORAGE_KEY) || 'null'); }catch(e){}
   if (!saved || !saved.tripId) return false;
-  // 舊版存的是 guildId＋tripId，tripId 本身仍然有效，直接沿用
-  document.getElementById('apiKey').value = saved.apiKey || '';
-  document.getElementById('apiBase').value = saved.apiBase || '';
-  if (!saved.apiKey && !currentUser) return false;
+  // 舊版還存了 guildId／apiBase／管理員金鑰：tripId 照用，金鑰立刻從這台裝置上清掉
+  if (saved.apiKey || saved.apiBase || saved.guildId){
+    try{ localStorage.setItem(OWNER_CONNECTION_STORAGE_KEY, JSON.stringify({ tripId: saved.tripId })); }catch(e){}
+  }
+  if (!currentUser) return false;
   try{
     await refreshTripList({ silent: true });
     if (!myTrips.some(t => t.id === saved.tripId)){ clearOwnerConnectionState(); return false; }
@@ -186,9 +179,9 @@ async function createTripOnServer(){
   if (!name){ toast('請輸入行程名稱', 'error'); nameInput.focus(); return; }
   if (!/^[A-Z]{2,6}$/.test(baseCurrency)){ toast('基準幣別請輸入 2～6 個英文字母，例如 TWD、JPY', 'error'); return; }
   try{
-    const res = await fetch(apiBaseUrl() + '/api/trips', {
+    const res = await fetch('/api/trips', {
       method: 'POST',
-      headers: Object.assign({ 'Content-Type': 'application/json' }, currentUser ? userHeaders() : apiHeaders()),
+      headers: Object.assign({ 'Content-Type': 'application/json' }, apiHeaders()),
       body: JSON.stringify({ name, baseCurrency })
     });
     const created = await apiJson(res);
@@ -216,9 +209,9 @@ async function uploadLocalTripToServer(){
     if (selfMemberId === null) return; // 取消
   }
   try{
-    const res = await fetch(apiBaseUrl() + '/api/trips', {
+    const res = await fetch('/api/trips', {
       method: 'POST',
-      headers: Object.assign({ 'Content-Type': 'application/json' }, currentUser ? userHeaders() : apiHeaders()),
+      headers: Object.assign({ 'Content-Type': 'application/json' }, apiHeaders()),
       body: JSON.stringify({
         name: trip.name,
         baseCurrency: trip.baseCurrency,

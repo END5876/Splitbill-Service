@@ -1,5 +1,5 @@
 'use strict';
-// 頁面載入時的啟動流程：分享連結 → 邀請連結 → 一般（Discord 登入／管理員金鑰／本機）。
+// 頁面載入時的啟動流程：分享連結 → 邀請連結 → 一般（Discord 登入／本機）。
 /* init */
 window.addEventListener('beforeunload', disconnectTripEventStream); // 🆕 [即時同步] 離開頁面時主動關閉 SSE 連線，讓伺服器能立即釋放資源
 initFsApiUi();
@@ -8,13 +8,11 @@ document.getElementById('depDate').value = toDateInputValue(Date.now());
 renderAll();
 
 // 🆕 [行程獨立化] 一般模式的啟動流程：
-//   1. 網址帶 #apiKey=...（管理員書籤）→ 直接用金鑰連線
-//   2. 記得上次開的行程 → 安靜地接回去
-//   3. 已登入 → 開啟最近更新的行程；一個都沒有就帶到「建立行程」
-//   4. 沒登入 → 顯示登入畫面（沒開 Discord 登入時顯示原本的「無權限」說明）
+//   1. 記得上次開的行程 → 安靜地接回去
+//   2. 已登入 → 開啟最近更新的行程；一個都沒有就帶到「建立行程」
+//   3. 沒登入 → 顯示登入畫面（沒開 Discord 登入時顯示原本的「無權限」說明）
 async function bootstrapNormal(){
-  const usedUrlParams = await applyUrlParams();
-  if (usedUrlParams) return;
+  discardLegacyApiKeyHash();
   const restored = await restoreOwnerConnectionState();
   if (restored) return;
   if (currentUser){

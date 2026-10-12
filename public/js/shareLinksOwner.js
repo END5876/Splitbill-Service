@@ -9,7 +9,7 @@
 // 也會立刻用 history.replaceState() 把網址列清乾淨（見 initShareMode()），
 // 進一步降低瀏覽器歷史紀錄殘留明碼憑證的風險。
 function buildShareUrl(token){
-  const url = new URL(apiBaseUrl() || location.href, location.href);
+  const url = new URL(location.href);
   url.search = '';
   url.hash = `share=${token}`;
   return url.toString();

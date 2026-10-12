@@ -27,7 +27,7 @@ let receiptSessionImageOnServer = null;
 
 function receiptSessionUrl(suffix){
   suffix = suffix || '';
-  if (shareMode) return `${apiBaseUrl()}/api/shared-trip/${encodeURIComponent(shareMode.token)}/receipt-session${suffix}`;
+  if (shareMode) return `/api/shared-trip/${encodeURIComponent(shareMode.token)}/receipt-session${suffix}`;
   return tripApiUrl(`/receipt-session${suffix}`);
 }
 
@@ -39,7 +39,7 @@ async function pushReceiptSessionToServer(){
     const state = omitImage ? Object.assign({}, receiptState, { imageDataUrl: undefined }) : receiptState;
     const res = await fetch(receiptSessionUrl(), {
       method: 'PUT',
-      headers: Object.assign({ 'Content-Type': 'application/json' }, apiHeadersAny()),
+      headers: Object.assign({ 'Content-Type': 'application/json' }, apiHeaders()),
       body: JSON.stringify({ state, writerId: CLIENT_INSTANCE_ID })
     });
     if (!res.ok) return;
@@ -56,7 +56,7 @@ async function pushReceiptSessionToServer(){
 }
 
 async function clearReceiptSessionOnServer(reason){
-  try{ await fetch(receiptSessionUrl(`?reason=${encodeURIComponent(reason || '')}`), { method: 'DELETE', headers: apiHeadersAny() }); }catch(e){}
+  try{ await fetch(receiptSessionUrl(`?reason=${encodeURIComponent(reason || '')}`), { method: 'DELETE', headers: apiHeaders() }); }catch(e){}
 }
 
 // 🆕 [Bug fix] 只有「這個分頁自己做的編輯」才該標記為待推播；套用從伺服器／
@@ -113,7 +113,7 @@ async function checkReceiptSessionAvailability(){
   if (receiptSessionJoined || receiptState) return;
   if (!shareMode && !currentTripId) return; // 尚未開啟雲端行程，不用檢查
   try{
-    const res = await fetch(receiptSessionUrl(), { headers: apiHeadersAny() });
+    const res = await fetch(receiptSessionUrl(), { headers: apiHeaders() });
     if (!res.ok) return;
     const body = await res.json();
     remoteReceiptSessionInfo = (body && body.active) ? { updatedAt: body.updatedAt } : null;
@@ -126,7 +126,7 @@ async function checkReceiptSessionAvailability(){
 // 狀態不是「自己的新變動」，之後只有實際點選品項等本地操作才會標記待推播。
 async function joinReceiptSession(){
   try{
-    const res = await fetch(receiptSessionUrl(), { headers: apiHeadersAny() });
+    const res = await fetch(receiptSessionUrl(), { headers: apiHeaders() });
     if (!res.ok){ toast('加入失敗，請稍後再試一次', 'error'); return; }
     const body = await res.json();
     if (!body || !body.active){
@@ -224,7 +224,7 @@ async function maybeOfferReceiptDraftRestore(){
     //     其他人一樣能看到「加入認領」的提示、接續使用。
     let usedServerState = false;
     try{
-      const res = await fetch(receiptSessionUrl(), { headers: apiHeadersAny() });
+      const res = await fetch(receiptSessionUrl(), { headers: apiHeaders() });
       if (res.ok){
         const body = await res.json();
         if (body && body.active){
@@ -310,9 +310,9 @@ async function handleReceiptUpload(fileOrEvent){
   try{
     const dataUrl = await fileToResizedDataUrl(file);
     const base64 = dataUrl.split(',')[1];
-    const res = await fetch(apiBaseUrl() + '/api/parse-receipt', {
+    const res = await fetch(utilityApiUrl('parse-receipt'), {
       method: 'POST',
-      headers: Object.assign({ 'Content-Type': 'application/json' }, apiHeadersAny()),
+      headers: Object.assign({ 'Content-Type': 'application/json' }, apiHeaders()),
       body: JSON.stringify({ image: base64, mediaType: 'image/jpeg' })
     });
     const body = await res.json().catch(()=>({}));
@@ -657,7 +657,7 @@ async function finalizeReceiptExpense(){
   // 查詢失敗（例如網路問題）時不擋，維持原本可以送出的行為。
   if (receiptSessionJoined){
     try{
-      const checkRes = await fetch(receiptSessionUrl(), { headers: apiHeadersAny() });
+      const checkRes = await fetch(receiptSessionUrl(), { headers: apiHeaders() });
       if (checkRes.ok){
         const body = await checkRes.json();
         if (!body || !body.active){

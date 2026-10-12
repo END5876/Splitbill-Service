@@ -27,11 +27,13 @@ Mousebot 分帳系統的獨立服務：**網頁記帳介面（`public/`）＋ RE
 ## 權限
 | 身分 | 怎麼辨認 | 能做什麼 |
 |---|---|---|
-| 行程建立者 | `ownerId`，或 `OWNER_USER_ID` 名單 | 全部，含刪除行程、分享連結、綁定碼、解除綁定、解除任何人的連結 |
+| 行程建立者 | `ownerId`，或 `OWNER_USER_ID` 名單 | 全部，含刪除行程、分享連結、綁定碼、解除綁定、解除任何人的連結。`OWNER_USER_ID` 用 Discord 登入網頁後可以切換「列出所有行程」（`/api/my/trips?all=1`） |
 | 成員 | 有一位成員的 `discordId` 是自己 | 讀寫帳目、取得邀請連結、解除自己的連結 |
-| 分享連結 | `x-api-key: <token>` 或 `/api/shared-trip/:token` | 依連結權限唯讀／可編輯 |
+| 分享連結 | 只走網址路徑 `/api/shared-trip/:token/...`（含 `fx-rate`、`parse-receipt`、`receipt-session`、`events`） | 依連結權限唯讀／可編輯 |
 | Bot | `x-api-key: SPLITBILL_API_KEY`＋`x-actor-id` | 依 `x-actor-id` 那位使用者套用上面的規則 |
-| 管理端 | `x-api-key: SPLITBILL_API_KEY`（不帶 `x-actor-id`） | 全部 |
+| 管理端 | `x-api-key: SPLITBILL_API_KEY`（不帶 `x-actor-id`） | 全部（只給 Bot／維運腳本，網頁不接受金鑰） |
+
+`x-api-key` 只代表 `SPLITBILL_API_KEY`，金鑰不對一律回 401，不會被當成分享連結。
 
 ## 部署
 1. 部署成與 Mousebot **同一個 Project** 底下的獨立服務，掛 Volume 到 `/app/data`（`SPLITBILL_DATA_DIR`）。

@@ -1,5 +1,5 @@
 'use strict';
-// 🆕 [分享連結] 訪客端偵測與載入分享模式；另含「複製一鍵連線書籤網址」等擁有者端小工具，沿用原始檔案的相鄰順序。
+// 🆕 [分享連結] 訪客端偵測與載入分享模式、未登入時的全頁畫面、清除舊版管理員金鑰書籤。
 /* ===================== 🆕 [分享連結] 訪客端：偵測與載入分享模式 ===================== */
 
 // 用來把分享連結的 token 暫存在這個分頁的 sessionStorage 裡，讓「重新整理
@@ -119,7 +119,7 @@ function setMainUiVisible(visible){
 
 async function initShareMode(token){
   try{
-    const res = await fetch(`${apiBaseUrl()}/api/shared-trip/${encodeURIComponent(token)}`);
+    const res = await fetch(`/api/shared-trip/${encodeURIComponent(token)}`);
     if (!res.ok){
       const body = await res.json().catch(()=>({}));
       const msg = res.status === 403
@@ -146,49 +146,12 @@ async function initShareMode(token){
   }
 }
 
-// 把「管理員金鑰＋目前行程」組成一個網址，存成瀏覽器書籤後點一下就能自動
-// 帶入金鑰並載入該行程。只給管理員金鑰模式用——用 Discord 登入的話，直接
-// 開網站就會自動接回上次的行程，不需要書籤。
-// 🔒 金鑰放在 URL 的 hash（# 之後）而不是 query string：hash 不會被送到伺服器、
-// 不會留在存取紀錄、也不會被 Referrer 帶到第三方（跟 buildShareUrl() 一致）。
-function buildBookmarkUrl(){
-  const apiKey = document.getElementById('apiKey').value.trim();
-  const apiBaseVal = document.getElementById('apiBase').value.trim();
-  const url = new URL(apiBaseVal || location.href);
-  url.search = '';
-  const hashParams = new URLSearchParams();
-  if (apiKey) hashParams.set('apiKey', apiKey);
-  if (apiBaseVal) hashParams.set('apiBase', apiBaseVal);
-  if (currentTripId) hashParams.set('trip', currentTripId);
-  url.hash = hashParams.toString();
-  return url.toString();
-}
-function copyBookmarkUrl(){
-  const apiKey = document.getElementById('apiKey').value.trim();
-  if (!apiKey){ toast('這個書籤只給管理員金鑰用：請先填 API Key 並開啟一個行程，再產生書籤網址', 'error'); return; }
-  const url = buildBookmarkUrl();
-  navigator.clipboard.writeText(url)
-    .then(()=>toast('已複製書籤網址！存成瀏覽器書籤，之後點它就會自動連線並載入行程。（網址裡含金鑰，請只存在自己的書籤，不要公開分享）', 'success'))
-    .catch(()=>toast('複製失敗，這是網址（請手動複製）：' + url, 'error'));
-}
-// 頁面載入時，若網址帶有 #apiKey=...，自動帶入金鑰並（若也帶 trip）直接載入該行程。
-// 讀到後立刻清掉網址列的 hash，避免金鑰留在網址列／瀏覽器歷史紀錄裡。
-// 舊版書籤裡的 guild 參數直接忽略（行程已經不需要伺服器 ID 了）。
-async function applyUrlParams(){
+// 舊版「管理員金鑰書籤」（#apiKey=...）已經停用：網頁不再接受金鑰，Bot 擁有者
+// 改用 Discord 登入。讀到時立刻清掉網址列的 hash，避免金鑰留在網址列／瀏覽器
+// 歷史紀錄裡，並提示改用 Discord 登入。
+function discardLegacyApiKeyHash(){
   const hashParams = new URLSearchParams((location.hash || '').replace(/^#/, ''));
-  const key = hashParams.get('apiKey');
-  const base = hashParams.get('apiBase');
-  const tripId = hashParams.get('trip');
-  if (!key) return false;
+  if (!hashParams.has('apiKey')) return;
   history.replaceState(null, '', location.pathname + location.search);
-  document.getElementById('apiKey').value = key;
-  if (base) document.getElementById('apiBase').value = base;
-  try{ await refreshTripList(); }catch(e){ return true; }
-  if (tripId && myTrips.some(t => t.id === tripId)){
-    document.getElementById('tripSelect').value = tripId;
-    await loadTripFromApi();
-  } else {
-    showMainTab('settings'); showSettingsSub('connect');
-  }
-  return true;
+  toast('管理員金鑰書籤已停用，請改用 Discord 登入（Bot 擁有者登入後可以列出所有行程）', 'error', { duration: 8000 });
 }

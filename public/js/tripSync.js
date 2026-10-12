@@ -7,7 +7,7 @@ async function loadTripFromApi(opts){
   if (!tripId){ if (!opts.quiet) toast('請先選擇一個行程', 'error'); return; }
   await flushCloudSave(); // 目前行程還有等待中的自動儲存，先存完再換掉 trip，避免改動遺失
   try{
-    const res = await fetch(`${apiBaseUrl()}/api/trip/${encodeURIComponent(tripId)}`, { headers: apiHeaders() });
+    const res = await fetch(`/api/trip/${encodeURIComponent(tripId)}`, { headers: apiHeaders() });
     const data = await apiJson(res);
     currentTripId = tripId;
     trip = repairTrip(data);
@@ -86,7 +86,7 @@ function renderSyncStatus(){
   el.title = hint;
   el.setAttribute('aria-label', `同步狀態：${label}。${hint}`);
   const switchBtn = document.getElementById('tripSwitchBtn');
-  if (switchBtn) switchBtn.style.display = (!shareMode && (currentUser || usingAdminKey())) ? '' : 'none';
+  if (switchBtn) switchBtn.style.display = (!shareMode && currentUser) ? '' : 'none';
 }
 function onSyncStatusClick(){
   const state = document.getElementById('syncStatus').dataset.state;
@@ -110,7 +110,7 @@ async function saveTripToApi(){
 }
 async function saveTripToApiImpl(){
   // 🆕 [分享連結] 分享連結模式下走完全不同的儲存路徑（見 saveSharedTripToApi()）：
-  // 不需要登入、不需要 apiHeaders() 裡的金鑰，純粹用網址
+  // 不需要登入，純粹用網址
   // 路徑上的 token 當憑證，對分享連結的持有者來說完全不用碰到任何技術設定。
   if (shareMode) return saveSharedTripToApi();
 
@@ -305,7 +305,7 @@ async function saveSharedTripToApi(){
   for (let attempt = 0; attempt < MAX_SAVE_RETRY; attempt++){
     try{
       const payload = Object.assign({}, trip, { expectedUpdatedAt: trip.updatedAt || null, writerId: CLIENT_INSTANCE_ID });
-      const res = await fetch(`${apiBaseUrl()}/api/shared-trip/${encodeURIComponent(shareMode.token)}`, {
+      const res = await fetch(`/api/shared-trip/${encodeURIComponent(shareMode.token)}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)

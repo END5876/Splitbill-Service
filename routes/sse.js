@@ -11,7 +11,7 @@ module.exports = function createSseRouter(ctx) {
   const router = express.Router();
 
   // ════════════════════════════════════════════════════════════════
-  // 🆕 [即時同步] POST /api/sse-ticket：用一般的 header 憑證（金鑰或分享 token）換取一張短效、一次性的
+  // 🆕 [即時同步] POST /api/sse-ticket：用 header 帶的金鑰（Bot／維運腳本）換取一張短效、一次性的
   // 票券，再拿這張票券去開啟下面的 SSE 連線。分享連結不需要呼叫這個
   // 端點——它的 SSE 連線直接用網址上的 token 當憑證即可。
   // ════════════════════════════════════════════════════════════════
@@ -33,7 +33,7 @@ module.exports = function createSseRouter(ctx) {
 
     // 🆕 [Discord 登入] 用 cookie 登入的網頁不需要換票：瀏覽器的 EventSource
     // 對同源網址會自動帶上 cookie，req.principal 已經由 lib/auth.js 辨認好。
-    // 用 header 帶金鑰／分享 token 的呼叫端（EventSource 帶不了 header）才需要票券。
+    // 用 header 帶金鑰的呼叫端（EventSource 帶不了 header）才需要票券。
     let authCtx = req;
     const ticketId = typeof req.query.ticket === 'string' ? req.query.ticket : '';
     if (ticketId) {

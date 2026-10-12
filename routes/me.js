@@ -15,25 +15,34 @@ function cleanName(v, max) {
 }
 
 module.exports = function createMeRouter(ctx) {
-  const { storage, requireUser, userRoleInTrip } = ctx;
+  const { storage, requireUser, userRoleInTrip, isBotOwner } = ctx;
   const router = express.Router();
 
   // ---- GET /api/me：目前登入的 Discord 使用者（沒登入回 user:null） ----
+  // user.admin：OWNER_USER_ID 名單內的 Bot 擁有者，網頁上可以切換「列出所有行程」。
   router.get('/me', (req, res) => {
     const p = req.principal;
     res.json({
       oauth: session.isEnabled() && !!process.env.DISCORD_CLIENT_ID,
-      user: p && p.kind === 'user' ? { id: p.userId, name: p.name, avatar: p.avatar } : null,
+      user: p && p.kind === 'user' ? { id: p.userId, name: p.name, avatar: p.avatar, admin: isBotOwner(p.userId) } : null,
     });
   });
 
   // ---- GET /api/my/trips：我擁有或參與的行程（依最近更新排序） ----
   // 管理端（金鑰、未宣告操作者）列出全部行程，方便維運。
+  // Bot 擁有者（OWNER_USER_ID）用 Discord 登入時帶 ?all=1 也能列出全部行程，
+  // 取代過去在網頁上輸入管理員金鑰的做法；沒參與的行程 role 標成 'admin'。
   router.get('/my/trips', (req, res) => {
     const p = req.principal;
     let trips;
     if (p && p.kind === 'service' && !p.actorId) {
       trips = storage.listTrips().map((t) => ({ ...storage.toTripSummary(t), role: 'admin' }));
+    } else if (p && p.kind === 'user' && req.query.all === '1' && isBotOwner(p.userId)) {
+      const uid = p.userId;
+      trips = storage.listTrips().map((t) => {
+        const mine = t.ownerId === uid || t.members.some((m) => m.discordId === uid);
+        return { ...storage.toTripSummary(t), role: mine ? userRoleInTrip(uid, t) : 'admin' };
+      });
     } else {
       const uid = requireUser(req, res);
       if (!uid) return;

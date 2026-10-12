@@ -71,7 +71,7 @@ function startWebApi(options = {}) {
   // 帳單照片辨識會傳一張壓縮過的 base64 圖片，只有這個端點需要放寬到 12mb；
   // 其他端點（行程整包 PUT 最多 5000 筆支出＋5000 筆轉帳）5mb 綽綽有餘。
   // 先跑的 parser 解析過之後，後面的 express.json() 會直接略過。
-  app.use('/api/parse-receipt', express.json({ limit: '12mb' }));
+  app.use(['/api/parse-receipt', '/api/shared-trip/:token/parse-receipt'], express.json({ limit: '12mb' }));
   app.use(express.json({ limit: '5mb' }));
 
   // 健康檢查：不經金鑰驗證，讓平台的 health probe 可以直接探測
@@ -99,7 +99,7 @@ function startWebApi(options = {}) {
   // ---- 🆕 [Discord 登入] OAuth 登入／登出（不在 /api 底下，瀏覽器直接導向） ----
   app.use('/auth', createOAuthRouter());
 
-  // ---- 身分辨識：金鑰／分享 token／登入 cookie（細節見 lib/auth.js） ----
+  // ---- 身分辨識：金鑰（Bot）／登入 cookie（網頁）；分享 token 只走網址路徑（細節見 lib/auth.js） ----
   app.use('/api', createIdentityMiddleware(apiKey));
 
   // ---- 🆕 [即時同步] 掛上 SSE 廣播：任何一條寫入路徑呼叫 storage.touchTrip()
@@ -111,7 +111,7 @@ function startWebApi(options = {}) {
   const auth = createAuthHelpers({ storage });
   const ctx = {
     storage,
-    ...auth,       // requireTripAccess, requireService, requireUser, canLinkMembers, hasUtilityAccess, ...
+    ...auth,       // requireTripAccess, requireShareLink, requireService, requireUser, canLinkMembers, ...
     ...sseHub,      // sseTickets, pruneSseTickets, SSE_TICKET_TTL_MS, openTripSseStream, broadcastReceiptSession, ...
     getFxRatesFor,
     genAI,
@@ -164,7 +164,7 @@ function startWebApi(options = {}) {
       console.warn('[splitbill-web] ⚠️ 尚未設定 SPLITBILL_API_KEY：Bot 無法連線（網頁登入與分享連結不受影響）。');
     }
     if (!session.isEnabled() || !process.env.DISCORD_CLIENT_ID) {
-      console.warn('[splitbill-web] ⚠️ 尚未設定 Discord 登入（DISCORD_CLIENT_ID／DISCORD_CLIENT_SECRET／PUBLIC_BASE_URL／SESSION_SECRET≥32 字元），網頁只能用分享連結或金鑰。');
+      console.warn('[splitbill-web] ⚠️ 尚未設定 Discord 登入（DISCORD_CLIENT_ID／DISCORD_CLIENT_SECRET／PUBLIC_BASE_URL／SESSION_SECRET≥32 字元），網頁只能用分享連結或本機檔案。');
     }
   });
 }

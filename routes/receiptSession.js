@@ -4,7 +4,7 @@ const express = require('express');
 // ════════════════════════════════════════════════════════════════
 // 🆕 [多人協作] 帳單辨識認領進度的即時同步端點。
 // 刻意沿用既有的「分享連結」權限模型：不另外產生新的協作連結，任何擁有
-// 這個行程「可編輯」權限的人（擁有者本人，或 write 權限的分享連結持有者）
+// 這個行程「可編輯」權限的人（成員／Bot，或 write 權限的分享連結持有者）
 // 都可以讀取／更新目前進行中的認領狀態；唯讀連結持有者只能被動看見有人
 // 在協作（前端會顯示提示），但無法加入操作。
 //
@@ -13,7 +13,7 @@ const express = require('express');
 // tripSubscribers），不需要另外開一組 SSE 端點或另外換票。
 //
 // 同一組 GET／PUT／DELETE 掛在兩種路徑上，只差在「怎麼找到行程、怎麼驗證權限」：
-//   /api/trip/:tripId/receipt-session         擁有者／成員／帶 header 的分享連結
+//   /api/trip/:tripId/receipt-session         成員／Bot
 //   /api/shared-trip/:token/receipt-session   分享連結訪客（token 本身就是憑證，需要 write 權限）
 // ════════════════════════════════════════════════════════════════
 module.exports = function createReceiptSessionRouter(ctx) {

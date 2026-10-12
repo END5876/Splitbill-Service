@@ -17,7 +17,7 @@ let expenseFilterText = '';
 let expenseFilterMemberIds = new Set();
 let depositFilterText = '';
 let depositFilterMemberIds = new Set();
-// 🆕 [分享連結] null＝一般模式（Discord 登入或管理員金鑰）；
+// 🆕 [分享連結] null＝一般模式（Discord 登入）；
 // 有值時代表這個分頁是透過分享連結打開的：{ token, permission:'read'|'write' }。
 // 一旦進入分享模式就不會再切回擁有者模式（同一個分頁不混用兩種身分），
 // 相關 UI 收斂見 body.share-mode / body.share-readonly 這兩個 CSS class。

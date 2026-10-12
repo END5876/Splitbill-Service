@@ -49,13 +49,6 @@ function updateLocalFileStatus(){
 function updateBotStatusPill(){
   if (typeof renderSyncStatus === 'function') renderSyncStatus();
 }
-function toggleApiKeyVisibility(){
-  const input = document.getElementById('apiKey');
-  const btn = document.getElementById('apiKeyToggleBtn');
-  const showing = input.type === 'text';
-  input.type = showing ? 'password' : 'text';
-  btn.textContent = showing ? '顯示' : '隱藏';
-}
 async function openLocalFile(){
   if (!supportsFileSystemAccess) return;
   try{
