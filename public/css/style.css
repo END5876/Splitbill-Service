@@ -308,7 +308,7 @@
     width:8px; height:8px; border-radius:50%; background:var(--debt); border:2px solid var(--card);
   }
 
-  main{padding-top:16px;}
+  main.wrap{padding-top:16px;} /* 要寫成 main.wrap：.wrap 的 padding 簡寫權重比單純的 main 高，會把上方間距蓋成 0 */
   .panel{display:none; animation:fade .18s ease;}
   .panel.active{display:block;}
   .subpanel{display:none; animation:fade .18s ease;}
@@ -762,12 +762,10 @@
      1. 工具列（.ledger-toolbar）用跟全站 input-with-toggle 一致的
         「圖示內嵌輸入框」語彙，搜尋框內嵌放大鏡與清除按鈕；成員 chip
         改成可橫向捲動的單行列，避免成員一多把工具列撐得過高。
-     2. 日期標頭改成醒目的 brass 底色圓角膠囊，取代先前「文字加粗＋
-        底線」的做法——那個做法在文字量小時視覺權重太低，容易被底下
-        條目蓋過去；膠囊徽章讓眼睛能快速掃到「這是一個新日期分組」。
-     3. 條目列改成「時間徽章 + 標題/預覽摘要 + 金額 + 展開箭頭」的
-        橫向排列，收合狀態下也能看到「幾人代墊/分攤」或備註預覽，
-        不用展開就能大致判斷這是哪一筆；展開箭頭有旋轉動畫。
+     2. 日期標頭：日期＋筆數＋當日小計，一條細線分隔，不搶條目的視覺權重。
+     3. 條目列：付款人頭像（轉帳是「付款人 → 收款人」）＋標題／摘要＋
+        原幣金額與換算後金額；摘要裡直接標出「這筆對你 ±多少」，不用
+        展開自己算。展開後用「先付／分攤」兩行膠囊呈現明細。
      ════════════════════════════════════════════════════════════════ */
 
   /* --- 搜尋／篩選工具列 --- */
@@ -809,62 +807,88 @@
     font-size:12px; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace;
   }
 
-  /* --- 日期分組標頭：brass 底色圓角徽章，取代先前純文字樣式 --- */
-  .ledger-day{ margin-bottom:2px; }
-  .ledger-day-head{
-    display:flex; align-items:center; justify-content:space-between;
-    gap:8px; margin:18px 0 8px;
+  /* --- 成員頭像：Discord 頭像（已連結且登入過網頁的成員），否則是「名字第一個字＋固定色」。
+         圖片疊在字母上面，載入失敗就移除圖片，露出底下的字母頭像。見 helpers.js 的 memberAvatarHtml() --- */
+  .av{
+    position:relative; flex-shrink:0; overflow:hidden;
+    width:30px; height:30px; border-radius:50%;
+    background:var(--av, var(--chip-bg)); color:#fff;
+    display:inline-grid; place-items:center;
+    font:700 13px/1 'Noto Sans TC',sans-serif; user-select:none;
   }
-  .ledger-day:first-child .ledger-day-head{ margin-top:2px; }
-  .ledger-day-badge{
-    display:inline-flex; align-items:center;
-    font-family:'Noto Serif TC',serif; font-weight:700; font-size:12.5px;
-    color:var(--on-brass); background:var(--brass-bg);
-    padding:4px 13px; border-radius:20px; letter-spacing:.02em;
+  .av img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+  .av.sm{ width:22px; height:22px; font-size:10.5px; }
+  .av-stack{ display:inline-flex; vertical-align:middle; }
+  .av-stack .av{ box-shadow:0 0 0 2px var(--card); }
+  .av-stack .av + .av{ margin-left:-6px; }
+  .you-tag{
+    display:inline-block; margin-left:4px; padding:0 5px; border-radius:4px;
+    font-size:10.5px; font-weight:700; line-height:16px; vertical-align:1px;
+    background:var(--brass-tint); color:var(--brass);
   }
-  .ledger-day-subtotal{
-    font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:11.5px;
-    color:var(--ink-soft); background:var(--chip-bg);
-    padding:4px 10px; border-radius:20px; white-space:nowrap;
-  }
+  /* 「這筆對你 ±多少」：正＝別人要給你，負＝你要給別人 */
+  .me-pill{ font:600 11.5px 'IBM Plex Mono',monospace; padding:2px 8px; border-radius:20px; white-space:nowrap; }
+  .me-pill.pos{ background:var(--credit-bg); color:var(--credit); }
+  .me-pill.neg{ background:var(--debt-bg); color:var(--debt); }
+  .me-pill.zero{ background:var(--zero-bg); color:var(--ink-soft); }
 
-  /* --- 條目列：時間徽章 + 主要內容 + 金額 + 展開箭頭 --- */
-  .ledger-entry{ border-bottom:1px dashed var(--card-line); }
+  /* --- 日期分組標頭：日期＋筆數，右側小計，底下一條細線 --- */
+  .ledger-day-head{
+    display:flex; align-items:baseline; gap:8px;
+    padding:14px 2px 7px; border-bottom:1px solid var(--card-line);
+  }
+  .ledger-day:first-child .ledger-day-head{ padding-top:4px; }
+  .ledger-day-date{ font:700 14px 'Noto Serif TC',serif; }
+  .ledger-day-count{ font-size:12px; color:var(--ink-soft); }
+  .ledger-day-subtotal{ margin-left:auto; font:600 12.5px 'IBM Plex Mono',monospace; color:var(--ink-soft); white-space:nowrap; }
+
+  /* --- 條目列：頭像 + 標題/摘要（含對你的影響）+ 原幣金額／換算金額 --- */
+  .ledger-entry{ border-bottom:1px solid color-mix(in srgb, var(--card-line) 55%, transparent); }
   .ledger-entry:last-child{ border-bottom:none; }
+  .ledger-entry.open{ background:color-mix(in srgb, var(--brass) 4%, var(--card)); }
   .ledger-entry-row{
-    display:flex; align-items:center; gap:10px;
-    padding:11px 2px; cursor:pointer; user-select:none;
+    display:flex; align-items:center; gap:12px;
+    padding:12px 4px; cursor:pointer; user-select:none;
     background:none; border:none; width:100%; text-align:left; font:inherit; color:inherit;
   }
-  .ledger-entry-time{
-    flex-shrink:0; font-family:'IBM Plex Mono',monospace; font-size:10.5px;
-    color:var(--ink-soft); background:var(--chip-bg);
-    padding:3px 7px; border-radius:6px; white-space:nowrap;
-  }
+  .ledger-entry-lead{ position:relative; flex-shrink:0; }
+  /* 多人代墊：第二位付款人縮小疊在右下角 */
+  .ledger-entry-lead .av + .av{ position:absolute; right:-6px; bottom:-4px; width:18px; height:18px; font-size:9px; box-shadow:0 0 0 2px var(--card); }
+  .ledger-entry-flow{ display:inline-flex; align-items:center; gap:3px; flex-shrink:0; color:var(--ink-soft); }
+  .ledger-entry-flow svg{ width:14px; height:14px; }
   .ledger-entry-main{ flex:1; min-width:0; }
   .ledger-entry-title{
-    display:block; font-weight:700; font-size:14px;
+    display:block; font-weight:700; font-size:14.5px;
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
   .ledger-entry-row:hover .ledger-entry-title{ color:var(--brass); }
   .ledger-entry-teaser{
-    display:block; font-size:11.5px; color:var(--ink-soft); margin-top:2px;
-    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    display:flex; align-items:center; gap:6px; flex-wrap:wrap;
+    margin-top:3px; font-size:12.5px; color:var(--ink-soft);
   }
-  .ledger-entry-amt{
-    flex-shrink:0; font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:14.5px;
-    text-align:right; white-space:nowrap;
-  }
+  .ledger-entry-teaser .sep{ opacity:.5; }
+  .ledger-entry-teaser .muted{ font-style:italic; opacity:.75; }
+  .ledger-entry-amt{ flex-shrink:0; text-align:right; white-space:nowrap; }
+  .ledger-entry-amt b{ display:block; font:600 15px 'IBM Plex Mono',monospace; }
   .ledger-entry-amt .cur{ font-size:10.5px; color:var(--ink-soft); font-weight:500; }
-  .ledger-entry-chevron{
-    flex-shrink:0; width:14px; text-align:center; color:var(--ink-soft); font-size:11px;
-    transition:transform .15s ease;
-  }
-  .ledger-entry.open .ledger-entry-chevron{ transform:rotate(180deg); }
-  .ledger-entry-detail{ padding:0 2px 14px 54px; }
+  .ledger-entry-amt small{ display:block; margin-top:2px; font:12px 'IBM Plex Mono',monospace; color:var(--ink-soft); }
+  .ledger-entry-detail{ padding:0 4px 14px 46px; }
 
-  @media (max-width:420px){
-    .ledger-entry-amt{ font-size:13.5px; }
+  /* 展開明細：先付／分攤兩行膠囊；平均分攤時合併成「N 人，每人 X」 */
+  .split-line{ display:flex; align-items:flex-start; gap:10px; font-size:13px; }
+  .split-line + .split-line{ margin-top:8px; }
+  .split-lbl{ flex-shrink:0; width:30px; padding-top:4px; font-size:11.5px; font-weight:700; color:var(--ink-soft); }
+  .split-chips{ display:flex; flex-wrap:wrap; gap:6px; align-items:center; min-height:28px; }
+  .split-chip{ display:inline-flex; align-items:center; gap:6px; padding:3px 10px 3px 3px; border-radius:20px; background:var(--chip-bg); }
+  .split-chip .num{ font-family:'IBM Plex Mono',monospace; color:var(--ink-soft); }
+  .split-chip.paid{ background:var(--credit-bg); }
+  .split-chip.paid .num{ color:var(--credit); }
+  .split-even{ display:inline-flex; align-items:center; gap:8px; }
+  .split-even .num{ font-family:'IBM Plex Mono',monospace; font-weight:600; }
+
+  @media (max-width:520px){
+    .ledger-entry-detail{ padding-left:4px; }
+    .ledger-entry-amt b{ font-size:14px; }
   }
 
   .empty-state{
@@ -1181,7 +1205,7 @@
     #tripName{font-size:19px;}
     .top-nav{display:flex;}
     .bottom-nav{display:none;}
-    main{padding-top:20px;}
+    main.wrap{padding-top:20px;}
     .kv-summary{grid-template-columns:repeat(4,1fr);}
     .card{padding:22px 24px;}
   }

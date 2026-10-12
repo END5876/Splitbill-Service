@@ -101,6 +101,12 @@ function startWebApi(options = {}) {
 
   // ---- 身分辨識：金鑰（Bot）／登入 cookie（網頁）；分享 token 只走網址路徑（細節見 lib/auth.js） ----
   app.use('/api', createIdentityMiddleware(apiKey));
+  // 🆕 [成員頭像] 登入者的 Discord 頭像記進 user_profiles，回傳行程時附加到已連結的成員上
+  // （沒變就不寫資料庫，見 storage.rememberUserAvatar）
+  app.use('/api', (req, res, next) => {
+    if (req.principal && req.principal.kind === 'user') storage.rememberUserAvatar(req.principal.userId, req.principal.avatar);
+    next();
+  });
 
   // ---- 🆕 [即時同步] 掛上 SSE 廣播：任何一條寫入路徑呼叫 storage.touchTrip()
   // 時，都會自動推播給該行程目前所有開著的 SSE 連線（見 lib/sse.js）。

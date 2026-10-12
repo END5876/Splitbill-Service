@@ -18,6 +18,35 @@ function fmtMoney(amount, currency){
   return amount.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
 }
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+// 明細裡的小金額（膠囊、對你的影響）：整數就不顯示 .00，省版面
+function fmtMoneyCompact(amount){
+  if (!Number.isFinite(amount)) return '-';
+  const r = round2(amount);
+  return r.toLocaleString('en-US', Number.isInteger(r) ? {maximumFractionDigits:0} : {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+// 🆕 [成員頭像] 已連結 Discord、而且登入過網頁的成員，伺服器會附上 avatar（Discord CDN
+// 網址，見 lib/storage.js 的 toPublicTrip）；其他成員用「名字第一個字＋固定色」。
+// 顏色由成員 id 算出來，同一個人在每台裝置都是同一個顏色，不用另外存。
+// 圖片疊在字母上面，載入失敗（換過頭像、網址失效）就移除圖片，露出字母頭像。
+const AVATAR_COLORS = ['#5865F2', '#2D8A4E', '#C76A14', '#C2357F', '#2B7FB8', '#8E44AD', '#B83B3B', '#4A7A1E'];
+function avatarColor(id){
+  let h = 0;
+  for (const ch of String(id)) h = (h * 31 + ch.codePointAt(0)) >>> 0;
+  return AVATAR_COLORS[h % AVATAR_COLORS.length];
+}
+function memberAvatarHtml(memberId, size){
+  const m = trip.members.find(x=>x.id===memberId);
+  const name = m ? m.name : '?';
+  const initial = escapeHtml(Array.from(name.trim())[0] || '?');
+  const img = m && m.avatar
+    ? `<img src="${escapeHtml(m.avatar)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`
+    : '';
+  return `<span class="av${size==='sm'?' sm':''}" style="--av:${avatarColor(memberId)}" title="${escapeHtml(name)}" aria-hidden="true">${initial}${img}</span>`;
+}
+function memberAvatarStack(ids){
+  return `<span class="av-stack">${ids.map(id=>memberAvatarHtml(id,'sm')).join('')}</span>`;
+}
 
 // 🆕 [時間資訊] 支出／轉帳明細列需要顯示「這筆是什麼時候記的」，同一年只顯示
 // 月/日 時:分（多天行程最常見的情境，不需要年份佔版面）；跨年（例如年底/年初
