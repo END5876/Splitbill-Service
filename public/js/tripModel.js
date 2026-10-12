@@ -24,8 +24,6 @@ function repairTrip(raw){
   t.members = Array.isArray(t.members) ? t.members.map(m=>{
     const mem = {id:m.id||genId('mem'), name:m.name||m.id||'未知成員'};
     if (m.discordId) mem.discordId = m.discordId;
-    // 🆕 [成員頭像] 伺服器附上的 Discord 頭像（唯讀，存檔時伺服器會丟掉），只接受 Discord CDN
-    if (m.discordId && typeof m.avatar === 'string' && /^https:\/\/cdn\.discordapp\.com\/avatars\//.test(m.avatar)) mem.avatar = m.avatar;
     return mem;
   }) : [];
   t.expenses = Array.isArray(t.expenses) ? t.expenses.map(repairExpense) : [];

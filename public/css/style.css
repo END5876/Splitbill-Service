@@ -773,10 +773,11 @@
      1. 工具列（.ledger-toolbar）用跟全站 input-with-toggle 一致的
         「圖示內嵌輸入框」語彙，搜尋框內嵌放大鏡與清除按鈕；成員 chip
         改成可橫向捲動的單行列，避免成員一多把工具列撐得過高。
-     2. 日期標頭：日期＋筆數＋當日小計，一條細線分隔，不搶條目的視覺權重。
-     3. 條目列：付款人頭像（轉帳是「付款人 → 收款人」）＋標題／摘要＋
-        原幣金額與換算後金額；摘要裡直接標出「這筆對你 ±多少」，不用
-        展開自己算。展開後用「先付／分攤」兩行膠囊呈現明細。
+     2. 分組清單：每天一個小標頭（日期＋筆數＋當日小計）加一個圓角區塊，
+        區塊內用內縮分隔線隔開每一筆，層次清楚。
+     3. 條目列：左邊標題／摘要（誰付・幾人分・時間）／「你應收或應付多少」，
+        右邊原幣金額與換算後金額，最右邊展開箭頭。展開後是一句「怎麼分」
+        加上每位成員一行的應收／應付清單，窄螢幕也只會往下長、不會擠。
      ════════════════════════════════════════════════════════════════ */
 
   /* --- 搜尋／篩選工具列 --- */
@@ -818,91 +819,80 @@
     font-size:12px; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace;
   }
 
-  /* --- 成員頭像：Discord 頭像（已連結且登入過網頁的成員），否則是「名字第一個字＋固定色」。
-         圖片疊在字母上面，載入失敗就移除圖片，露出底下的字母頭像。見 helpers.js 的 memberAvatarHtml() --- */
-  .av{
-    position:relative; flex-shrink:0; overflow:hidden;
-    width:30px; height:30px; border-radius:50%;
-    background:var(--av, var(--chip-bg)); color:#fff;
-    display:inline-grid; place-items:center;
-    font:700 13px/1 'Noto Sans TC',sans-serif; user-select:none;
-  }
-  .av img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
-  .av.sm{ width:22px; height:22px; font-size:10.5px; }
+  /* 目前登入者在名字後面的「你」標記 */
   .you-tag{
     display:inline-block; margin-left:4px; padding:0 5px; border-radius:4px;
     font-size:10.5px; font-weight:700; line-height:16px; vertical-align:1px;
     background:var(--brass-tint); color:var(--brass);
   }
-  /* 「這筆對你 ±多少」：正＝別人要給你，負＝你要給別人 */
-  .me-pill{ font:600 11.5px 'IBM Plex Mono',monospace; padding:2px 8px; border-radius:20px; white-space:nowrap; }
-  .me-pill.pos{ background:var(--credit-bg); color:var(--credit); }
-  .me-pill.neg{ background:var(--debt-bg); color:var(--debt); }
-  .me-pill.zero{ background:var(--zero-bg); color:var(--ink-soft); }
+  /* 應收／應付的文字顏色（明細列「你應收 X」、展開清單的每位成員） */
+  .amt-pos{ color:var(--credit); }
+  .amt-neg{ color:var(--debt); }
+  .amt-zero{ color:var(--ink-soft); }
 
-  /* --- 日期分組標頭：日期＋筆數，右側小計，底下一條細線 --- */
+  /* --- 日期分組（分組清單樣式）：小標頭「日期｜N 筆・小計」＋一個圓角區塊裝當天所有項目，
+         區塊內用內縮分隔線隔開每一筆，層次清楚、手機上也很好掃 --- */
   .ledger-day-head{
-    display:flex; align-items:baseline; gap:8px;
-    padding:14px 2px 7px; border-bottom:1px solid var(--card-line);
+    display:flex; align-items:baseline; justify-content:space-between; gap:12px;
+    padding:16px 4px 7px;
   }
-  .ledger-day:first-child .ledger-day-head{ padding-top:4px; }
-  .ledger-day-date{ font:700 14px 'Noto Serif TC',serif; }
-  .ledger-day-count{ font-size:12px; color:var(--ink-soft); }
-  .ledger-day-subtotal{ margin-left:auto; font:600 12.5px 'IBM Plex Mono',monospace; color:var(--ink-soft); white-space:nowrap; }
+  .ledger-day:first-child .ledger-day-head{ padding-top:2px; }
+  .ledger-day-date{ font-size:13px; font-weight:700; letter-spacing:.03em; }
+  .ledger-day-sum{ font:12px 'IBM Plex Mono',monospace; color:var(--ink-soft); white-space:nowrap; }
+  .ledger-day-box{
+    background:var(--surface); border:1px solid var(--card-line); border-radius:12px; overflow:hidden;
+  }
 
-  /* --- 條目列：頭像 + 標題/摘要（含對你的影響）+ 原幣金額／換算金額 --- */
-  .ledger-entry{ border-bottom:1px solid color-mix(in srgb, var(--card-line) 55%, transparent); }
-  .ledger-entry:last-child{ border-bottom:none; }
-  .ledger-entry.open{ background:color-mix(in srgb, var(--brass) 4%, var(--card)); }
+  /* --- 條目列：左邊「標題／摘要／你應收或應付」三行，右邊原幣金額與換算金額，最右展開箭頭 --- */
+  .ledger-entry + .ledger-entry{ border-top:1px solid var(--card-line); margin-left:14px; }
+  .ledger-entry + .ledger-entry .ledger-entry-row,
+  .ledger-entry + .ledger-entry .ledger-entry-detail{ padding-left:0; }
+  .ledger-entry.open{ background:color-mix(in srgb, var(--brass) 5%, var(--surface)); }
   .ledger-entry-row{
     display:flex; align-items:center; gap:12px;
-    padding:12px 4px; cursor:pointer; user-select:none;
+    padding:12px 14px; cursor:pointer; user-select:none;
     background:none; border:none; width:100%; text-align:left; font:inherit; color:inherit;
   }
-  .ledger-entry-lead{ position:relative; flex-shrink:0; }
-  /* 多人代墊：第二位付款人縮小疊在右下角 */
-  .ledger-entry-lead .av + .av{ position:absolute; right:-6px; bottom:-4px; width:18px; height:18px; font-size:9px; box-shadow:0 0 0 2px var(--card); }
-  .ledger-entry-flow{ display:inline-flex; align-items:center; gap:3px; flex-shrink:0; color:var(--ink-soft); }
-  .ledger-entry-flow svg{ width:14px; height:14px; }
   .ledger-entry-main{ flex:1; min-width:0; }
   .ledger-entry-title{
-    display:block; font-weight:700; font-size:14.5px;
+    display:block; font-weight:700; font-size:14.5px; line-height:1.45;
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
   .ledger-entry-row:hover .ledger-entry-title{ color:var(--brass); }
-  .ledger-entry-teaser{
-    display:flex; align-items:center; gap:6px; flex-wrap:wrap;
-    margin-top:3px; font-size:12.5px; color:var(--ink-soft);
+  .ledger-entry-arrow{ color:var(--ink-soft); font-weight:400; margin:0 6px; }
+  .ledger-entry-meta{
+    display:block; margin-top:2px; font-size:12.5px; color:var(--ink-soft);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
-  .ledger-entry-meta{ min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .ledger-entry-teaser .sep{ opacity:.5; margin:0 5px; }
-  .ledger-entry-teaser .muted{ font-style:italic; opacity:.75; }
+  .ledger-entry-meta .sep{ opacity:.5; margin:0 5px; }
+  .ledger-entry-meta .muted{ font-style:italic; opacity:.75; }
+  .ledger-entry-me{ display:block; margin-top:3px; font-size:12.5px; font-weight:700; white-space:nowrap; }
+  .ledger-entry-me .num{ font-family:'IBM Plex Mono',monospace; }
   .ledger-entry-amt{ flex-shrink:0; text-align:right; white-space:nowrap; }
-  .ledger-entry-amt b{ display:block; font:600 15px 'IBM Plex Mono',monospace; }
-  .ledger-entry-amt .cur{ font-size:10.5px; color:var(--ink-soft); font-weight:500; }
+  .ledger-entry-amt b{ display:block; font:600 15px/1.45 'IBM Plex Mono',monospace; }
+  .ledger-entry-amt .cur{ font-size:10.5px; color:var(--ink-soft); font-weight:500; margin-left:4px; }
   .ledger-entry-amt small{ display:block; margin-top:2px; font:12px 'IBM Plex Mono',monospace; color:var(--ink-soft); }
-  .ledger-entry-detail{ padding:0 4px 14px 46px; }
+  .ledger-entry-chev{ flex-shrink:0; width:12px; text-align:center; color:var(--ink-soft); font-size:10px; transition:transform .15s ease; }
+  .ledger-entry.open .ledger-entry-chev{ transform:rotate(180deg); }
+  .ledger-entry-detail{ padding:0 14px 14px; }
+  .ledger-entry-detail .ledger-actions{ margin-top:12px; }
 
-  /* 展開明細：一句說明怎麼分＋每位成員一行（名字｜這筆的差額），見 render.js 的 renderExpenseSplit() */
-  .split-caption{ font-size:12.5px; color:var(--ink-soft); margin-bottom:4px; }
+  /* 展開明細：一個小框，上方一句「怎麼分」，底下每位成員一行（名字｜這筆應收／應付），見 render.js 的 renderExpenseSplit() */
+  .split-box{ max-width:480px; background:var(--card); border:1px solid var(--card-line); border-radius:10px; }
+  .split-caption{ padding:9px 12px; font-size:12.5px; color:var(--ink-soft); border-bottom:1px solid var(--card-line); }
   .split-caption b{ font-family:'IBM Plex Mono',monospace; font-weight:600; color:var(--ink); }
   .split-list{ list-style:none; margin:0; padding:0; }
-  .split-list li{
-    display:flex; align-items:center; gap:10px; padding:7px 0;
-    border-bottom:1px dashed var(--card-line); font-size:13.5px;
-  }
-  .split-list li:last-child{ border-bottom:none; }
-  .split-name{ flex:1; min-width:0; overflow-wrap:anywhere; }
+  .split-list li{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; padding:8px 12px; font-size:13.5px; }
+  .split-list li + li{ border-top:1px dashed var(--card-line); }
+  .split-name{ min-width:0; overflow-wrap:anywhere; }
   .split-name small{ display:block; margin-top:1px; font:11.5px 'IBM Plex Mono',monospace; color:var(--ink-soft); }
-  .split-net{ flex-shrink:0; font:600 13.5px 'IBM Plex Mono',monospace; white-space:nowrap; }
-  .split-net.pos{ color:var(--credit); }
-  .split-net.neg{ color:var(--debt); }
-  .split-net.zero{ color:var(--ink-soft); }
+  .split-net{ flex-shrink:0; font-size:13px; font-weight:700; white-space:nowrap; }
+  .split-net .num{ font-family:'IBM Plex Mono',monospace; }
 
   @media (max-width:520px){
-    .ledger-entry-detail{ padding-left:4px; }
-    /* 摘要文字佔滿一整行（太長截斷），「對你 ±」標籤換到下一行 */
-    .ledger-entry-meta{ flex:1 1 100%; }
+    .ledger-entry-row{ gap:10px; padding:11px 12px; }
+    .ledger-entry + .ledger-entry{ margin-left:12px; }
+    .ledger-entry-detail{ padding:0 12px 14px; }
     .ledger-entry-amt b{ font-size:14px; }
   }
 
@@ -966,12 +956,10 @@
   .seg-tab:hover{ color:var(--ink); }
   .seg-tab[aria-selected="true"]{ background:var(--card); color:var(--ink); box-shadow:var(--shadow-sm); }
 
-  /* 建議轉帳／你的狀態：每列右側的「標記已付」按鈕 */
-  .settle-paid-btn{ flex-shrink:0; min-height:30px; padding:5px 10px; font-size:12px; }
-
   /* 你的狀態卡片：標題直接寫出「你要付／你應收」的金額 */
   .my-status-card{ border-color:var(--brass-soft); }
-  .my-status-headline{ font-size:18px; margin-top:3px; }
+  .my-status-headline{ font-size:16px; margin-top:4px; }
+  .my-status-headline b{ font-family:'IBM Plex Mono',monospace; font-size:24px; margin:0 2px; }
   .my-status-headline.neg{ color:var(--debt); }
   .my-status-headline.pos{ color:var(--credit); }
   .balance-row{
@@ -993,23 +981,28 @@
   }
   .stamp.settled{color:var(--credit); border-color:var(--credit);}
 
-  .settle-list{padding:4px 18px 16px;}
-  /* 結算列：頭像（付款人 → 收款人）｜文字（單行，太長截斷）｜金額｜標記已付。
-     手機上「標記已付」固定換到金額正下方，列高一致，名字不會被擠成好幾行。 */
-  .settle-item{
-    display:grid; grid-template-columns:auto minmax(0,1fr) auto auto; align-items:center;
-    gap:6px 10px; font-size:13.5px;
-    padding:10px 0; border-bottom:1px dashed var(--card-line);
+  .settle-list{padding:12px 18px 16px;}
+  /* 結算列（分組清單樣式）：放在 .settle-box 圓角區塊裡，每列「誰付給誰｜金額｜標記已付」，
+     「標記已付」是右側的文字按鈕。窄螢幕上名字獨佔第一行，金額和按鈕排在第二行左右兩端。 */
+  .settle-box{ background:var(--surface); border:1px solid var(--card-line); border-radius:12px; overflow:hidden; }
+  .settle-item{ display:flex; align-items:center; gap:4px 14px; padding:12px 14px; font-size:14px; }
+  .settle-item + .settle-item{ border-top:1px solid var(--card-line); margin-left:14px; padding-left:0; }
+  .settle-who{ flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:600; }
+  .settle-verb{ color:var(--ink-soft); font-weight:400; margin:0 6px; }
+  .settle-verb.lead{ margin-left:0; } /* 句首的動詞（例如「付給 小美」）不需要左邊距 */
+  .settle-amt{ flex-shrink:0; white-space:nowrap; font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:14.5px; }
+  .settle-paid-link{
+    flex-shrink:0; display:inline-flex; align-items:center; gap:6px;
+    background:none; border:none; border-left:1px solid var(--card-line);
+    padding:4px 0 4px 12px; cursor:pointer;
+    color:var(--brass); font:600 13px 'Noto Sans TC',sans-serif;
   }
-  .settle-item:last-child{border-bottom:none;}
-  .settle-flow{display:inline-flex; align-items:center; gap:3px; color:var(--ink-soft);}
-  .settle-flow svg{width:14px; height:14px;}
-  .settle-who{min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:500;}
-  .settle-verb{color:var(--ink-soft); font-weight:400; margin:0 5px;}
-  .settle-amt{white-space:nowrap; font-family:'IBM Plex Mono',monospace; font-weight:700; text-align:right;}
+  .settle-paid-link:hover{ text-decoration:underline; }
+  .settle-paid-link:disabled{ opacity:.6; cursor:wait; text-decoration:none; }
   @media (max-width:520px){
-    .settle-item{grid-template-columns:auto minmax(0,1fr) auto;}
-    .settle-item .settle-paid-btn{grid-column:3; justify-self:end;}
+    .settle-item{ flex-wrap:wrap; }
+    .settle-who{ flex-basis:100%; }
+    .settle-amt{ margin-right:auto; }
   }
   .settle-amt-cur{font-size:11px; font-weight:500; color:var(--ink-soft); margin-left:3px;}
 

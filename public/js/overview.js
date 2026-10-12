@@ -90,9 +90,9 @@ async function renderDebtSectionUI(){
   }
   if (noteEl) noteEl.textContent = rateNote;
 
-  listEl.innerHTML = sourceList.length ? displayList.map(t => settleRowHtml(t,
+  listEl.innerHTML = sourceList.length ? `<div class="settle-box">${displayList.map(t => settleRowHtml(t,
       `${ledgerWho(t.from)}<span class="settle-verb">${verb}</span>${ledgerWho(t.to)}`,
-      t.amount, effectiveCurrency, isTransfer)).join('') : `<p class="empty-state" style="padding:16px;">${emptyMsg}</p>`;
+      t.amount, effectiveCurrency, isTransfer)).join('')}</div>` : `<p class="empty-state" style="padding:16px;">${emptyMsg}</p>`;
 }
 
 /* =====================================================================
@@ -100,18 +100,17 @@ async function renderDebtSectionUI(){
    讓「看結算 → 實際轉錢 → 回來記帳」在同一個地方完成。
    金額一律用基準幣別（清單計算本來就是基準幣別），不受換算幣別影響。
 ===================================================================== */
-// 結算列：頭像（付款人 → 收款人）＋一行文字（太長截斷）＋金額＋「標記已付」。
-// 手機上按鈕固定換到金額正下方（見 style.css 的 .settle-item），不再讓名字被擠成好幾行。
+// 結算列（放在 .settle-box 圓角區塊裡）：誰付給誰（太長截斷）｜金額｜「標記已付」文字按鈕。
+// 窄螢幕上名字獨佔第一行，金額和按鈕排在第二行左右兩端（見 style.css 的 .settle-item）。
 function settleRowHtml(t, whoHtml, amount, currency, withPaidBtn){
   return `<div class="settle-item">
-      <span class="settle-flow">${memberAvatarHtml(t.from,'sm')}${ICON_ARROW_RIGHT}${memberAvatarHtml(t.to,'sm')}</span>
       <span class="settle-who">${whoHtml}</span>
-      <span class="settle-amt">${fmtMoney(amount, currency)}<span class="settle-amt-cur">${currency}</span></span>
+      <span class="settle-amt">${fmtMoneyCompact(amount)}<span class="settle-amt-cur">${currency}</span></span>
       ${withPaidBtn ? markPaidButtonHtml(t) : ''}
     </div>`;
 }
 function markPaidButtonHtml(t){
-  return `<button type="button" class="btn btn-ghost btn-sm settle-paid-btn" data-write-only
+  return `<button type="button" class="settle-paid-link" data-write-only
     onclick="withLoading(this,'記錄中…',()=>markTransferPaid('${t.from}','${t.to}'))">標記已付</button>`;
 }
 async function markTransferPaid(fromId, toId){
@@ -145,13 +144,13 @@ function renderMyStatusCard(net){
   const base = trip.baseCurrency;
   const v = round2(net[me.id] || 0);
   const mine = lastTransferTx.filter(t => t.from === me.id || t.to === me.id);
-  const headline = v < -0.01 ? `你還需要付 ${fmtMoney(-v, base)} ${base}`
-    : v > 0.01 ? `大家還欠你 ${fmtMoney(v, base)} ${base}`
+  const headline = v < -0.01 ? `你還需要付 <b>${fmtMoneyCompact(-v)}</b> ${base}`
+    : v > 0.01 ? `大家還欠你 <b>${fmtMoneyCompact(v)}</b> ${base}`
     : '你已經結清了 🎉';
   const rows = mine.map(t => {
     const paying = t.from === me.id;
     const who = paying
-      ? `<span class="settle-verb">付給</span>${escapeHtml(memberName(t.to))}`
+      ? `<span class="settle-verb lead">付給</span>${escapeHtml(memberName(t.to))}`
       : `${escapeHtml(memberName(t.from))}<span class="settle-verb">應付你</span>`;
     return settleRowHtml(t, who, t.amount, base, true);
   }).join('');
@@ -162,7 +161,7 @@ function renderMyStatusCard(net){
         <div class="t1 my-status-headline ${v < -0.01 ? 'neg' : v > 0.01 ? 'pos' : ''}">${headline}</div>
       </div>
     </div>
-    ${rows ? `<div class="settle-list">${rows}</div>` : ''}`;
+    ${rows ? `<div class="settle-list"><div class="settle-box">${rows}</div></div>` : ''}`;
   el.style.display = '';
 }
 
