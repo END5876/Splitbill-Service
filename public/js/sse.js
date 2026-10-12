@@ -158,14 +158,14 @@ function handleIncomingTripUpdate(rawPushedTrip){
   }
 }
 
-// 🆕 [即時同步] 行程被刪除時的處理：分享連結模式下這個 token 本身也已經
-// 跟著行程一起消失了（shareLinks 是存在 trip 物件裡的），直接沿用既有的
+// 🆕 [即時同步] 行程被刪除時的處理：訪客模式下這個 token 本身也已經
+// 跟著行程一起消失了（連結是存在 trip 物件裡的），直接沿用既有的
 // 「連結失效」全頁提示；一般模式下用醒目、不會自動消失太快的 toast 提醒，
 // 並刷新「我的行程」清單。
 function handleIncomingTripDeleted(){
   disconnectTripEventStream();
   if (shareMode){
-    showShareError('這個行程已經被刪除了，分享連結也跟著失效。');
+    showLinkError('這個行程已經被刪除了，連結也跟著失效。');
     return;
   }
   // 🆕 刪除後就不再是「連線中的雲端行程」：畫面保留最後一份資料當成離線內容，

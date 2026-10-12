@@ -864,7 +864,9 @@
   /* 🆕 分享連結列表：沿用跟支出/轉帳明細一致的 .ledger-row 版面（而不是獨立卡片），
      權限改用跟「換算幣別」小選單一致的 .convert-select 樣式（寬度固定縮小、inline
      顯示在到期日期旁邊），維持整體介面語彙一致、也不會把一整排撐得過長。 */
-  .share-link-perm-select{ margin-right:6px; }  .share-link-footer{display:flex; gap:8px;}
+  .link-options{display:flex; flex-wrap:wrap; align-items:center; gap:6px 14px; margin-top:6px;}
+  .link-options .check-row{font-size:13px;}
+  .share-link-footer{display:flex; gap:8px;}
   .share-link-footer .btn{flex:1;}
 
   .empty-state{

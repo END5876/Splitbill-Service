@@ -1,10 +1,8 @@
 'use strict';
 // 🆕 [行程獨立化] 帳號與 Discord 連結相關的畫面：
 //   - 帳號區塊（登入／登出）
-//   - 成員邀請連結（朋友用 Discord 登入後認領「我是哪一位」）
 //   - 成員名單上的連結狀態與解除連結
 //   - Discord 綁定（產生綁定碼、解除綁定）
-//   - 邀請連結的落地頁（#invite=<token>）
 // 所有權限都由 service 判斷；這裡只依身分決定「要不要顯示某個按鈕」。
 
 /* ===================== 帳號區塊 ===================== */
@@ -100,54 +98,6 @@ function saveMyNickname(){
   renderAll();
   scheduleCloudSave();
   toast(`暱稱已改成「${name}」`, 'success');
-}
-
-/* ===================== 成員邀請連結 ===================== */
-function buildInviteUrl(token){
-  const url = new URL(location.href);
-  url.search = '';
-  url.hash = `invite=${token}`;
-  return url.toString();
-}
-function renderInviteCard(){
-  const card = document.getElementById('inviteCard');
-  if (!card) return;
-  const role = currentTripRole();
-  if (!currentTripId || shareMode || !(role === 'owner' || role === 'member' || role === 'admin')){
-    card.style.display = 'none';
-    return;
-  }
-  card.style.display = '';
-  const unlinked = trip.members.filter(m => !m.discordId).length;
-  document.getElementById('inviteCardHint').textContent = unlinked
-    ? `目前有 ${unlinked} 位成員還沒連結 Discord 帳號。把邀請連結傳給他們，用 Discord 登入後選「我是哪一位」，就能一起看帳、記帳（過去的帳目都會保留）。`
-    : '把邀請連結傳給朋友，他們用 Discord 登入後就能以新成員身分加入，一起記帳。';
-  document.getElementById('btnRotateInvite').style.display = canManageTrip() ? '' : 'none';
-}
-async function copyInviteLink(){
-  try{
-    const res = await fetch(tripApiUrl('/invite'), { headers: apiHeaders() });
-    const { token } = await apiJson(res);
-    const url = buildInviteUrl(token);
-    try{
-      await navigator.clipboard.writeText(url);
-      toast('已複製邀請連結，傳給還沒加入的朋友即可（請不要公開張貼）', 'success');
-    }catch(e){
-      toast('複製失敗，這是邀請連結（請手動複製）：' + url, 'error', { duration: 12000 });
-    }
-  }catch(err){
-    toast('取得邀請連結失敗：' + err.message, 'error');
-  }
-}
-async function rotateInviteLink(){
-  const ok = await confirmModal('重新產生後，之前傳出去的邀請連結會立刻失效（已經加入的成員不受影響）。確定要重新產生嗎？', { confirmText:'重新產生', danger:true });
-  if (!ok) return;
-  try{
-    await apiJson(await fetch(tripApiUrl('/invite/rotate'), { method: 'POST', headers: apiHeaders() }));
-    toast('已重新產生邀請連結，舊連結已失效', 'success');
-  }catch(err){
-    toast('重新產生失敗：' + err.message, 'error');
-  }
 }
 
 /* ===================== 成員連結狀態 ===================== */
@@ -271,145 +221,5 @@ async function detachFromDiscord(){
     toast('已解除綁定', 'success');
   }catch(err){
     toast('解除綁定失敗：' + err.message, 'error');
-  }
-}
-
-/* ===================== 邀請連結落地頁 ===================== */
-// 網址 #invite=<token>：顯示行程名稱與成員，讓朋友（登入後）選「我是哪一位」。
-// token 暫存在 sessionStorage，讓「先去 Discord 登入再回來」之後還接得上。
-const INVITE_TOKEN_STORAGE_KEY = 'splitbill-invite-token';
-function detectInviteTokenFromUrl(){
-  const match = (location.hash || '').match(/^#invite=([A-Za-z0-9]+)$/);
-  if (match){
-    history.replaceState(null, '', location.pathname + location.search);
-    try{ sessionStorage.setItem(INVITE_TOKEN_STORAGE_KEY, match[1]); }catch(e){}
-    return match[1];
-  }
-  try{ return sessionStorage.getItem(INVITE_TOKEN_STORAGE_KEY); }catch(e){ return null; }
-}
-function clearInviteToken(){
-  try{ sessionStorage.removeItem(INVITE_TOKEN_STORAGE_KEY); }catch(e){}
-}
-function closeInviteScreen(){
-  clearInviteToken();
-  const el = document.getElementById('inviteScreen');
-  el.style.display = 'none';
-  el.innerHTML = '';
-  setMainUiVisible(true);
-}
-async function initInviteFlow(token){
-  setMainUiVisible(false);
-  const el = document.getElementById('inviteScreen');
-  el.style.display = 'block';
-  el.innerHTML = '<div class="invite-card"><p class="hint">載入中…</p></div>';
-  let info;
-  try{
-    info = await apiJson(await fetch(`/api/invite/${encodeURIComponent(token)}`));
-  }catch(err){
-    clearInviteToken();
-    el.innerHTML = `
-      <div class="invite-card">
-        <div class="ic">😕</div>
-        <h1>這個邀請連結打不開</h1>
-        <p>${escapeHtml(err.status === 404 ? '連結可能已經失效（例如被重新產生過），請跟行程成員索取新的連結。' : '連線時發生問題，請稍後重新整理頁面看看。')}</p>
-        <div class="btn-row" style="justify-content:center;"><button class="btn btn-ghost" type="button" onclick="closeInviteScreen(); bootstrapNormal();">回到首頁</button></div>
-      </div>`;
-    return;
-  }
-
-  const head = `<div class="ic">🧳</div><h1>${escapeHtml(info.tripName)}</h1>`;
-  if (!currentUser){
-    el.innerHTML = `
-      <div class="invite-card">
-        ${head}
-        <p>有人邀請你一起記這個行程的帳。<br>先用 Discord 登入，再選擇你是哪一位。</p>
-        <div class="btn-row" style="justify-content:center;">
-          ${oauthEnabled
-            ? `<button class="btn btn-brass" type="button" onclick="loginWithDiscord('/#invite=${encodeURIComponent(token)}')">用 Discord 登入</button>`
-            : '<p class="hint">這個網站尚未開啟 Discord 登入，請聯絡網站管理者。</p>'}
-        </div>
-      </div>`;
-    return;
-  }
-  if (info.viewer && info.viewer.memberId){
-    const me = info.members.find(m => m.id === info.viewer.memberId);
-    el.innerHTML = `
-      <div class="invite-card">
-        ${head}
-        <p>你已經是這個行程的「<b>${escapeHtml(me ? me.name : '成員')}</b>」了。</p>
-        <div class="btn-row" style="justify-content:center;"><button class="btn btn-brass" type="button" onclick="openTripAfterInvite('${escapeHtml(info.tripId)}')">開啟行程</button></div>
-      </div>`;
-    return;
-  }
-
-  const unlinked = info.members.filter(m => !m.linked);
-  const linked = info.members.filter(m => m.linked);
-  inviteMemberNames = new Map(info.members.map(m => [m.id, m.name]));
-  // 主要動作是「認領既有成員」；「以新成員加入」收在「都不是？」後面，
-  // 避免本來就在名單上的人沒看清楚，又多加了一個重複的自己。
-  el.innerHTML = `
-    <div class="invite-card">
-      ${head}
-      ${unlinked.length ? `
-      <p>你是下面哪一位？選了之後，這位成員過去的代墊與分攤紀錄都會連結到你的 Discord 帳號（${escapeHtml(currentUser.name)}）。</p>
-      <div class="invite-members">
-        ${unlinked.map(m => `<button class="modal-list-item" type="button" onclick="confirmInviteClaim('${escapeHtml(token)}', '${escapeHtml(m.id)}', this)"><div class="mli-title">我是「${escapeHtml(m.name)}」</div></button>`).join('')}
-      </div>` : '<p>名單上的成員都已經被認領了，你可以用新成員的身分加入。</p>'}
-      ${linked.length ? `<div class="hint" style="margin-top:8px;">已經有人認領：${linked.map(m => escapeHtml(m.name)).join('、')}</div>` : ''}
-      ${unlinked.length ? `<button type="button" class="link-btn invite-new-toggle" onclick="this.hidden=true; document.getElementById('inviteNewBlock').hidden=false; document.getElementById('inviteNewName').focus();">都不是？以新成員身分加入</button>` : ''}
-      <div class="invite-new" id="inviteNewBlock" ${unlinked.length ? 'hidden' : ''}>
-        <div class="hint" style="margin:14px 0 6px;">以新成員身分加入：</div>
-        <div class="btn-row" style="justify-content:center;">
-          <input type="text" id="inviteNewName" maxlength="60" placeholder="你的名字" aria-label="你的名字" value="${escapeHtml(currentUser.name || '')}" style="max-width:180px;">
-          <button class="btn btn-primary" type="button" onclick="claimInvite('${escapeHtml(token)}', { newMemberName: document.getElementById('inviteNewName').value }, this)">加入</button>
-        </div>
-      </div>
-      <div class="btn-row" style="justify-content:center; margin-top:14px;"><button class="btn btn-ghost btn-sm" type="button" onclick="closeInviteScreen(); bootstrapNormal();">先不要</button></div>
-    </div>`;
-}
-// 認領前再確認一次：認錯人之後要請建立者解除連結，比較麻煩。
-let inviteMemberNames = new Map();
-async function confirmInviteClaim(token, memberId, btn){
-  const name = inviteMemberNames.get(memberId) || '這位成員';
-  const ok = await confirmModal(
-    `確定你就是「${name}」嗎？確認後，「${name}」過去的代墊與分攤紀錄都會連結到你的 Discord 帳號。`,
-    { title: '認領成員', confirmText: '是我，認領' }
-  );
-  if (ok) await claimInvite(token, { memberId }, btn);
-}
-async function claimInvite(token, body, btn){
-  if (body.newMemberName !== undefined && !String(body.newMemberName).trim()){
-    toast('請輸入你的名字', 'error'); return;
-  }
-  const run = async ()=>{
-    try{
-      const res = await fetch(`/api/invite/${encodeURIComponent(token)}/claim`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-requested-with': 'splitbill' },
-        body: JSON.stringify(body)
-      });
-      const data = await res.json().catch(()=>({}));
-      if (res.ok || (res.status === 409 && data.memberId)){
-        toast(res.ok ? '已加入行程！' : data.error, res.ok ? 'success' : 'info');
-        await openTripAfterInvite(data.tripId);
-        return;
-      }
-      toast(data.error || ('HTTP ' + res.status), 'error');
-      if (res.status === 409) initInviteFlow(token); // 有人搶先認領了，重新整理名單
-    }catch(err){
-      toast('加入失敗：' + err.message, 'error');
-    }
-  };
-  if (btn) await withLoading(btn, '處理中…', run); else await run();
-}
-async function openTripAfterInvite(tripId){
-  closeInviteScreen();
-  try{
-    await refreshTripList({ silent: true });
-    document.getElementById('tripSelect').value = tripId;
-    await loadTripFromApi();
-    showMainTab('overview');
-  }catch(e){
-    showMainTab('settings'); showSettingsSub('connect');
   }
 }

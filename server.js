@@ -34,7 +34,7 @@ const { createSseHub, attachTripEventBroadcast } = require('./lib/sse');
 const { getReceiptSession, setReceiptSession, clearReceiptSession } = require('./lib/receiptSessions');
 
 const createTripsRouter = require('./routes/trips');
-const createShareLinksRouter = require('./routes/shareLinks');
+const createLinksRouter = require('./routes/links');
 const createSharedTripRouter = require('./routes/sharedTrip');
 const createSseRouter = require('./routes/sse');
 const createUtilityRouter = require('./routes/utility');
@@ -111,7 +111,7 @@ function startWebApi(options = {}) {
   const auth = createAuthHelpers({ storage });
   const ctx = {
     storage,
-    ...auth,       // requireTripAccess, requireShareLink, requireService, requireUser, canLinkMembers, ...
+    ...auth,       // requireTripAccess, requireGuestLink, requireService, requireUser, canLinkMembers, ...
     ...sseHub,      // sseTickets, pruneSseTickets, SSE_TICKET_TTL_MS, openTripSseStream, broadcastReceiptSession, ...
     getFxRatesFor,
     genAI,
@@ -125,7 +125,7 @@ function startWebApi(options = {}) {
 
   app.use('/api', createSseRouter(ctx));
   app.use('/api', createTripsRouter(ctx));
-  app.use('/api', createShareLinksRouter(ctx));
+  app.use('/api', createLinksRouter(ctx));
   app.use('/api', createSharedTripRouter(ctx));
   app.use('/api', createUtilityRouter(ctx));
   app.use('/api', createReceiptSessionRouter(ctx));

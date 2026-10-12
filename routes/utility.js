@@ -12,7 +12,7 @@ const MAX_RECEIPT_IMAGE_BYTES = 4 * 1024 * 1024; // 收到的 JPEG 檔案大小�
 //   /api/<端點>                       Bot／登入的使用者
 //   /api/shared-trip/:token/<端點>    分享連結訪客（token 本身就是憑證）
 module.exports = function createUtilityRouter(ctx) {
-  const { requireShareLink, getFxRatesFor, genAI, recognizeReceipt } = ctx;
+  const { requireGuestLink, getFxRatesFor, genAI, recognizeReceipt } = ctx;
   const router = express.Router();
 
   /**
@@ -22,7 +22,7 @@ module.exports = function createUtilityRouter(ctx) {
    */
   function utilityCaller(req, res, writeDeniedMsg) {
     if (req.params.token) {
-      return requireShareLink(req, res, writeDeniedMsg) ? `s:${req.params.token}` : null;
+      return requireGuestLink(req, res, writeDeniedMsg) ? `s:${req.params.token}` : null;
     }
     const p = req.principal;
     if (p && p.kind === 'service') return 'service';

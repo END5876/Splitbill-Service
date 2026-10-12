@@ -52,7 +52,7 @@
 </div>
 
 <div id="shareErrorScreen" class="share-error-screen" style="display:none;"></div>
-<!-- 🆕 [成員邀請] 邀請連結（#invite=...）的落地頁：選「我是哪一位」，內容由 js/account.js 產生 -->
+<!-- 🆕 [行程連結] 加入行程畫面（登入／選「我是哪一位」），內容由 js/linkEntry.js 產生 -->
 <div id="inviteScreen" class="invite-screen" style="display:none;"></div>
 <div id="noAccessScreen" role="alert" aria-live="assertive"></div>
 <header class="app-header" id="appHeader">
@@ -388,39 +388,40 @@
         </div>
         <p class="hint">在這裡新增的成員一開始是「未連結」：可以照常記帳，但他本人要看到這個行程，需要用下方的邀請連結認領。</p>
       </div>
-      <!-- 🆕 [成員邀請] 只有開啟雲端行程、且自己是成員時才顯示（js/account.js 的 renderInviteCard） -->
-      <div class="card" id="inviteCard" style="display:none;">
-        <h2 class="section-title">邀請朋友加入</h2>
-        <p class="hint" id="inviteCardHint"></p>
-        <div class="btn-row">
-          <button class="btn btn-brass" type="button" onclick="withLoading(this,'產生中…',copyInviteLink)">🔗 複製邀請連結</button>
-          <button class="btn btn-ghost btn-sm" type="button" id="btnRotateInvite" onclick="rotateInviteLink()">重新產生（讓舊連結失效）</button>
+      <!-- 🆕 [行程連結] 邀請連結與分享連結合併成同一種連結（js/tripLinks.js） -->
+      <div class="card" id="tripLinksCard">
+        <h2 class="section-title">邀請與分享</h2>
+        <div id="tripLinksNoTripHint">
+          <p class="hint">請先到「帳號」開啟一個雲端行程，才能邀請朋友或建立連結。</p>
         </div>
-        <p class="hint">邀請連結需要用 Discord 登入，只能「認領尚未連結的成員」或「以新成員加入」，不能搶走已經連結的人。認錯人的話，建立者可以在上面的名單按「解除連結」。</p>
-      </div>
+        <div id="inviteSection" style="display:none;">
+          <p class="hint" id="inviteCardHint"></p>
+          <div class="btn-row">
+            <button class="btn btn-brass" type="button" onclick="withLoading(this,'產生中…',copyInviteLink)">🔗 複製邀請連結</button>
+          </div>
+          <p class="hint">邀請連結需要用 Discord 登入，只能「認領尚未連結的成員」或「以新成員加入」，不能搶走已經連結的人。認錯人的話，建立者可以在上面的名單按「解除連結」。</p>
+        </div>
 
-      <div class="card" id="shareCard">
-        <h2 class="section-title">分享連結</h2>
-        <p class="hint" style="margin-top:0;">不需要登入就能打開的連結，適合給沒有 Discord 的朋友。可以設成唯讀或可編輯，也可以設定期限、隨時撤銷。</p>
-        <div id="shareLinkNoTripHint" style="display:none;">
-          <p class="hint">請先到「帳號」開啟一個雲端行程，才能為它建立分享連結。</p>
-        </div>
-        <div id="shareLinkManageArea" style="display:none;">
+        <!-- 只有建立者看得到 -->
+        <div id="linkManageArea" style="display:none;">
+          <h3 class="section-subtitle">建立其他連結</h3>
+          <p class="hint" style="margin-top:0;">給沒有 Discord 的朋友，可以開放「訪客」不登入直接打開（唯讀或可編輯）；也可以同時允許登入加入。每條連結都能設定期限、隨時修改或撤銷。</p>
           <div class="field">
-            <label for="shareLinkLabel">備註（選填，方便你自己認得這是給誰的連結）</label>
-            <input type="text" id="shareLinkLabel" placeholder="例如：小華">
+            <label for="linkLabel">備註（選填，方便你自己認得這是給誰的連結）</label>
+            <input type="text" id="linkLabel" maxlength="50" placeholder="例如：小華">
           </div>
           <div class="row share-link-options">
             <div class="field">
-              <label for="shareLinkPermission">權限</label>
-              <select id="shareLinkPermission">
+              <label for="linkGuest">不登入的訪客</label>
+              <select id="linkGuest">
                 <option value="read">👀 唯讀（只能看，不能改）</option>
                 <option value="write">✏️ 可編輯（能新增/修改/刪除）</option>
+                <option value="none">🔒 不開放（一定要登入加入）</option>
               </select>
             </div>
             <div class="field">
-              <label for="shareLinkExpiry">有效期限</label>
-              <select id="shareLinkExpiry">
+              <label for="linkExpiry">有效期限</label>
+              <select id="linkExpiry">
                 <option value="0">永久有效</option>
                 <option value="1">1 天</option>
                 <option value="7" selected>7 天</option>
@@ -429,12 +430,17 @@
               </select>
             </div>
           </div>
+          <label class="check-row" style="margin:4px 0 6px;">
+            <input type="checkbox" id="linkJoin">
+            允許用 Discord 登入加入成為成員
+          </label>
           <div class="btn-row">
-            <button class="btn btn-brass" id="btnCreateShareLink" onclick="withLoading(this,'建立中…',createShareLink)">＋ 建立分享連結</button>
+            <button class="btn btn-brass" id="btnCreateLink" onclick="withLoading(this,'建立中…',createTripLink)">＋ 建立連結</button>
           </div>
 
-          <h3 class="section-subtitle">目前的分享連結 <span class="n" id="shareLinkCount"></span></h3>
-          <div id="shareLinkList"></div>
+          <h3 class="section-subtitle">目前的連結 <span class="n" id="linkCount"></span></h3>
+          <p class="hint" style="margin-top:0;">想讓已經傳出去的邀請連結失效，撤銷清單裡的「邀請連結」即可，下次複製時會自動產生新的。</p>
+          <div id="linkList"></div>
         </div>
       </div>
     </div>
@@ -578,8 +584,8 @@
 <script src="js/api.js"></script>
 <script src="js/sse.js"></script>
 <script src="js/tripSync.js"></script>
-<script src="js/shareLinksOwner.js"></script>
-<script src="js/shareGuest.js"></script>
+<script src="js/tripLinks.js"></script>
+<script src="js/linkEntry.js"></script>
 <script src="js/account.js"></script>
 <script src="js/bootstrap.js"></script>
 

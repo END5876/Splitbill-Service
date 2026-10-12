@@ -12,19 +12,19 @@ const { mergeIncomingMembers } = require('../lib/members');
 // SSE 版本（GET /api/shared-trip/:token/events）放在 routes/sse.js。
 // ════════════════════════════════════════════════════════════════
 module.exports = function createSharedTripRouter(ctx) {
-  const { storage, requireShareLink } = ctx;
+  const { storage, requireGuestLink } = ctx;
   const router = express.Router();
 
   // ---- GET /api/shared-trip/:token：依分享連結 token 取得對應的行程資料 ----
   router.get('/shared-trip/:token', (req, res) => {
-    const found = requireShareLink(req, res);
+    const found = requireGuestLink(req, res);
     if (!found) return;
-    res.json({ trip: storage.toPublicTrip(found.trip), permission: found.shareLink.permission });
+    res.json({ trip: storage.toPublicTrip(found.trip), permission: found.link.guest });
   });
 
   // ---- PUT /api/shared-trip/:token：依分享連結 token 寫入行程資料（需要 write 權限）----
   router.put('/shared-trip/:token', (req, res) => {
-    const found = requireShareLink(req, res, '此分享連結為唯讀，無法儲存變更');
+    const found = requireGuestLink(req, res, '此分享連結為唯讀，無法儲存變更');
     if (!found) return;
 
     // 🆕 [併發保護] 原子化版本比對，理由同 routes/trips.js 的 PUT /api/trip/:tripId。
@@ -45,8 +45,9 @@ module.exports = function createSharedTripRouter(ctx) {
     // 🔒 同 routes/trips.js PUT 的安全性備註：憑證、建立者、綁定的伺服器
     // 一律沿用伺服器上的值；分享連結持有者不能替成員連結 Discord 帳號。
     const existing = found.trip;
-    incoming.shareLinks = existing.shareLinks;
-    incoming.invite = existing.invite;
+    incoming.links = existing.links;
+    delete incoming.shareLinks; // 舊版欄位，理由見 routes/trips.js
+    delete incoming.invite;
     incoming.guildId = existing.guildId;
     incoming.createdAt = existing.createdAt;
     if (existing.ownerId) incoming.ownerId = existing.ownerId;
@@ -58,7 +59,7 @@ module.exports = function createSharedTripRouter(ctx) {
     // 並一併帶上 writerId 讓寫入者本人可以被正確辨識出來。
     storage.touchTrip(repaired, { writerId });
     storage.persist();
-    res.json({ trip: storage.toPublicTrip(repaired), permission: found.shareLink.permission });
+    res.json({ trip: storage.toPublicTrip(repaired), permission: found.link.guest });
   });
 
   return router;

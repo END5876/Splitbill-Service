@@ -8,7 +8,7 @@ Mousebot 分帳系統的獨立服務：**網頁記帳介面（`public/`）＋ RE
 - 行程是頂層實體，以 `tripId` 為主鍵；`trip.guildId` 是綁定的 Discord 伺服器（`null`＝未綁定，Bot 看不到）。
 - 成員 `{ id, name, discordId? }`：帳目一律引用 `id`；`discordId` 是已連結的 Discord 帳號。
   未連結的成員在 Discord 只顯示名字、不能操作面板。
-- `discordId` 只能經由受控流程寫入：本人用邀請連結認領、Bot 從 Discord 使用者選單加人／連結；
+- `discordId` 只能經由受控流程寫入：本人用行程連結認領、Bot 從 Discord 使用者選單加人／連結；
   網頁與分享連結的 PUT 一律無法改動它（`lib/members.js`）。
 - 舊版（v1，行程掛在伺服器底下）資料會在匯入 SQLite 時一併轉換。
   舊成員的 `id` 本身就是 Discord ID，遷移只補上 `discordId = id`，帳目不需改寫。
@@ -27,13 +27,21 @@ Mousebot 分帳系統的獨立服務：**網頁記帳介面（`public/`）＋ RE
 ## 權限
 | 身分 | 怎麼辨認 | 能做什麼 |
 |---|---|---|
-| 行程建立者 | `ownerId`，或 `OWNER_USER_ID` 名單 | 全部，含刪除行程、分享連結、綁定碼、解除綁定、解除任何人的連結。`OWNER_USER_ID` 用 Discord 登入網頁後可以切換「列出所有行程」（`/api/my/trips?all=1`） |
+| 行程建立者 | `ownerId`，或 `OWNER_USER_ID` 名單 | 全部，含刪除行程、管理行程連結、綁定碼、解除綁定、解除任何人的連結。`OWNER_USER_ID` 用 Discord 登入網頁後可以切換「列出所有行程」（`/api/my/trips?all=1`） |
 | 成員 | 有一位成員的 `discordId` 是自己 | 讀寫帳目、取得邀請連結、解除自己的連結 |
-| 分享連結 | 只走網址路徑 `/api/shared-trip/:token/...`（含 `fx-rate`、`parse-receipt`、`receipt-session`、`events`） | 依連結權限唯讀／可編輯 |
+| 連結訪客 | 只走網址路徑 `/api/shared-trip/:token/...`（含 `fx-rate`、`parse-receipt`、`receipt-session`、`events`） | 依連結的 `guest` 唯讀／可編輯 |
 | Bot | `x-api-key: SPLITBILL_API_KEY`＋`x-actor-id` | 依 `x-actor-id` 那位使用者套用上面的規則 |
 | 管理端 | `x-api-key: SPLITBILL_API_KEY`（不帶 `x-actor-id`） | 全部（只給 Bot／維運腳本，網頁不接受金鑰） |
 
 `x-api-key` 只代表 `SPLITBILL_API_KEY`，金鑰不對一律回 401，不會被當成分享連結。
+
+### 行程連結
+分享連結與邀請連結是同一種連結（`trip.links`），網址都是 `/#link=<token>`（舊的 `#share=`、`#invite=` 照樣能用）。每條連結有兩個獨立的設定：
+- `guest`：不登入直接打開時的權限，`none`（不開放）／`read`／`write`
+- `join`：用 Discord 登入後可以認領成員或以新成員加入
+
+點開連結時：已經是成員就直接開啟行程；連結允許加入就先問要不要登入加入（同時開放訪客的話，也可以選「不登入直接開啟」）；否則以訪客身分開啟。
+舊資料的 `shareLinks`（→ `join: false`）與 `invite`（→ `guest: 'none', join: true`）在載入時自動轉換，token 不變。
 
 ## 部署
 1. 部署成與 Mousebot **同一個 Project** 底下的獨立服務，掛 Volume 到 `/app/data`（`SPLITBILL_DATA_DIR`）。
@@ -59,11 +67,12 @@ Mousebot 分帳系統的獨立服務：**網頁記帳介面（`public/`）＋ RE
 ## API 摘要
 - 身分：`GET /api/me`、`GET /auth/discord/login?next=`、`POST /auth/logout`
 - 行程：`GET /api/my/trips`、`POST /api/trips`、`GET|PUT|DELETE /api/trip/:tripId`、`GET /api/trip/:tripId/events`（SSE）
-- 成員：`GET /api/trip/:tripId/invite`、`POST /api/trip/:tripId/invite/rotate`、`GET /api/invite/:token`、
-  `POST /api/invite/:token/claim`、`POST /api/trip/:tripId/members/:memberId/unlink`
+- 行程連結：`GET|POST /api/trip/:tripId/links`、`PATCH|DELETE /api/trip/:tripId/links/:token`（建立者）、
+  `GET /api/trip/:tripId/invite`（成員取得預設邀請連結）、`GET /api/link/:token`（解析）、`POST /api/link/:token/claim`（認領）
+- 連結訪客：`GET|PUT /api/shared-trip/:token`，以及同路徑下的 `events`、`fx-rate`、`parse-receipt`、`receipt-session`
+- 成員：`POST /api/trip/:tripId/members/:memberId/unlink`
 - 綁定：`POST /api/trip/:tripId/bind-code`、`POST /api/attach`（Bot）、`POST /api/trip/:tripId/detach`
 - Bot 專用：`GET /api/guild/:guildId`、`PATCH /api/guild/:guildId/active-trip`
-- 分享連結：`/api/trip/:tripId/share-links`（建立者）、`/api/shared-trip/:token`
 - cookie 登入的寫入請求必須帶 `x-requested-with: splitbill`（CSRF）
 
 ## 本機執行與測試

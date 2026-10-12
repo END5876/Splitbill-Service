@@ -55,7 +55,7 @@ function showSettingsSub(sub){
   document.querySelectorAll('.settings-subnav .subtab-btn').forEach(b=>b.classList.toggle('active', b.dataset.subtab===sub));
   document.querySelectorAll('.subpanel[data-subpanel]').forEach(p=>p.classList.toggle('active', p.dataset.subpanel===sub));
   if (sub === 'advanced'){ syncAdvDetailsState(); renderJsonPreview(); }
-  if (sub === 'people'){ renderShareLinksPanel(); renderInviteCard(); }
+  if (sub === 'people') renderTripLinksPanel();
   if (sub === 'trip') renderDiscordPanel();
   // 有指定卡片就捲過去；否則切換分組後回到頂端，不要停在上一個分組的捲動位置
   const anchorEl = alias && alias.anchor && document.getElementById(alias.anchor);

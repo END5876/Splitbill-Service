@@ -3,7 +3,7 @@
 // 🆕 [行程獨立化] 雲端行程一律用 /api/trip/:tripId（tripApiUrl()），不再需要伺服器 ID。
 async function loadTripFromApi(opts){
   opts = opts || {};
-  const tripId = document.getElementById('tripSelect').value;
+  const tripId = opts.tripId || document.getElementById('tripSelect').value;
   if (!tripId){ if (!opts.quiet) toast('請先選擇一個行程', 'error'); return; }
   await flushCloudSave(); // 目前行程還有等待中的自動儲存，先存完再換掉 trip，避免改動遺失
   try{
@@ -20,7 +20,7 @@ async function loadTripFromApi(opts){
     if (!opts.quiet) toast(`已載入「${trip.name}」（成員 ${trip.members.length} 人、支出 ${trip.expenses.length} 筆）`, 'success');
     updateBotStatusPill(true, trip.name);
     syncAdvDetailsState();
-    if (currentSettingsSub === 'people') renderShareLinksPanel();
+    if (currentSettingsSub === 'people') renderTripLinksPanel();
     if (currentSettingsSub === 'trip') renderDiscordPanel();
     saveOwnerConnectionState();
     renderAll();
@@ -275,8 +275,6 @@ function tryMergeTrips(localTrip, serverTrip){
       expenses: mergedExpenses,
       deposits: mergedDeposits,
       members: mergedMembers,
-      // 保留伺服器的 shareLinks（不讓本地覆蓋）
-      shareLinks: serverTrip.shareLinks || localTrip.shareLinks || [],
       // updatedAt 設為伺服器版本（合併後儲存時伺服器會再更新）
       updatedAt: serverTrip.updatedAt,
     });

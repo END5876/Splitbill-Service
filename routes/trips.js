@@ -73,20 +73,21 @@ module.exports = function createTripsRouter(ctx) {
     delete incoming.writerId;
 
     // 🔒 這些欄位只能透過專用端點改變，整包 PUT 一律沿用伺服器上的值：
-    //   shareLinks / invite：憑證，只走擁有者專用端點
+    //   links：憑證，只走 /links 與 /invite 端點。舊版欄位 shareLinks／invite 也要一併
+    //          拿掉，否則 repairTrip() 會把它們當成舊資料轉進 links，等於讓呼叫端自己發連結
     //   ownerId：建立者一旦決定就不可變更（否則可編輯分享連結就能把自己變成建立者）
     //   guildId：只走綁定碼 attach／detach
     //   members[].discordId：見 lib/members.js
+    delete incoming.shareLinks;
+    delete incoming.invite;
     if (existing) {
-      incoming.shareLinks = existing.shareLinks;
-      incoming.invite = existing.invite;
+      incoming.links = existing.links;
       incoming.guildId = existing.guildId;
       if (existing.ownerId) incoming.ownerId = existing.ownerId;
       else delete incoming.ownerId;
       incoming.createdAt = existing.createdAt;
     } else {
-      delete incoming.shareLinks;
-      delete incoming.invite;
+      delete incoming.links;
       incoming.guildId = null; // 下面依舊網址的 guildId 決定要不要綁定
       if (typeof incoming.ownerId !== 'string' || !incoming.ownerId.trim()) delete incoming.ownerId;
     }

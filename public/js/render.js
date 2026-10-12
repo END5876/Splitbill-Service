@@ -337,7 +337,7 @@ function renderAll(){
 
   // 🆕 [行程獨立化] 帳號／邀請／Discord 綁定區塊跟著目前的行程與身分更新
   renderAccountArea();
-  renderInviteCard();
+  renderInviteSection();
   if (currentSettingsSub === 'trip') renderDiscordPanel();
   if (typeof renderSyncStatus === 'function') renderSyncStatus();
 }

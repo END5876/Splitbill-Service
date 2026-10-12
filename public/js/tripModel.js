@@ -28,8 +28,8 @@ function repairTrip(raw){
   }) : [];
   t.expenses = Array.isArray(t.expenses) ? t.expenses.map(repairExpense) : [];
   t.deposits = Array.isArray(t.deposits) ? t.deposits.map(repairDeposit) : [];
-  // 🆕 保留 shareLinks 欄位（不在前端修改，只是原封不動傳回伺服器）
-  t.shareLinks = Array.isArray(raw&&raw.shareLinks) ? raw.shareLinks : [];
+  // 行程連結（憑證）只存在伺服器，回傳的 trip 本來就不帶；舊版前端留下的欄位一併去掉
+  delete t.shareLinks;
   if (typeof t.archived !== 'boolean') t.archived = false;
   if (typeof t.createdAt !== 'number') t.createdAt = Date.now();
   // 🆕 保留 updatedAt 時間戳記，用於多人協作版本比對

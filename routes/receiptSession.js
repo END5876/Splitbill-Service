@@ -18,7 +18,7 @@ const express = require('express');
 // ════════════════════════════════════════════════════════════════
 module.exports = function createReceiptSessionRouter(ctx) {
   const {
-    storage, requireTripAccess, requireShareLink,
+    storage, requireTripAccess, requireGuestLink,
     getReceiptSession, setReceiptSession, clearReceiptSession, broadcastReceiptSession,
   } = ctx;
   const router = express.Router();
@@ -41,7 +41,7 @@ module.exports = function createReceiptSessionRouter(ctx) {
     return requireTripAccess(req, res, trip, 'write') ? trip : null;
   }
   function tripByShareToken(req, res, isEnding) {
-    const found = requireShareLink(req, res, isEnding
+    const found = requireGuestLink(req, res, isEnding
       ? '此分享連結為唯讀，無法結束帳單辨識協作'
       : '此分享連結為唯讀，無法加入帳單辨識協作');
     return found && found.trip;
