@@ -196,7 +196,7 @@ async function createTripOnServer(){
     await refreshTripList({ silent: true });
     document.getElementById('tripSelect').value = created.id;
     await loadTripFromApi({ quiet: true });
-    toast(`已建立行程「${created.name}」，可以到「👥 成員」新增朋友並傳邀請連結給他們`, 'success', { duration: 6000 });
+    toast(`已建立行程「${created.name}」，可以到「設定 → 成員與分享」新增朋友並傳邀請連結給他們`, 'success', { duration: 6000 });
   }catch(err){
     toast('建立行程失敗：' + err.message, 'error');
   }

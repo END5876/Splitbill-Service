@@ -45,7 +45,11 @@ function toggleDepositExpand(id){
 // 展開後才顯示完整代墊/分攤明細與編輯/刪除按鈕，避免筆數一多畫面被撐開。
 function renderExpenseRow(e){
   const expanded = expandedExpenseIds.has(e.id);
-  const teaser = `${e.payers.length} 人代墊・${e.participants.length} 人分攤`;
+  // 收合時就看得出「誰付的、幾個人分」，不用展開；多人代墊時只列第一位
+  const firstPayer = e.payers[0] ? escapeHtml(memberName(e.payers[0].userId)) : '?';
+  const payerText = e.payers.length > 1 ? `${firstPayer} 等 ${e.payers.length} 人付` : `${firstPayer} 付`;
+  const allShare = e.participants.length === trip.members.length && trip.members.length > 1;
+  const teaser = `${payerText}・${allShare ? '全員' : `${e.participants.length} 人`}分攤`;
   const detailHtml = expanded ? `
       <div class="ledger-entry-detail">
         <div class="ledger-sub">
@@ -327,13 +331,14 @@ function renderAll(){
   renderMemberDetails(net);
 
   // json preview：只在「匯入／匯出」分頁開著時才更新（整份行程序列化成大字串很花時間）
-  if (currentSettingsSub === 'io') renderJsonPreview();
+  if (currentSettingsSub === 'advanced') renderJsonPreview();
   updateLocalFileStatus();
   scheduleAutoSave();
 
   // 🆕 [行程獨立化] 帳號／邀請／Discord 綁定區塊跟著目前的行程與身分更新
   renderAccountArea();
   renderInviteCard();
-  if (currentSettingsSub === 'discord') renderDiscordPanel();
+  if (currentSettingsSub === 'trip') renderDiscordPanel();
+  if (typeof renderSyncStatus === 'function') renderSyncStatus();
 }
 

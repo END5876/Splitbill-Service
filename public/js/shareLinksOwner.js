@@ -20,8 +20,8 @@ async function renderShareLinksPanel(){
   const manageArea = document.getElementById('shareLinkManageArea');
   if (!currentTripId || !canManageTrip()){
     noTripHint.innerHTML = currentTripId
-      ? '<p class="hint">只有行程建立者可以管理分享連結。想讓朋友一起記帳，可以到「👥 成員」傳邀請連結給他。</p>'
-      : '<p class="hint">請先到「🧳 行程」開啟一個雲端行程，才能為它建立分享連結。</p>';
+      ? '<p class="hint">只有行程建立者可以管理分享連結。想讓朋友一起記帳，可以用上方的邀請連結找他加入。</p>'
+      : '<p class="hint">請先到「帳號」開啟一個雲端行程，才能為它建立分享連結。</p>';
     noTripHint.style.display = '';
     manageArea.style.display = 'none';
     return;

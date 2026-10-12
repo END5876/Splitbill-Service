@@ -61,6 +61,9 @@ function showShareError(message){
     <h1>這個連結打不開</h1>
     <p>${escapeHtml(message)}</p>
     <p style="margin-top:14px;">可以請建立這個連結的人再傳一組新的給你。</p>
+    <div class="btn-row" style="justify-content:center; margin-top:20px;">
+      <button class="btn btn-ghost" type="button" onclick="location.href = location.pathname">回到首頁</button>
+    </div>
   `;
   el.style.display = 'block';
 }
@@ -74,7 +77,13 @@ function showNoAccessScreen(){
       <div class="no-access-brand">拆帳本</div>
       <h1>跟朋友一起記帳、結算</h1>
       <div class="no-access-divider"></div>
-      <p>用 Discord 帳號登入，就能建立自己的行程、邀請朋友一起記帳；<br>之後也可以綁定到 Discord 伺服器，用 Mousebot 的面板操作。</p>
+      <p>旅行、聚餐、合租的花費，記下來就自動算好誰該付誰多少。</p>
+      <ul class="landing-features">
+        <li><svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg><div><b>拍照辨識帳單</b><span>上傳收據，自動列出品項，大家點選自己吃了什麼</span></div></li>
+        <li><svg class="ic" aria-hidden="true"><use href="#i-globe"/></svg><div><b>多幣別自動換算</b><span>出國刷卡、付現都能記，依即時匯率換算</span></div></li>
+        <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><div><b>最少轉帳次數結清</b><span>算出誰該付誰多少，付完一鍵標記</span></div></li>
+        <li><svg class="ic" aria-hidden="true"><use href="#i-chat"/></svg><div><b>Discord 即時同步</b><span>綁定伺服器後，用 Mousebot 的 /splitbill 面板也能記帳</span></div></li>
+      </ul>
       <button class="btn btn-brass no-access-login" type="button" onclick="loginWithDiscord()">用 Discord 登入</button>
       <p class="no-access-note">只會讀取你的 Discord 名稱與頭像。<br>朋友傳給你的是分享連結的話，直接點開那個連結即可，不需要登入。</p>    </div>
   ` : `

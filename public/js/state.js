@@ -29,7 +29,17 @@ function currencyOptions(selected){
 }
 
 /* ===================== tabs ===================== */
-let currentSettingsSub = 'members';
+let currentSettingsSub = 'trip';
+// 設定頁從 6 個子分頁整併成 4 組；舊名稱保留成別名（程式各處與舊書籤仍在用），
+// 會切到所屬分組並捲到對應卡片。
+const SETTINGS_SUB_ALIASES = {
+  members:  { sub: 'people',   anchor: 'membersCard' },
+  share:    { sub: 'people',   anchor: 'shareCard' },
+  rates:    { sub: 'trip',     anchor: 'ratesCard' },
+  discord:  { sub: 'trip',     anchor: 'discordCard' },
+  connect:  { sub: 'account',  anchor: null },
+  io:       { sub: 'advanced', anchor: null },
+};
 function showMainTab(tab){
   document.querySelectorAll('#topNav .nav-btn, #bottomNav .nav-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
   document.querySelectorAll('.panel[data-panel]').forEach(p=>p.classList.toggle('active', p.dataset.panel===tab));
@@ -39,13 +49,18 @@ function showMainTab(tab){
   window.scrollTo({top:0, behavior:'smooth'});
 }
 function showSettingsSub(sub){
+  const alias = SETTINGS_SUB_ALIASES[sub];
+  if (alias) sub = alias.sub;
   currentSettingsSub = sub;
   document.querySelectorAll('.settings-subnav .subtab-btn').forEach(b=>b.classList.toggle('active', b.dataset.subtab===sub));
   document.querySelectorAll('.subpanel[data-subpanel]').forEach(p=>p.classList.toggle('active', p.dataset.subpanel===sub));
-  if (sub === 'io'){ syncAdvDetailsState(); renderJsonPreview(); }
-  if (sub === 'share') renderShareLinksPanel();
-  if (sub === 'discord') renderDiscordPanel();
-  if (sub === 'members') renderInviteCard();
+  if (sub === 'advanced'){ syncAdvDetailsState(); renderJsonPreview(); }
+  if (sub === 'people'){ renderShareLinksPanel(); renderInviteCard(); }
+  if (sub === 'trip') renderDiscordPanel();
+  // 有指定卡片就捲過去；否則切換分組後回到頂端，不要停在上一個分組的捲動位置
+  const anchorEl = alias && alias.anchor && document.getElementById(alias.anchor);
+  if (anchorEl) requestAnimationFrame(()=>anchorEl.scrollIntoView({ behavior:'smooth', block:'start' }));
+  else if (document.getElementById('panel-settings').classList.contains('active')) window.scrollTo({ top:0 });
 }
 // 已開啟雲端行程時，把「本機檔案／下載貼上／匯入」這些備用方式預設收合，
 // 減少畫面雜訊；沒連線時預設展開，因為那時候本機方式就是主要路徑。

@@ -20,6 +20,26 @@
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+<!-- 全站共用的線條 icon（取代 emoji：各平台長得一致、會跟著主題變色）。
+     用法：<svg class="ic" aria-hidden="true"><use href="#i-名稱"/></svg>；線條樣式由 CSS 的 svg.ic 統一控制。 -->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none;">
+  <symbol id="i-overview" viewBox="0 0 24 24"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></symbol>
+  <symbol id="i-receipt" viewBox="0 0 24 24"><path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/></symbol>
+  <symbol id="i-transfer" viewBox="0 0 24 24"><path d="M4 8h15l-4-4"/><path d="M20 16H5l4 4"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></symbol>
+  <symbol id="i-luggage" viewBox="0 0 24 24"><rect x="5" y="7" width="14" height="14" rx="2"/><path d="M9 7V4h6v3M9 11v6M15 11v6"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
+  <symbol id="i-tool" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></symbol>
+  <symbol id="i-switch" viewBox="0 0 24 24"><path d="M7 15l5 5 5-5M7 9l5-5 5 5"/></symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></symbol>
+</svg>
+
 
 <div id="toastStack" aria-live="polite"></div>
 <div id="modalRoot"></div>
@@ -39,16 +59,18 @@
   <div class="app-header-inner">
     <div class="header-row1">
       <span class="brand">拆帳本</span>
-      <input type="text" id="tripName" placeholder="行程名稱，例如：沖繩三天兩夜">
+      <input type="text" id="tripName" placeholder="行程名稱，例如：沖繩三天兩夜" title="點擊修改行程名稱" aria-label="行程名稱">
+      <button class="header-icon-btn" id="tripSwitchBtn" type="button" onclick="openTripSwitcher()" aria-label="切換行程" title="切換行程" style="display:none;"><svg class="ic" aria-hidden="true"><use href="#i-switch"/></svg></button>
       <span class="header-currency" id="baseCurrencyLabel" title="基準幣別於建立行程時決定，之後無法更改"></span>
+      <!-- 同步狀態：已同步／儲存中／未儲存（點擊重試）／離線／唯讀，見 js/tripSync.js 的 renderSyncStatus() -->
+      <button class="sync-status" id="syncStatus" type="button" onclick="onSyncStatusClick()" data-state="offline">
+        <span class="sync-dot" aria-hidden="true"></span><span class="sync-label">離線</span>
+      </button>
       <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" type="button" aria-label="切換深色/淺色模式" title="切換深色/淺色模式">
-        <span id="themeToggleIcon">🌙</span>
+        <svg class="ic" aria-hidden="true"><use id="themeToggleIcon" href="#i-moon"/></svg>
       </button>
     </div>
     <div class="status-pills" data-owner-only>
-      <button class="pill" id="botStatusPill" onclick="showMainTab('settings'); showSettingsSub('connect');" type="button">
-        <span class="dot"></span><span id="botStatusText">未登入</span>
-      </button>
       <button class="pill" id="fileStatusPill" onclick="showMainTab('settings'); showSettingsSub('io');" type="button">
         <span class="dot"></span><span id="fileStatusText">未連結本機檔案</span>
       </button>
@@ -57,10 +79,10 @@
 </header>
 
 <nav class="top-nav wrap" id="topNav">
-  <button class="nav-btn active" data-tab="overview" onclick="showMainTab('overview')"><span class="ic">📊</span>總覽結算</button>
-  <button class="nav-btn" data-tab="expenses" onclick="showMainTab('expenses')"><span class="ic">🧾</span>支出記帳</button>
-  <button class="nav-btn" data-tab="deposits" onclick="showMainTab('deposits')"><span class="ic">💸</span>轉帳／預收</button>
-  <button class="nav-btn" data-tab="settings" onclick="showMainTab('settings')" data-owner-only><span class="ic">⚙️</span>設定</button>
+  <button class="nav-btn active" data-tab="overview" onclick="showMainTab('overview')"><svg class="ic" aria-hidden="true"><use href="#i-overview"/></svg>總覽結算</button>
+  <button class="nav-btn" data-tab="expenses" onclick="showMainTab('expenses')"><svg class="ic" aria-hidden="true"><use href="#i-receipt"/></svg>支出記帳</button>
+  <button class="nav-btn" data-tab="deposits" onclick="showMainTab('deposits')"><svg class="ic" aria-hidden="true"><use href="#i-transfer"/></svg>轉帳／預收</button>
+  <button class="nav-btn" data-tab="settings" onclick="showMainTab('settings')" data-owner-only><svg class="ic" aria-hidden="true"><use href="#i-settings"/></svg>設定</button>
 </nav>
 
 <main class="wrap">
@@ -139,7 +161,7 @@
     <div class="card" id="receiptScanCard" data-write-only>
       <label class="receipt-scan-trigger" for="receiptFileInput" id="receiptScanTrigger">
         <span class="receipt-scan-trigger-body" id="receiptScanTriggerBody">
-          <span class="receipt-scan-ic">🧾</span>
+          <span class="receipt-scan-ic"><svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg></span>
           <span class="receipt-scan-txt">
             <span class="title">點擊上傳帳單照片</span>
             <span class="sub">或把照片拖曳到這個頁面，放開即可自動辨識（僅接受圖片格式）</span>
@@ -210,11 +232,11 @@
           </div>
         </div>
         <div class="chip-select" id="participantChips"></div>
-        <!-- 窄螢幕會隱藏 .lbl-long 的字，讓三顆按鈕維持在同一行（「重新平均／全部平均／自行分擔」） -->
+        <!-- 窄螢幕會隱藏 .lbl-long 的字，讓三顆按鈕維持在同一行（「重新平均／全部平均／各付各的」） -->
         <div class="btn-row split-actions">
           <button class="btn btn-ghost btn-sm" onclick="equalFillChips('participant')" title="依已勾選人數重新平均"><span><span class="lbl-long">依已勾選人數</span>重新平均</span></button>
           <button class="btn btn-ghost btn-sm" onclick="checkAllParticipants()" title="全部人平均分攤"><span>全部<span class="lbl-long">人</span>平均<span class="lbl-long">分攤</span></span></button>
-          <button class="btn btn-ghost btn-sm" onclick="selfShareParticipants()">自行分擔</button>
+          <button class="btn btn-ghost btn-sm" onclick="selfShareParticipants()" title="誰付的就算誰的，不分攤給其他人（只是記一筆帳）">各付各的</button>
         </div>
       </div>
 
@@ -310,87 +332,94 @@
     </div>
   </div>
 
-  <!-- ================= SETTINGS (成員／匯率／分享／行程／Discord／檔案) ================= -->
+  <!-- ================= SETTINGS ================= -->
+  <!-- 子分頁依「你想做什麼」分組：行程本身的設定／成員與分享／帳號與行程清單／進階備援。
+       舊的子分頁名稱（members、rates、share、connect、discord、io）仍可傳給 showSettingsSub()，
+       會自動切到新的分組並捲到對應卡片，見 js/state.js 的 SETTINGS_SUB_ALIASES。 -->
   <div class="panel" id="panel-settings" data-panel="settings" data-owner-only>
-    <div class="settings-subnav">
-      <button class="subtab-btn active" data-subtab="members" onclick="showSettingsSub('members')">👥 成員</button>
-      <button class="subtab-btn" data-subtab="rates" onclick="showSettingsSub('rates')">💱 匯率</button>
-      <button class="subtab-btn" data-subtab="share" onclick="showSettingsSub('share')">🔗 分享連結</button>
-      <button class="subtab-btn" data-subtab="connect" onclick="showSettingsSub('connect')">🧳 行程</button>
-      <button class="subtab-btn" data-subtab="discord" onclick="showSettingsSub('discord')">🤖 Discord</button>
-      <button class="subtab-btn" data-subtab="io" onclick="showSettingsSub('io')">📁 檔案</button>
+    <div class="settings-subnav" aria-label="設定分類">
+      <button class="subtab-btn active" data-subtab="trip" onclick="showSettingsSub('trip')"><svg class="ic" aria-hidden="true"><use href="#i-luggage"/></svg>行程</button>
+      <button class="subtab-btn" data-subtab="people" onclick="showSettingsSub('people')"><svg class="ic" aria-hidden="true"><use href="#i-users"/></svg>成員與分享</button>
+      <button class="subtab-btn" data-subtab="account" onclick="showSettingsSub('account')"><svg class="ic" aria-hidden="true"><use href="#i-user"/></svg>帳號</button>
+      <button class="subtab-btn" data-subtab="advanced" onclick="showSettingsSub('advanced')"><svg class="ic" aria-hidden="true"><use href="#i-tool"/></svg>進階</button>
     </div>
 
-    <div class="subpanel active" id="panel-members" data-subpanel="members">
-      <div class="card">
+    <!-- ---------- 🧳 行程：這個行程本身的設定 ---------- -->
+    <div class="subpanel active" id="panel-trip" data-subpanel="trip">
+      <div class="card" id="tripInfoCard">
+        <h2 class="section-title">基本資訊</h2>
+        <p class="hint" style="margin-top:0;">行程名稱可以直接點頁首的名稱修改。基準幣別在建立行程時決定，之後無法更改。</p>
+        <div class="field">
+          <label for="tripId">行程 ID</label>
+          <input type="text" id="tripId" readonly style="opacity:.7; cursor:default;">
+        </div>
+        <p class="hint">匯入／匯出 JSON、或呼叫 API 時用來識別這個行程的代碼。</p>
+      </div>
+
+      <div class="card" id="ratesCard">
+        <h2 class="section-title">匯率</h2>
+        <p class="hint" style="margin-top:0;">記帳時會優先自動查詢即時匯率；這裡的數字是查不到時的備用值。每列表示「1 單位該幣別 ＝ 多少 <span id="baseLabel">TWD</span>」。</p>
+        <table class="rate-table">
+          <thead><tr><th>幣別</th><th>1 單位 ＝ 多少基準幣</th><th></th></tr></thead>
+          <tbody id="rateTableBody"></tbody>
+        </table>
+        <div class="btn-row add-rate-row">
+          <input type="text" id="newRateCurrency" placeholder="幣別代碼 (如 JPY)" style="max-width:140px; text-transform:uppercase;" aria-label="幣別代碼">
+          <input type="number" inputmode="decimal" id="newRateValue" placeholder="匯率" step="0.0001" style="max-width:120px;" aria-label="匯率">
+          <button class="btn btn-primary" onclick="addRate()">＋ 新增幣別</button>
+        </div>
+      </div>
+
+      <!-- 🆕 [行程獨立化] 綁定到 Discord 伺服器（內容由 js/account.js 的 renderDiscordPanel 產生） -->
+      <div class="card" id="discordCard">
+        <h2 class="section-title">Discord 伺服器綁定</h2>
+        <div id="discordPanelBody"></div>
+      </div>
+    </div>
+
+    <!-- ---------- 👥 成員與分享：誰在這個行程裡、誰看得到 ---------- -->
+    <div class="subpanel" id="panel-people" data-subpanel="people">
+      <div class="card" id="membersCard">
         <h2 class="section-title">成員名單 <span class="n" id="memberCount"></span></h2>
         <div class="member-list" id="memberList"></div>
         <div class="btn-row inline-add-row">
-          <input type="text" id="newMemberName" placeholder="新成員名稱" style="max-width:180px;">
+          <input type="text" id="newMemberName" placeholder="新成員名稱" style="max-width:180px;" aria-label="新成員名稱" onkeydown="if(event.key==='Enter'){event.preventDefault(); addMember();}">
           <button class="btn btn-primary" onclick="addMember()">＋ 新增成員</button>
         </div>
         <p class="hint">在這裡新增的成員一開始是「未連結」：可以照常記帳，但他本人要看到這個行程，需要用下方的邀請連結認領。</p>
       </div>
       <!-- 🆕 [成員邀請] 只有開啟雲端行程、且自己是成員時才顯示（js/account.js 的 renderInviteCard） -->
       <div class="card" id="inviteCard" style="display:none;">
-        <h2 class="section-title">✉️ 邀請朋友連結 Discord</h2>
+        <h2 class="section-title">邀請朋友加入</h2>
         <p class="hint" id="inviteCardHint"></p>
         <div class="btn-row">
           <button class="btn btn-brass" type="button" onclick="withLoading(this,'產生中…',copyInviteLink)">🔗 複製邀請連結</button>
           <button class="btn btn-ghost btn-sm" type="button" id="btnRotateInvite" onclick="rotateInviteLink()">重新產生（讓舊連結失效）</button>
         </div>
-        <p class="hint">邀請連結只能讓人「認領尚未連結的成員」或「以新成員加入」，不能搶走已經連結的人。認錯人的話，建立者可以在上面的名單按「解除連結」。</p>
+        <p class="hint">邀請連結需要用 Discord 登入，只能「認領尚未連結的成員」或「以新成員加入」，不能搶走已經連結的人。認錯人的話，建立者可以在上面的名單按「解除連結」。</p>
       </div>
-      <div class="card">
-        <h2 class="section-title">行程資訊</h2>
-        <div class="field">
-          <label>行程 ID</label>
-          <input type="text" id="tripId" readonly style="opacity:.7; cursor:default;">
-        </div>
-        <p class="hint">此 ID 是匯入／匯出 JSON、或呼叫 API 時用來識別這個行程的代碼。</p>
-      </div>
-    </div>
 
-    <div class="subpanel" id="panel-rates" data-subpanel="rates">
-      <div class="card">
-        <h2 class="section-title">匯率設定</h2>
-        <p class="hint">1 單位該幣別 = <code class="inline">rate</code> 個基準幣別（<span id="baseLabel">TWD</span>）。基準幣別本身固定為 1。</p>
-        <table class="rate-table">
-          <thead><tr><th>幣別代碼</th><th>兌基準幣匯率</th><th></th></tr></thead>
-          <tbody id="rateTableBody"></tbody>
-        </table>
-        <div class="btn-row add-rate-row">
-          <input type="text" id="newRateCurrency" placeholder="幣別代碼 (如 JPY)" style="max-width:140px; text-transform:uppercase;">
-          <input type="number" inputmode="decimal" id="newRateValue" placeholder="匯率" step="0.0001" style="max-width:120px;">
-          <button class="btn btn-primary" onclick="addRate()">＋ 新增幣別</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="subpanel" id="panel-share" data-subpanel="share">
-      <div class="card">
-        <h2 class="section-title">🔗 分享連結</h2>
-        <p class="hint">
-          建立一組專屬於「目前這個行程」的連結給朋友，他們點開就能直接看到這個行程。
-        </p>
+      <div class="card" id="shareCard">
+        <h2 class="section-title">分享連結</h2>
+        <p class="hint" style="margin-top:0;">不需要登入就能打開的連結，適合給沒有 Discord 的朋友。可以設成唯讀或可編輯，也可以設定期限、隨時撤銷。</p>
         <div id="shareLinkNoTripHint" style="display:none;">
-          <p class="hint">請先到「🧳 行程」開啟一個雲端行程，才能為它建立分享連結。</p>
+          <p class="hint">請先到「帳號」開啟一個雲端行程，才能為它建立分享連結。</p>
         </div>
         <div id="shareLinkManageArea" style="display:none;">
           <div class="field">
-            <label>備註（選填，方便你自己認得這是給誰的連結，例如：小華）</label>
+            <label for="shareLinkLabel">備註（選填，方便你自己認得這是給誰的連結）</label>
             <input type="text" id="shareLinkLabel" placeholder="例如：小華">
           </div>
           <div class="row share-link-options">
             <div class="field">
-              <label>權限</label>
+              <label for="shareLinkPermission">權限</label>
               <select id="shareLinkPermission">
                 <option value="read">👀 唯讀（只能看，不能改）</option>
                 <option value="write">✏️ 可編輯（能新增/修改/刪除）</option>
               </select>
             </div>
             <div class="field">
-              <label>有效期限</label>
+              <label for="shareLinkExpiry">有效期限</label>
               <select id="shareLinkExpiry">
                 <option value="0">永久有效</option>
                 <option value="1">1 天</option>
@@ -404,13 +433,14 @@
             <button class="btn btn-brass" id="btnCreateShareLink" onclick="withLoading(this,'建立中…',createShareLink)">＋ 建立分享連結</button>
           </div>
 
-          <h2 class="section-title" style="font-size:14.5px; margin-top:20px;">目前的分享連結 <span class="n" id="shareLinkCount"></span></h2>
+          <h3 class="section-subtitle">目前的分享連結 <span class="n" id="shareLinkCount"></span></h3>
           <div id="shareLinkList"></div>
         </div>
       </div>
     </div>
 
-    <div class="subpanel" id="panel-connect" data-subpanel="connect">
+    <!-- ---------- 👤 帳號：登入、我的行程、建立行程 ---------- -->
+    <div class="subpanel" id="panel-account" data-subpanel="account">
       <div class="card">
         <h2 class="section-title">帳號</h2>
         <div id="accountArea"></div>
@@ -419,73 +449,57 @@
       <div class="card" id="myTripsCard" style="display:none;">
         <h2 class="section-title">我的行程</h2>
         <div class="field">
-          <label>行程</label>
+          <label for="tripSelect">行程</label>
           <select id="tripSelect"><option value="">－ 讀取中 －</option></select>
         </div>
         <div class="btn-row trip-actions">
           <button class="btn btn-brass" id="btnLoadTrip" onclick="withLoading(this,'載入中…',loadTripFromApi)">⬇ 開啟這個行程</button>
-          <button class="btn btn-brass" id="btnSaveTrip" onclick="withLoading(this,'儲存中…',()=>saveTripToApi())">⬆ 儲存目前的行程</button>
           <button class="btn btn-ghost btn-sm" onclick="withLoading(this,'讀取中…',()=>refreshTripList())">重新整理清單</button>
         </div>
-        <p class="hint">成員、匯率、行程名稱等設定變更會自動寫入雲端（畫面是什麼，JSON 就是什麼），不需要另外按儲存；「儲存」按鈕可手動再寫入一次。如果別人剛好也改過，會先自動合併，無法合併時才會詢問你。</p>
+        <p class="hint">也可以直接點頁首行程名稱旁的切換按鈕快速換行程。所有變更都會自動寫入雲端，頁首會顯示同步狀態；如果別人剛好也改過，會先自動合併，無法合併時才會詢問你。</p>
 
-        <h2 class="section-title" style="font-size:14.5px; margin-top:20px;">建立新行程</h2>
+        <h3 class="section-subtitle" id="createTripHeading">建立新行程</h3>
         <div class="row">
           <div class="field">
-            <label>行程名稱</label>
+            <label for="newTripName">行程名稱</label>
             <input type="text" id="newTripName" maxlength="60" placeholder="例如：沖繩三天兩夜">
           </div>
-          <div class="field" style="max-width:140px;">
-            <label>基準幣別</label>
-            <input type="text" id="newTripCurrency" maxlength="6" value="TWD" style="text-transform:uppercase;">
+          <div class="field" style="max-width:180px;">
+            <label for="newTripCurrency">基準幣別（建立後無法更改）</label>
+            <select id="newTripCurrency">
+              <option value="TWD" selected>TWD 新台幣</option>
+              <option value="JPY">JPY 日圓</option>
+              <option value="KRW">KRW 韓元</option>
+              <option value="USD">USD 美元</option>
+              <option value="EUR">EUR 歐元</option>
+              <option value="HKD">HKD 港幣</option>
+              <option value="CNY">CNY 人民幣</option>
+              <option value="THB">THB 泰銖</option>
+              <option value="SGD">SGD 新加坡幣</option>
+              <option value="MYR">MYR 馬幣</option>
+              <option value="VND">VND 越南盾</option>
+              <option value="GBP">GBP 英鎊</option>
+              <option value="AUD">AUD 澳幣</option>
+            </select>
           </div>
         </div>
         <div class="btn-row">
           <button class="btn btn-primary" onclick="withLoading(this,'建立中…',createTripOnServer)">＋ 建立行程</button>
         </div>
-        <p class="hint">你會是這個行程的建立者，也是第一位成員。之後可以新增朋友並傳邀請連結給他們，或到「🤖 Discord」綁定到 Discord 伺服器。</p>
+        <p class="hint">你會是這個行程的建立者，也是第一位成員。之後可以到「成員與分享」邀請朋友，或到「行程」綁定 Discord 伺服器。</p>
         <div id="uploadLocalTripRow" style="display:none; margin-top:12px;">
           <p class="hint">目前畫面上是離線編輯（或匯入）的行程，可以把它整份上傳成新的雲端行程：</p>
           <div class="btn-row"><button class="btn btn-ghost" onclick="withLoading(this,'上傳中…',uploadLocalTripToServer)">☁️ 把目前的行程上傳到雲端</button></div>
         </div>
       </div>
-
-      <details class="adv">
-        <summary>進階：管理員金鑰連線</summary>
-        <div class="card" style="margin-top:10px;">
-          <p class="hint">給維運用：填入伺服器的 <code class="inline">SPLITBILL_API_KEY</code> 可以看到並管理所有行程。一般使用請用上面的 Discord 登入。</p>
-          <div class="field">
-            <label>API 位址（同伺服器提供時可留空，會自動用目前網址）</label>
-            <input type="text" id="apiBase" placeholder="例如：https://your-app.app">
-          </div>
-          <div class="field">
-            <label>API Key</label>
-            <div class="input-with-toggle">
-              <input type="password" id="apiKey" placeholder="在伺服器環境變數設定的金鑰" autocomplete="new-password">
-              <button type="button" class="input-toggle-btn" onclick="toggleApiKeyVisibility()" id="apiKeyToggleBtn">顯示</button>
-            </div>
-          </div>
-          <div class="btn-row">
-            <button class="btn btn-brass" id="btnConnect" onclick="withLoading(this,'連線中…',async()=>{ await refreshTripList(); renderAccountArea(); })">用金鑰讀取所有行程</button>
-            <button class="btn btn-ghost" onclick="copyBookmarkUrl()">🔖 複製一鍵連線書籤網址</button>
-          </div>
-        </div>
-      </details>
     </div>
 
-    <!-- 🆕 [行程獨立化] 綁定到 Discord 伺服器（內容由 js/account.js 的 renderDiscordPanel 產生） -->
-    <div class="subpanel" id="panel-discord" data-subpanel="discord">
-      <div class="card">
-        <h2 class="section-title">🤖 Discord 伺服器綁定</h2>
-        <div id="discordPanelBody"></div>
-      </div>
-    </div>
-
-    <div class="subpanel" id="panel-io" data-subpanel="io">
-      <p class="hint" style="margin-bottom:14px;">開啟雲端行程時，資料會直接同步到雲端；以下是離線編輯或備援用的本機方式，平常不一定會用到。</p>
+    <!-- ---------- 🛠 進階：離線備援與維運用 ---------- -->
+    <div class="subpanel" id="panel-advanced" data-subpanel="advanced">
+      <p class="hint" style="margin:0 0 14px;">開啟雲端行程時，資料會直接同步到雲端；以下是離線編輯、備份或維運用的功能，平常不一定會用到。</p>
 
       <details class="adv" id="advFileDetails">
-        <summary>本機檔案與匯入匯出（進階／備用）</summary>
+        <summary>本機檔案與匯入匯出</summary>
         <div class="adv-inner">
           <div class="card" id="localFileCard">
             <h2 class="section-title">直接覆寫本機檔案</h2>
@@ -502,38 +516,67 @@
           </div>
 
           <div class="card">
-            <h2 class="section-title">下載／貼上（備用方式）</h2>
+            <h2 class="section-title">下載／複製備份</h2>
             <p class="hint">匯出的 JSON 結構與 Mousebot <code class="inline">splitbill.js</code> 儲存格式相容。</p>
             <div class="btn-row">
               <button class="btn btn-ghost" onclick="downloadJson()">⬇ 下載 trip.json</button>
               <button class="btn btn-ghost" onclick="copyJson()">複製 JSON 到剪貼簿</button>
             </div>
-            <textarea id="jsonPreview" rows="8" readonly style="margin-top:12px;"></textarea>
+            <textarea id="jsonPreview" rows="8" readonly style="margin-top:12px;" aria-label="目前行程的 JSON"></textarea>
           </div>
 
           <div class="card">
             <h2 class="section-title">匯入</h2>
             <p class="hint">貼上單一 trip 的 JSON，或整個 <code class="inline">{ guildId: { trips: {...} } }</code> 檔案。</p>
-            <input type="file" id="fileInput" accept="application/json" onchange="handleFileImport(event)">
-            <textarea id="jsonInput" rows="6" placeholder="貼上 JSON 內容..." style="margin-top:10px;"></textarea>
+            <input type="file" id="fileInput" accept="application/json" onchange="handleFileImport(event)" aria-label="選擇 JSON 檔案">
+            <textarea id="jsonInput" rows="6" placeholder="貼上 JSON 內容..." style="margin-top:10px;" aria-label="貼上 JSON 內容"></textarea>
             <div class="btn-row">
               <button class="btn btn-primary" onclick="importJson()">載入這份 JSON</button>
+            </div>
+          </div>
+
+          <!-- 破壞性操作獨立成一張卡片，不跟「載入 JSON」擠在同一列，降低誤觸機會 -->
+          <div class="card danger-zone">
+            <h2 class="section-title">清空畫面</h2>
+            <p class="hint">清掉目前畫面上的所有資料，開一個空白的離線行程。</p>
+            <div class="btn-row">
               <button class="btn btn-danger" onclick="confirmNewTrip()">清空並開新行程</button>
             </div>
+          </div>
+        </div>
+      </details>
+
+      <details class="adv" style="margin-top:12px;">
+        <summary>管理員金鑰連線</summary>
+        <div class="card" style="margin-top:10px;">
+          <p class="hint">給維運用：填入伺服器的 <code class="inline">SPLITBILL_API_KEY</code> 可以看到並管理所有行程。一般使用請到「帳號」用 Discord 登入。</p>
+          <div class="field">
+            <label for="apiBase">API 位址（同伺服器提供時可留空，會自動用目前網址）</label>
+            <input type="text" id="apiBase" placeholder="例如：https://your-app.app">
+          </div>
+          <div class="field">
+            <label for="apiKey">API Key</label>
+            <div class="input-with-toggle">
+              <input type="password" id="apiKey" placeholder="在伺服器環境變數設定的金鑰" autocomplete="new-password">
+              <button type="button" class="input-toggle-btn" onclick="toggleApiKeyVisibility()" id="apiKeyToggleBtn">顯示</button>
+            </div>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-brass" id="btnConnect" onclick="withLoading(this,'連線中…',async()=>{ await refreshTripList(); renderAccountArea(); })">用金鑰讀取所有行程</button>
+            <button class="btn btn-ghost" onclick="copyBookmarkUrl()">🔖 複製一鍵連線書籤網址</button>
           </div>
         </div>
       </details>
     </div>
   </div>
 
-  <footer>拆帳本 · Mousebot Splitbill Schema</footer>
 </main>
 
 <nav class="bottom-nav" id="bottomNav">
-  <button class="nav-btn active" data-tab="overview" onclick="showMainTab('overview')"><span class="ic">📊</span>總覽</button>
-  <button class="nav-btn" data-tab="expenses" onclick="showMainTab('expenses')"><span class="ic">🧾</span>支出</button>
-  <button class="nav-btn" data-tab="deposits" onclick="showMainTab('deposits')"><span class="ic">💸</span>轉帳</button>
-  <button class="nav-btn" data-tab="settings" onclick="showMainTab('settings')" data-owner-only><span class="ic">⚙️</span>設定</button>
+  <button class="nav-btn active" data-tab="overview" onclick="showMainTab('overview')"><svg class="ic" aria-hidden="true"><use href="#i-overview"/></svg>總覽</button>
+  <button class="nav-btn" data-tab="expenses" onclick="showMainTab('expenses')"><svg class="ic" aria-hidden="true"><use href="#i-receipt"/></svg>支出</button>
+  <button class="nav-btn" data-tab="deposits" onclick="showMainTab('deposits')"><svg class="ic" aria-hidden="true"><use href="#i-transfer"/></svg>轉帳</button>
+  <button class="nav-btn" data-tab="settings" onclick="showMainTab('settings')" data-owner-only><svg class="ic" aria-hidden="true"><use href="#i-settings"/></svg>設定</button>
 </nav>
 
 <script src="js/helpers.js"></script>

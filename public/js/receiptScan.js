@@ -589,7 +589,7 @@ function renderReceiptWorkArea(){
   const curInTrip = detectedCur && trip.rates[detectedCur];
   const defaultCur = receiptState.currency || (curInTrip ? detectedCur : trip.baseCurrency);
   const currencyHint = (detectedCur && !curInTrip)
-    ? `<p class="hint" style="color:var(--debt);">偵測到帳單可能是 <b>${detectedCur}</b>，但行程裡還沒有這個幣別的匯率，請先到「設定 → 匯率」新增，否則下面無法選擇它。</p>`
+    ? `<p class="hint" style="color:var(--debt);">偵測到帳單可能是 <b>${detectedCur}</b>，但行程裡還沒有這個幣別的匯率，請先到「設定 → 行程」的匯率新增，否則下面無法選擇它。</p>`
     : (detectedCur ? `<p class="hint">已自動選擇偵測到的幣別 ${detectedCur}，辨識錯了可以在下面自行改選。</p>` : '');
 
   const payerOptions = trip.members.map(m=>`<option value="${m.id}" ${receiptState.payerId===m.id?'selected':''}>${escapeHtml(m.name)}</option>`).join('');

@@ -79,7 +79,7 @@ function buildChips(containerId, prefix){
       <input type="number" class="amt" inputmode="decimal" step="0.01" min="0"
         aria-label="${escapeHtml(m.name)} 的金額" data-id="${m.id}" disabled
         oninput="${prefix==='payer' ? `onPayerAmountInput('${m.id}')` : `onParticipantAmountInput('${m.id}')`}">
-    </div>`).join('') || '<p class="hint">尚未新增成員，請先到「成員」分頁新增。</p>';
+    </div>`).join('') || '<p class="hint">尚未新增成員，請先到「設定 → 成員與分享」新增。</p>';
   updateChipFieldMeta(container);
   syncManualMarks(prefix); // 🆕 重建後保險起見清掉舊的手動標記樣式（此時集合已重設為空）
 }
@@ -227,13 +227,13 @@ function checkAllParticipants(){
   updateChipFieldMeta(wrap);
   renderExpenseHint();
 }
-// 🆕「自行分擔」：自己買自己付錢，單純記一筆帳，不用分攤給任何其他人。
+// 🆕「各付各的」（原「自行分擔」）：自己買自己付錢，單純記一筆帳，不用分攤給任何其他人。
 // 直接把「分攤成員」複製成跟「代墊付款人」一模一樣的人跟金額（讀取當下
 // payerChips 已填好的值），讓這筆花費的淨額互相抵銷、不會產生任何欠款，
 // 但仍然完整記錄在支出清單裡，方便日後查帳。
 function selfShareParticipants(){
   const payers = readChipValues('payer');
-  if (!payers.length){ toast('請先勾選代墊付款人並輸入金額，再使用「自行分擔」', 'error'); return; }
+  if (!payers.length){ toast('請先勾選代墊付款人並輸入金額，再使用「各付各的」', 'error'); return; }
   const wrap = document.getElementById('participantChips');
   wrap.querySelectorAll('.chip').forEach(chip=>{
     setChipChecked(chip, false);
@@ -298,7 +298,7 @@ function renderExpenseHint(){
       const base = round2(amount*rate);
       hintHtml = `⏳ 查詢即時匯率中…暫用手動設定的匯率換算約為 <b>${fmtMoney(base, trip.baseCurrency)}</b>`;
     } else {
-      hintHtml = `幣別 ${currency} 尚無匯率資料，正在查詢即時匯率…如果查不到，請到「設定 → 匯率」分頁手動新增。`;
+      hintHtml = `幣別 ${currency} 尚無匯率資料，正在查詢即時匯率…如果查不到，請到「設定 → 行程」的匯率手動新增。`;
     }
   }
   document.getElementById('expBaseHint').innerHTML = hintHtml;

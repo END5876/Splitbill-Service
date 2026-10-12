@@ -173,7 +173,7 @@ function renderBalanceBarChart(net) {
   const el = document.getElementById('balanceBarChart');
   if (!el) return;
   if (!trip.members.length) {
-    el.innerHTML = emptyState('👥', '尚未新增成員，先到「設定 → 成員」加人吧', '前往新增成員 →',
+    el.innerHTML = emptyState('👥', '尚未新增成員，先到「設定 → 成員與分享」加人吧', '前往新增成員 →',
       "showMainTab('settings'); showSettingsSub('members'); document.getElementById('newMemberName').focus()");
     return;
   }
@@ -326,10 +326,11 @@ function renderMemberDetails(net) {
 
     // ↓↓↓ 修正處：transferIn 改為 -1（收到預付款＝減少淨額，因為原本墊款義務已被抵銷）
     //             transferOut 改為 +1（付出預付款＝增加淨額，等同預先幫忙代墊）
-    const paidSection   = renderSection('代墊支出（＋增加淨額）', ld.paid, 'paid', '代墊', 1);
-    const shareSection  = renderSection('分攤費用（－減少淨額）', ld.share, 'share', '分攤', -1);
-    const tInSection    = renderSection('預收款／轉帳收入（－減少淨額）', ld.transferIn, 'transfer-in', '收自', -1);
-    const tOutSection   = renderSection('預付款／轉帳支出（＋增加淨額）', ld.transferOut, 'transfer-out', '付給', 1);
+    // 分類標題用白話描述「這筆錢是怎麼來的」；＋／－ 對淨額的影響已經直接標在每筆金額上
+    const paidSection   = renderSection('先幫大家墊的錢', ld.paid, 'paid', '代墊', 1);
+    const shareSection  = renderSection('自己該分攤的部分', ld.share, 'share', '分攤', -1);
+    const tInSection    = renderSection('別人轉給他的錢', ld.transferIn, 'transfer-in', '收自', -1);
+    const tOutSection   = renderSection('他轉給別人的錢', ld.transferOut, 'transfer-out', '付給', 1);
 
     const totalPaid  = round2(ld.paid.reduce((s,x)=>s+x.amountInBase,0));
     const totalShare = round2(ld.share.reduce((s,x)=>s+x.amountInBase,0));
@@ -337,10 +338,10 @@ function renderMemberDetails(net) {
     const totalTOut  = round2(ld.transferOut.reduce((s,x)=>s+x.amountInBase,0));
 
     const summaryRows = [
-      totalPaid  ? `<div class="detail-summary-row"><span class="label">代墊合計</span><span class="val pos">+${fmtMoney(totalPaid, trip.baseCurrency)} ${trip.baseCurrency}</span></div>` : '',
+      totalPaid  ? `<div class="detail-summary-row"><span class="label">墊付合計</span><span class="val pos">+${fmtMoney(totalPaid, trip.baseCurrency)} ${trip.baseCurrency}</span></div>` : '',
       totalShare ? `<div class="detail-summary-row"><span class="label">分攤合計</span><span class="val neg">−${fmtMoney(totalShare, trip.baseCurrency)} ${trip.baseCurrency}</span></div>` : '',
-      totalTIn   ? `<div class="detail-summary-row"><span class="label">收款合計</span><span class="val neg">−${fmtMoney(totalTIn, trip.baseCurrency)} ${trip.baseCurrency}</span></div>` : '',
-      totalTOut  ? `<div class="detail-summary-row"><span class="label">付款合計</span><span class="val pos">+${fmtMoney(totalTOut, trip.baseCurrency)} ${trip.baseCurrency}</span></div>` : '',
+      totalTIn   ? `<div class="detail-summary-row"><span class="label">收到轉帳合計</span><span class="val neg">−${fmtMoney(totalTIn, trip.baseCurrency)} ${trip.baseCurrency}</span></div>` : '',
+      totalTOut  ? `<div class="detail-summary-row"><span class="label">轉出合計</span><span class="val pos">+${fmtMoney(totalTOut, trip.baseCurrency)} ${trip.baseCurrency}</span></div>` : '',
     ].filter(Boolean).join('');
 
     const bodyHtml = hasData
@@ -348,31 +349,37 @@ function renderMemberDetails(net) {
          <div style="border-top:1.5px solid var(--card-line);margin-top:8px;padding-top:4px;">
            ${summaryRows}
            <div class="detail-summary-row" style="border-top:1px dashed var(--card-line);margin-top:4px;padding-top:8px;">
-             <span class="label" style="font-weight:700;">淨額</span>
-             <span class="val ${netCls}" style="font-size:14px;">${netLabel}</span>
+             <span class="label" style="font-weight:700;">${v > 0.01 ? '大家還欠他' : v < -0.01 ? '他還需要付' : '淨額'}</span>
+             <span class="val ${netCls}" style="font-size:14px;">${v < -0.01 ? `${fmtMoney(-v, trip.baseCurrency)} ${trip.baseCurrency}` : netLabel}</span>
            </div>
          </div>`
       : '<p class="hint" style="padding:8px 0 4px;">尚無任何記帳紀錄。</p>';
 
-    return `<div class="member-detail-card" id="mdc-${m.id}">
-      <div class="member-detail-head" onclick="toggleMemberDetail('${m.id}')">
+    const isOpen = openMemberDetailIds.has(m.id);
+    return `<div class="member-detail-card ${isOpen ? 'open' : ''}" id="mdc-${m.id}">
+      <button type="button" class="member-detail-head" aria-expanded="${isOpen}" aria-controls="mdb-${m.id}" onclick="toggleMemberDetail('${m.id}')">
         <div class="member-detail-name">
           <span class="status-dot" style="background:${v>0.01?'var(--credit)':v<-0.01?'var(--debt)':'var(--card-line)'}"></span>
           ${escapeHtml(m.name)}
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
           <span class="member-detail-net ${netCls}">${netLabel}</span>
-          <span class="member-detail-chevron">▼</span>
+          <span class="member-detail-chevron" aria-hidden="true">▼</span>
         </div>
-      </div>
-      <div class="member-detail-body">${bodyHtml}</div>
+      </button>
+      <div class="member-detail-body" id="mdb-${m.id}">${bodyHtml}</div>
     </div>`;
   }).join('');
 }
 
+// 記住哪些成員明細是展開的：renderAll() 會整個重畫這一區（例如別人同步了新資料），
+// 不記住的話，使用者正在看的明細會突然收起來。
+const openMemberDetailIds = new Set();
 function toggleMemberDetail(memberId) {
   const card = document.getElementById('mdc-' + memberId);
   if (!card) return;
-  card.classList.toggle('open');
+  const open = card.classList.toggle('open');
+  if (open) openMemberDetailIds.add(memberId); else openMemberDetailIds.delete(memberId);
+  card.querySelector('.member-detail-head').setAttribute('aria-expanded', open ? 'true' : 'false');
 }
 

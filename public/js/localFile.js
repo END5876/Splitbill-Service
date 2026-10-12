@@ -18,21 +18,13 @@ function initFsApiUi(){
     hint.textContent = '按「選擇 trip.json」開啟你要編輯的檔案，之後按「儲存並覆寫檔案」會直接寫回同一個檔案，不用再下載、也不用手動貼上。此功能需要 HTTPS 或 localhost。';
   }
 }
-// 🆕 [狀態 pill 精簡] 兩顆 pill 各自只負責自己的 display，但外層容器
-// .status-pills 本身有 margin-top，就算兩顆都被設成 display:none，容器
-// 依然存在、依然占用那段垂直間距，畫面上會看起來「狀態不見了、但空間
-// 還留著」。這裡統一在每次任一顆 pill 的狀態更新完之後，檢查「這兩顆
-// 現在是不是全部都隱藏」，是的話連容器本身也一起 display:none，
-// 只要有任一顆需要顯示，就把容器打開——徹底收掉那段留白，而不是只讓
-// 裡面的內容消失。
+// 🆕 [狀態 pill 精簡] 現在只剩「本機檔案」一顆 pill（雲端連線狀態改由頁首的
+// 同步狀態 #syncStatus 顯示）；pill 隱藏時連外層容器一起收掉，不留空白版位。
 function syncStatusPillsVisibility(){
   const wrap = document.querySelector('.status-pills');
   if (!wrap) return;
-  const botPill = document.getElementById('botStatusPill');
   const filePill = document.getElementById('fileStatusPill');
-  const botVisible = !!botPill && botPill.style.display !== 'none';
-  const fileVisible = !!filePill && filePill.style.display !== 'none';
-  wrap.style.display = (botVisible || fileVisible) ? 'flex' : 'none';
+  wrap.style.display = (filePill && filePill.style.display !== 'none') ? 'flex' : 'none';
 }
 function updateLocalFileStatus(){
   const el = document.getElementById('localFileStatus');
@@ -52,20 +44,10 @@ function updateLocalFileStatus(){
   pill.style.display = localFileHandle ? '' : 'none';
   syncStatusPillsVisibility();
 }
-function updateBotStatusPill(connected, label){
-  const pillText = document.getElementById('botStatusText');
-  const pill = document.getElementById('botStatusPill');
-  if (connected){
-    pillText.textContent = label ? `雲端行程：${label}` : '已開啟雲端行程';
-    pill.classList.add('on'); pill.classList.remove('warn');
-  } else {
-    pillText.textContent = (typeof currentUser !== 'undefined' && currentUser) ? '離線編輯中（未開啟雲端行程）' : '未登入';
-    pill.classList.remove('on','warn');
-  }
-  // 🆕 [狀態 pill 精簡] 已開啟雲端行程是正常狀態，不需要常駐佔位；沒有才需要
-  // 使用者處理，才跳出來提醒（點下去可直接跳到「行程」分頁）。
-  pill.style.display = connected ? 'none' : '';
-  syncStatusPillsVisibility();
+// 雲端連線狀態原本是頁首的一顆 pill，現在併入同步狀態（js/tripSync.js 的
+// renderSyncStatus()）；保留這個函式名稱，讓既有呼叫端不用改。
+function updateBotStatusPill(){
+  if (typeof renderSyncStatus === 'function') renderSyncStatus();
 }
 function toggleApiKeyVisibility(){
   const input = document.getElementById('apiKey');

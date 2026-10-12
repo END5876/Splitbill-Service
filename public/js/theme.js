@@ -13,7 +13,7 @@ function syncThemeToggleUI(theme){
   const icon = document.getElementById('themeToggleIcon');
   const btn = document.getElementById('themeToggleBtn');
   const label = theme === 'dark' ? '切換為淺色模式' : '切換為深色模式';
-  if (icon) icon.textContent = theme === 'dark' ? '☀️' : '🌙';
+  if (icon) icon.setAttribute('href', theme === 'dark' ? '#i-sun' : '#i-moon');
   if (btn){ btn.title = label; btn.setAttribute('aria-label', label); }
 }
 function setTheme(theme, persist){

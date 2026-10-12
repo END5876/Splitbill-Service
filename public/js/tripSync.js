@@ -5,12 +5,14 @@ async function loadTripFromApi(opts){
   opts = opts || {};
   const tripId = document.getElementById('tripSelect').value;
   if (!tripId){ if (!opts.quiet) toast('請先選擇一個行程', 'error'); return; }
+  await flushCloudSave(); // 目前行程還有等待中的自動儲存，先存完再換掉 trip，避免改動遺失
   try{
     const res = await fetch(`${apiBaseUrl()}/api/trip/${encodeURIComponent(tripId)}`, { headers: apiHeaders() });
     const data = await apiJson(res);
     currentTripId = tripId;
     trip = repairTrip(data);
     lastSyncedTripJSON = JSON.stringify(trip);
+    syncFailed = false;
     editingExpenseId = null; editingDepositId = null;
     expandedExpenseIds.clear(); expandedDepositIds.clear();
     resetListFilters();
@@ -18,8 +20,8 @@ async function loadTripFromApi(opts){
     if (!opts.quiet) toast(`已載入「${trip.name}」（成員 ${trip.members.length} 人、支出 ${trip.expenses.length} 筆）`, 'success');
     updateBotStatusPill(true, trip.name);
     syncAdvDetailsState();
-    if (currentSettingsSub === 'share') renderShareLinksPanel();
-    if (currentSettingsSub === 'discord') renderDiscordPanel();
+    if (currentSettingsSub === 'people') renderShareLinksPanel();
+    if (currentSettingsSub === 'trip') renderDiscordPanel();
     saveOwnerConnectionState();
     renderAll();
     connectTripEventStream();
@@ -33,15 +35,25 @@ async function loadTripFromApi(opts){
 // 防抖＋序列化：連續操作只存一次；存檔進行中又有新改動，等這次結束後再補存一次。
 // 離線行程（沒有 currentTripId 且非分享連結）不處理，維持原本的本機／手動流程。
 let cloudSaveTimer = null;
+let cloudSavePending = false; // 已排程、但防抖計時還沒到（頁首同步狀態也算「儲存中」）
 let cloudSaveRunning = false;
 let cloudSaveQueued = false;
 function scheduleCloudSave(delay){
   if (!currentTripId && !shareMode) return;
   if (shareMode && shareMode.permission !== 'write') return;
   clearTimeout(cloudSaveTimer);
+  cloudSavePending = true;
   cloudSaveTimer = setTimeout(runCloudSave, delay == null ? 300 : delay);
+  renderSyncStatus();
+}
+// 切換行程前呼叫：還在防抖等待中的自動儲存立刻送出，避免換掉 trip 之後改動遺失。
+async function flushCloudSave(){
+  if (!cloudSavePending) return;
+  clearTimeout(cloudSaveTimer);
+  await runCloudSave();
 }
 async function runCloudSave(){
+  cloudSavePending = false;
   if (cloudSaveRunning){ cloudSaveQueued = true; return; }
   cloudSaveRunning = true;
   try{ await saveTripToApi(); }
@@ -50,7 +62,53 @@ async function runCloudSave(){
     if (cloudSaveQueued){ cloudSaveQueued = false; scheduleCloudSave(0); }
   }
 }
+/* ===================== 頁首同步狀態 ===================== */
+// 讓使用者隨時知道資料存了沒：已同步／儲存中／未儲存（點擊重試）／離線／唯讀。
+let syncSaving = 0;       // 進行中的儲存請求數
+let syncFailed = false;   // 最近一次儲存沒有成功（失敗、衝突或使用者取消覆蓋）
+function renderSyncStatus(){
+  const el = document.getElementById('syncStatus');
+  if (!el) return;
+  let state, label, hint;
+  if (shareMode && shareMode.permission !== 'write'){
+    state = 'readonly'; label = '唯讀'; hint = '這是唯讀的分享連結，只能看、不能修改';
+  } else if (!currentTripId && !shareMode){
+    state = 'offline'; label = '離線'; hint = '目前是離線編輯，變更不會同步到雲端。點此開啟或上傳雲端行程';
+  } else if (syncSaving > 0 || cloudSavePending){
+    state = 'saving'; label = '儲存中…'; hint = '正在把變更存到雲端';
+  } else if (syncFailed){
+    state = 'error'; label = '未儲存'; hint = '最近一次儲存沒有成功，點此重試';
+  } else {
+    state = 'saved'; label = '已同步'; hint = '所有變更都已存到雲端';
+  }
+  el.dataset.state = state;
+  el.querySelector('.sync-label').textContent = label;
+  el.title = hint;
+  el.setAttribute('aria-label', `同步狀態：${label}。${hint}`);
+  const switchBtn = document.getElementById('tripSwitchBtn');
+  if (switchBtn) switchBtn.style.display = (!shareMode && (currentUser || usingAdminKey())) ? '' : 'none';
+}
+function onSyncStatusClick(){
+  const state = document.getElementById('syncStatus').dataset.state;
+  if (state === 'offline'){ showMainTab('settings'); showSettingsSub('account'); }
+  else if (state === 'error') saveTripToApi();
+  else toast(document.getElementById('syncStatus').title, 'info');
+}
+
+// 所有雲端儲存的單一入口：包住實際的儲存流程，順便維護頁首同步狀態。
 async function saveTripToApi(){
+  syncSaving++;
+  renderSyncStatus();
+  let ok = false;
+  try{
+    ok = (await saveTripToApiImpl()) === true;
+  } finally {
+    syncSaving--;
+    syncFailed = !ok && !!(currentTripId || shareMode);
+    renderSyncStatus();
+  }
+}
+async function saveTripToApiImpl(){
   // 🆕 [分享連結] 分享連結模式下走完全不同的儲存路徑（見 saveSharedTripToApi()）：
   // 不需要登入、不需要 apiHeaders() 裡的金鑰，純粹用網址
   // 路徑上的 token 當憑證，對分享連結的持有者來說完全不用碰到任何技術設定。
@@ -59,9 +117,9 @@ async function saveTripToApi(){
   if (!currentTripId){
     showMainTab('settings'); showSettingsSub('connect');
     if (currentUser){
-      toast('目前是離線編輯的行程。可以在「設定 → 🧳 行程」把它上傳成雲端行程，或開啟既有的行程。', 'error', { duration: 7000 });
+      toast('目前是離線編輯的行程。可以在「設定 → 帳號」把它上傳成雲端行程，或開啟既有的行程。', 'error', { duration: 7000 });
     } else {
-      toast('尚未登入：請先到「設定 → 🧳 行程」用 Discord 登入並開啟行程，之後就能在這裡直接儲存。', 'error', { duration: 7000 });
+      toast('尚未登入：請先到「設定 → 帳號」用 Discord 登入並開啟行程，之後就能在這裡直接儲存。', 'error', { duration: 7000 });
     }
     return;
   }
@@ -164,7 +222,7 @@ async function saveTripToApi(){
       updateBotStatusPill(true, trip.name);
       saveOwnerConnectionState();
       renderAll();
-      return; // 成功，結束整個函式
+      return true; // 成功，結束整個函式
     }catch(err){
       toast('儲存失敗：' + err.message, 'error');
       return;
@@ -282,7 +340,7 @@ async function saveSharedTripToApi(){
       lastSyncedTripJSON = JSON.stringify(trip);
       toast('已儲存', 'success');
       renderAll();
-      return;
+      return true;
     }catch(err){
       toast('儲存失敗：' + err.message, 'error');
       return;

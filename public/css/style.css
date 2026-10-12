@@ -101,6 +101,12 @@
   .wrap{max-width:880px; margin:0 auto; padding:0 14px;}
   a{color:inherit;}
 
+  /* 線條 icon（index.html 開頭的 SVG sprite）：線條跟著文字顏色走，大小跟著字級 */
+  svg.ic{
+    width:1.15em; height:1.15em; flex-shrink:0; vertical-align:-0.2em;
+    fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round;
+  }
+
   /* ---------- Focus visibility (a11y) ---------- */
   a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible,
   textarea:focus-visible, [tabindex]:focus-visible{
@@ -128,6 +134,9 @@
     padding:6px 8px; border-radius:6px;
   }
   #tripName:focus-visible{outline:2px solid var(--brass-soft); background:rgba(255,255,255,0.08);}
+  /* 讓人看得出行程名稱可以直接點來改：hover 時淡淡的底色＋虛線底線 */
+  #tripName:not([readonly]):hover{background:rgba(255,255,255,0.06); box-shadow:inset 0 -1px 0 rgba(243,238,221,0.35);}
+  #tripName[readonly]{cursor:default;}
   #tripName::placeholder{color:#8B978E;}
   .header-currency{
     background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.22);
@@ -152,6 +161,35 @@
     font-size:16px; line-height:1; cursor:pointer; flex-shrink:0; padding:0;
   }
   .theme-toggle-btn:hover{background:rgba(255,255,255,0.16);}
+  .theme-toggle-btn .ic, .header-icon-btn .ic{width:17px; height:17px;}
+  .header-icon-btn{display:flex; align-items:center; justify-content:center;}
+  /* 頁首小圖示按鈕（切換行程），跟深色模式切換鈕同一套固定深色頁首配色 */
+  .header-icon-btn{
+    background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.22);
+    color:#F3EEDD; width:34px; height:34px; border-radius:8px; flex-shrink:0; padding:0;
+    font-size:15px; line-height:1; cursor:pointer;
+  }
+  .header-icon-btn:hover{background:rgba(255,255,255,0.16);}
+
+  /* 頁首同步狀態：圓點顏色表示狀態；窄螢幕只留圓點，但「未儲存」「唯讀」一定顯示文字 */
+  .sync-status{
+    display:inline-flex; align-items:center; gap:6px; flex-shrink:0;
+    height:34px; padding:0 10px; border-radius:8px; cursor:pointer;
+    background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.22);
+    color:#C7CDC2; font-family:'Noto Sans TC',sans-serif; font-size:12px; font-weight:500; white-space:nowrap;
+  }
+  .sync-status:hover{background:rgba(255,255,255,0.16);}
+  .sync-dot{width:8px; height:8px; border-radius:50%; background:#7C8A80; flex-shrink:0;}
+  .sync-status[data-state="saved"] .sync-dot{background:#4FCB7E;}
+  .sync-status[data-state="saving"] .sync-dot{background:#E2C25F; animation:sync-pulse 1s ease-in-out infinite;}
+  .sync-status[data-state="error"]{background:rgba(185,74,60,0.35); border-color:rgba(227,139,139,0.6); color:#FBD9D2;}
+  .sync-status[data-state="error"] .sync-dot{background:#F08A7A;}
+  .sync-status[data-state="readonly"] .sync-dot{background:#8FB4E0;}
+  @keyframes sync-pulse{50%{opacity:.35;}}
+  @media (max-width:520px){
+    .sync-status:not([data-state="error"]):not([data-state="readonly"]){padding:0; width:34px; justify-content:center;}
+    .sync-status:not([data-state="error"]):not([data-state="readonly"]) .sync-label{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap;}
+  }
   /* 🆕 [狀態 pill 精簡] 容器本身預設也先隱藏（避免 JS 尚未執行完成前，
      margin-top 那段留白先閃現出來）；真正的顯示/隱藏交給
      js/localFile.js 的 syncStatusPillsVisibility() 統一控制——它會在
@@ -191,7 +229,7 @@
   }
   #noAccessScreen.visible{ display:flex; }
   .no-access-card{
-    text-align:center; padding:48px 36px 44px; max-width:360px; width:90%;
+    text-align:center; padding:44px 32px 40px; max-width:420px; width:90%;
     background:var(--card); border:1px solid var(--card-line);
     border-radius:4px;
   }
@@ -206,6 +244,12 @@
   .no-access-card p{
     color:var(--ink-soft); font-size:14px; line-height:1.75; margin:0;
   }
+  /* 登陸頁功能重點：第一次來的人一眼看懂這是什麼 */
+  .landing-features{list-style:none; margin:20px 0 0; padding:0; text-align:left; display:flex; flex-direction:column; gap:12px;}
+  .landing-features li{display:flex; gap:12px; align-items:flex-start;}
+  .landing-features .ic{width:20px; height:20px; color:var(--brass); margin-top:2px;}
+  .landing-features b{display:block; font-size:14px; color:var(--ink);}
+  .landing-features span{display:block; font-size:12.5px; color:var(--ink-soft); line-height:1.6;}
   .no-access-divider{
     width:32px; height:2px; background:var(--brass-soft);
     margin:20px auto;
@@ -249,10 +293,10 @@
     font-family:'Noto Sans TC',sans-serif; font-weight:500;
     min-height:var(--bottomnav-h);
   }
-  .bottom-nav .nav-btn .ic{font-size:19px; line-height:1;}
+  .bottom-nav .nav-btn .ic{width:22px; height:22px;}
   .bottom-nav .nav-btn.active{color:var(--brass);}
   .bottom-nav .nav-btn.has-dot{position:relative;}
-  .bottom-nav .nav-btn.has-dot .ic::after{
+  .bottom-nav .nav-btn.has-dot::after{
     content:""; position:absolute; top:6px; right:calc(50% - 16px);
     width:8px; height:8px; border-radius:50%; background:var(--debt); border:2px solid var(--card);
   }
@@ -269,16 +313,25 @@
     font-family:'Noto Sans TC',sans-serif; font-weight:700; font-size:12.5px;
     background:var(--card); border:1px solid var(--card-line); border-radius:20px;
     padding:8px 14px; cursor:pointer; color:var(--ink-soft);
+    display:inline-flex; align-items:center; gap:6px;
   }
+  .subtab-btn .ic{width:15px; height:15px;}
   .subtab-btn.active{background:var(--emphasis); color:#F3EEDD; border-color:var(--emphasis);}
 
   h2.section-title{
     font-family:'Noto Serif TC',serif; font-weight:700; font-size:17px;
     margin:0 0 12px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;
   }
+  h3.section-subtitle{
+    font-family:'Noto Serif TC',serif; font-weight:700; font-size:14.5px;
+    margin:20px 0 10px; display:flex; align-items:center; gap:8px;
+  }
+  h3.section-subtitle .n{font-family:'IBM Plex Mono',monospace; color:var(--brass); font-size:12.5px;}
+  .card.danger-zone{border-color:var(--debt-bg);}
   h2.section-title .n{font-family:'IBM Plex Mono',monospace; color:var(--brass); font-size:13px;}
 
   .card{
+    scroll-margin-top:76px; /* 捲到卡片時不要被固定的頁首蓋住 */
     background:var(--card); border:1px solid var(--card-line); border-radius:12px;
     padding:16px 16px; box-shadow:var(--shadow); margin-bottom:14px;
   }
@@ -295,11 +348,13 @@
   .field-head label{margin-bottom:0;}
   .field-head .field-tools{display:flex; align-items:baseline; gap:10px; flex-shrink:0;}
   .field-head .field-meta{font-size:11.5px; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace; white-space:nowrap;}
-  .field-head .link-btn{
+  .link-btn{
     background:none; border:none; padding:0; cursor:pointer;
-    font-size:11.5px; color:var(--brass); font-weight:700; font-family:inherit;
+    font-size:13px; color:var(--brass); font-weight:700; font-family:inherit;
   }
-  .field-head .link-btn:hover{ text-decoration:underline; }
+  .link-btn:hover{ text-decoration:underline; }
+  .field-head .link-btn{ font-size:11.5px; }
+  .invite-new-toggle{ margin-top:16px; }
   .field-head .field-meta[data-state="ok"]{ color:var(--credit); }
   .field-head .field-meta[data-state="off"]{ color:var(--debt); font-weight:600; }
   input[aria-invalid="true"]{ border-color:var(--debt); background:var(--debt-bg); }
@@ -512,8 +567,9 @@
   .receipt-scan-ic{
     width:46px; height:46px; flex-shrink:0; border-radius:11px;
     display:flex; align-items:center; justify-content:center;
-    font-size:22px; background:var(--brass-tint);
+    font-size:22px; background:var(--brass-tint); color:var(--brass);
   }
+  .receipt-scan-ic .ic{width:24px; height:24px;}
   .receipt-scan-txt{flex:1; min-width:0;}
   .receipt-scan-txt .title{
     display:block; font-weight:700; font-size:15px; color:var(--ink);
@@ -954,7 +1010,6 @@
   details.adv > summary:focus-visible{outline:2px solid var(--brass); outline-offset:2px; border-radius:4px;}
   details.adv .adv-inner{padding-bottom:14px;}
 
-  footer{text-align:center; font-size:11px; color:var(--ink-soft); margin-top:26px; font-family:'IBM Plex Mono',monospace; padding:0 4px;}
 
   /* ---------- Overview: Balance Bar Chart ---------- */
   .bar-chart-wrap{
@@ -970,17 +1025,21 @@
   .bar-chart-legend .swatch{
     width:10px; height:10px; border-radius:2px; flex-shrink:0;
   }
-  .bar-row{
-    display:flex; align-items:center; gap:0; margin-bottom:10px;
+  /* 整張圖共用一個 grid：名字欄寬跟著最長的名字走（上限 8em），每列仍然對齊，
+     取代原本固定 72px、中文名字超過 4～5 字就被截斷的做法 */
+  #balanceBarChart{
+    display:grid; grid-template-columns:minmax(40px, max-content) 1fr max-content;
+    align-items:center; row-gap:10px;
   }
-  .bar-row:last-child{ margin-bottom:0; }
+  .bar-row{ display:contents; }
+  #balanceBarChart > .empty-state{ grid-column:1 / -1; }
   .bar-name{
-    width:72px; flex-shrink:0; font-size:12.5px; font-weight:700;
+    max-width:8em; font-size:12.5px; font-weight:700;
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     text-align:right; padding-right:10px; color:var(--ink);
   }
   .bar-track{
-    flex:1; display:flex; align-items:center; position:relative; height:28px;
+    min-width:0; display:flex; align-items:center; position:relative; height:28px;
   }
   .bar-axis{
     position:absolute; left:50%; top:0; bottom:0;
@@ -1003,8 +1062,7 @@
     width:2px; margin-left:-1px;
     background:var(--card-line); border-radius:2px;
   }
-  .bar-val{
-    width:90px; flex-shrink:0; font-family:'IBM Plex Mono',monospace;
+  .bar-val{ font-family:'IBM Plex Mono',monospace;
     font-size:11.5px; font-weight:600; padding-left:8px; white-space:nowrap;
   }
   .bar-val.pos{ color:var(--credit); }
@@ -1022,8 +1080,9 @@
   }
   .member-detail-head{
     display:flex; justify-content:space-between; align-items:center;
-    padding:11px 14px; cursor:pointer; gap:10px;
-    border-bottom:1px solid transparent;
+    padding:11px 14px; cursor:pointer; gap:10px; width:100%;
+    background:transparent; border:none; border-bottom:1px solid transparent;
+    font:inherit; color:inherit; text-align:left;
     transition:background .12s;
   }
   .member-detail-card.open .member-detail-head{
@@ -1185,3 +1244,11 @@
   .invite-card p{color:var(--ink-soft); font-size:14px; line-height:1.75; margin:0 0 14px;}
   .invite-members{display:flex; flex-direction:column; gap:8px; text-align:left;}
   .invite-new input{min-width:0;}
+
+  /* 系統設定「減少動態效果」時，關掉淡入、長條圖等過場動畫；載入中的 spinner 保留，
+     不然看不出還在處理。（JS 裡明確指定 behavior:'smooth' 的捲動不受這裡影響） */
+  @media (prefers-reduced-motion: reduce){
+    html{ scroll-behavior:auto; }
+    *, *::before, *::after{ animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; }
+    .spinner{ animation-duration:.7s !important; animation-iteration-count:infinite !important; }
+  }

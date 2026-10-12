@@ -34,12 +34,34 @@ function renderAccountArea(){
       <p class="hint">用 Discord 帳號登入後，就能建立自己的行程、邀請朋友一起記帳。只會讀取你的 Discord 名稱與頭像。</p>
       <div class="btn-row"><button class="btn btn-brass" type="button" onclick="loginWithDiscord()">用 Discord 登入</button></div>`;
   } else {
-    el.innerHTML = `<p class="hint">這個網站尚未開啟 Discord 登入。可以用下方「進階：管理員金鑰」連線，或用本機檔案離線記帳。</p>`;
+    el.innerHTML = `<p class="hint">這個網站尚未開啟 Discord 登入。可以到「進階」用管理員金鑰連線，或用本機檔案離線記帳。</p>`;
   }
   const tripCard = document.getElementById('myTripsCard');
   if (tripCard) tripCard.style.display = (currentUser || usingAdminKey()) ? '' : 'none';
   const uploadRow = document.getElementById('uploadLocalTripRow');
   if (uploadRow) uploadRow.style.display = (currentUser && !currentTripId && (trip.members.length || trip.expenses.length)) ? '' : 'none';
+}
+
+/* ===================== 頁首快速切換行程 ===================== */
+// 取代「設定 → 帳號 → 下拉選單 → 開啟」四步驟：點行程名稱旁的 ⇅ 直接挑。
+async function openTripSwitcher(){
+  if (!myTrips.length) await refreshTripList({ silent: true }).catch(()=>{});
+  const items = myTrips.map(t => ({
+    value: t.id,
+    title: t.name + (t.id === currentTripId ? '（目前開啟）' : ''),
+    sub: [ROLE_LABELS[t.role], t.archived ? '已封存' : '', t.guildId ? '🤖 已綁定 Discord' : ''].filter(Boolean).join(' · ')
+  }));
+  items.push({ value: '__new__', title: '＋ 建立新行程…' });
+  const picked = await pickModal('切換行程', items);
+  if (!picked || picked === currentTripId) return;
+  if (picked === '__new__'){
+    showMainTab('settings'); showSettingsSub('account');
+    const nameInput = document.getElementById('newTripName');
+    requestAnimationFrame(()=>{ nameInput.scrollIntoView({ behavior:'smooth', block:'center' }); nameInput.focus(); });
+    return;
+  }
+  document.getElementById('tripSelect').value = picked;
+  await loadTripFromApi();
 }
 
 /* ===================== 我在這個行程的暱稱 ===================== */
@@ -170,7 +192,7 @@ function renderDiscordPanel(){
   if (!el) return;
   clearInterval(bindCodeTimer); bindCodeTimer = null;
   if (!currentTripId){
-    el.innerHTML = '<p class="hint">請先到「🧳 行程」開啟一個雲端行程。</p>';
+    el.innerHTML = '<p class="hint">請先到「帳號」開啟一個雲端行程。</p>';
     return;
   }
   const manage = canManageTrip();
@@ -317,23 +339,38 @@ async function initInviteFlow(token){
 
   const unlinked = info.members.filter(m => !m.linked);
   const linked = info.members.filter(m => m.linked);
+  inviteMemberNames = new Map(info.members.map(m => [m.id, m.name]));
+  // 主要動作是「認領既有成員」；「以新成員加入」收在「都不是？」後面，
+  // 避免本來就在名單上的人沒看清楚，又多加了一個重複的自己。
   el.innerHTML = `
     <div class="invite-card">
       ${head}
+      ${unlinked.length ? `
       <p>你是下面哪一位？選了之後，這位成員過去的代墊與分攤紀錄都會連結到你的 Discord 帳號（${escapeHtml(currentUser.name)}）。</p>
       <div class="invite-members">
-        ${unlinked.map(m => `<button class="modal-list-item" type="button" onclick="claimInvite('${escapeHtml(token)}', { memberId: '${escapeHtml(m.id)}' }, this)"><div class="mli-title">我是「${escapeHtml(m.name)}」</div></button>`).join('')}
-        ${linked.length ? `<div class="hint" style="margin-top:8px;">已經有人認領：${linked.map(m => escapeHtml(m.name)).join('、')}</div>` : ''}
-      </div>
-      <div class="invite-new">
-        <div class="hint" style="margin:14px 0 6px;">${unlinked.length ? '都不是？' : ''}以新成員身分加入：</div>
+        ${unlinked.map(m => `<button class="modal-list-item" type="button" onclick="confirmInviteClaim('${escapeHtml(token)}', '${escapeHtml(m.id)}', this)"><div class="mli-title">我是「${escapeHtml(m.name)}」</div></button>`).join('')}
+      </div>` : '<p>名單上的成員都已經被認領了，你可以用新成員的身分加入。</p>'}
+      ${linked.length ? `<div class="hint" style="margin-top:8px;">已經有人認領：${linked.map(m => escapeHtml(m.name)).join('、')}</div>` : ''}
+      ${unlinked.length ? `<button type="button" class="link-btn invite-new-toggle" onclick="this.hidden=true; document.getElementById('inviteNewBlock').hidden=false; document.getElementById('inviteNewName').focus();">都不是？以新成員身分加入</button>` : ''}
+      <div class="invite-new" id="inviteNewBlock" ${unlinked.length ? 'hidden' : ''}>
+        <div class="hint" style="margin:14px 0 6px;">以新成員身分加入：</div>
         <div class="btn-row" style="justify-content:center;">
-          <input type="text" id="inviteNewName" maxlength="60" placeholder="你的名字" value="${escapeHtml(currentUser.name || '')}" style="max-width:180px;">
+          <input type="text" id="inviteNewName" maxlength="60" placeholder="你的名字" aria-label="你的名字" value="${escapeHtml(currentUser.name || '')}" style="max-width:180px;">
           <button class="btn btn-primary" type="button" onclick="claimInvite('${escapeHtml(token)}', { newMemberName: document.getElementById('inviteNewName').value }, this)">加入</button>
         </div>
       </div>
       <div class="btn-row" style="justify-content:center; margin-top:14px;"><button class="btn btn-ghost btn-sm" type="button" onclick="closeInviteScreen(); bootstrapNormal();">先不要</button></div>
     </div>`;
+}
+// 認領前再確認一次：認錯人之後要請建立者解除連結，比較麻煩。
+let inviteMemberNames = new Map();
+async function confirmInviteClaim(token, memberId, btn){
+  const name = inviteMemberNames.get(memberId) || '這位成員';
+  const ok = await confirmModal(
+    `確定你就是「${name}」嗎？確認後，「${name}」過去的代墊與分攤紀錄都會連結到你的 Discord 帳號。`,
+    { title: '認領成員', confirmText: '是我，認領' }
+  );
+  if (ok) await claimInvite(token, { memberId }, btn);
 }
 async function claimInvite(token, body, btn){
   if (body.newMemberName !== undefined && !String(body.newMemberName).trim()){
