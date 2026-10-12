@@ -26,9 +26,9 @@ async function copyLinkUrl(token, okMessage){
 }
 
 /* ===================== 連結的用途與文字 ===================== */
-// 新增連結時的三種用途；之後還是可以在每條連結的「設定」裡個別調整。
+// 「新增連結」只做免登入的連結：邀請成員一律用上方的「複製邀請連結」（成員共用的那條）。
+// 之後還是可以在每條連結的「設定」裡個別調整，例如改成不開放訪客、只能登入加入。
 const LINK_PRESETS = [
-  { id: 'invite', icon: '🔑', title: '邀請成員',     sub: '用 Discord 登入，選「我是哪一位」後一起記帳', guest: 'none',  join: true,  days: 0 },
   { id: 'read',   icon: '👀', title: '給人看帳',     sub: '不用登入就能看，不能修改',                 guest: 'read',  join: false, days: 7 },
   { id: 'write',  icon: '✏️', title: '免登入一起記帳', sub: '不用登入就能新增、修改、刪除',             guest: 'write', join: false, days: 7 },
 ];
@@ -114,13 +114,13 @@ function renderLinkManager(){
   let body;
   if (s.links === null && !s.error) body = '<p class="hint">讀取中…</p>';
   else if (s.error) body = `<p class="hint">讀取連結失敗：${escapeHtml(s.error)}　<button type="button" class="link-btn" onclick="loadTripLinks()">重試</button></p>`;
-  else if (!links.length && !s.composer) body = '<p class="hint tl-empty">還沒有任何連結。按「＋ 新增連結」建立一條，或直接用上面的「複製邀請連結」。</p>';
+  else if (!links.length && !s.composer) body = '<p class="hint tl-empty">還沒有任何連結。邀請朋友成為成員用上面的「複製邀請連結」；要給沒有 Discord 的人看帳或一起記帳，按「＋ 新增免登入連結」。</p>';
   else body = `<div class="tl-list">${sorted.map(l => linkRowHtml(l, l.token === inviteToken)).join('')}</div>`;
 
   el.innerHTML = `
     <div class="tl-section-head">
       <h3 class="section-subtitle">所有連結 ${s.links ? `<span class="n">(${links.length})</span>` : ''}</h3>
-      ${s.composer ? '' : '<button class="btn btn-ghost btn-sm" type="button" onclick="openLinkComposer()">＋ 新增連結</button>'}
+      ${s.composer ? '' : '<button class="btn btn-ghost btn-sm" type="button" onclick="openLinkComposer()">＋ 新增免登入連結</button>'}
     </div>
     ${s.composer ? linkComposerHtml(s.composer) : ''}
     ${body}`;
@@ -197,7 +197,7 @@ function linkComposerHtml(c){
   const preset = LINK_PRESETS.find(p => p.id === c.preset);
   return `
     <div class="tl-composer">
-      <div class="tl-label">這條連結要做什麼？</div>
+      <div class="tl-label">給不用登入的朋友（沒有 Discord 也能開）：</div>
       <div class="tl-presets" role="radiogroup" aria-label="連結用途">
         ${LINK_PRESETS.map(p => `
           <button type="button" role="radio" aria-checked="${p.id === c.preset}" class="tl-preset ${p.id === c.preset ? 'on' : ''}" onclick="pickLinkPreset('${p.id}')">
@@ -206,11 +206,10 @@ function linkComposerHtml(c){
             <span class="tl-preset-sub">${p.sub}</span>
           </button>`).join('')}
       </div>
-      ${preset.guest !== 'none' ? `
-        <label class="check-row tl-field">
-          <input type="checkbox" ${c.join ? 'checked' : ''} onchange="tripLinksState.composer.join = this.checked; renderLinkManager()">
-          也允許用 Discord 登入加入成為成員
-        </label>` : ''}
+      <label class="check-row tl-field">
+        <input type="checkbox" ${c.join ? 'checked' : ''} onchange="tripLinksState.composer.join = this.checked; renderLinkManager()">
+        也允許用 Discord 登入加入成為成員
+      </label>
       <div class="tl-field">
         <div class="tl-label">有效期限</div>
         ${segTabsHtml('有效期限', LINK_EXPIRY_CHOICES.map(e => ({ value: e.days, label: e.label })), c.days, 'setLinkComposerDays')}
@@ -285,7 +284,7 @@ async function createTripLink(){
     const link = await apiJson(await fetch(tripApiUrl('/links'), {
       method: 'POST',
       headers: Object.assign({ 'Content-Type': 'application/json' }, apiHeaders()),
-      body: JSON.stringify({ label: c.label.trim(), guest: p.guest, join: p.guest === 'none' ? true : c.join, expiresInDays: c.days })
+      body: JSON.stringify({ label: c.label.trim(), guest: p.guest, join: c.join, expiresInDays: c.days })
     }));
     tripLinksState.composer = null;
     tripLinksState.links = (tripLinksState.links || []).concat(link);
