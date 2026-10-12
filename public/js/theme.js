@@ -16,8 +16,12 @@ function syncThemeToggleUI(theme){
   if (icon) icon.setAttribute('href', theme === 'dark' ? '#i-sun' : '#i-moon');
   if (btn){ btn.title = label; btn.setAttribute('aria-label', label); }
 }
+// 瀏覽器網址列／PWA 狀態列顏色，對應 style.css 裡兩個主題的頁首底色
+const THEME_COLORS = { light: '#1B2731', dark: '#191E22' };
 function setTheme(theme, persist){
   document.documentElement.setAttribute('data-theme', theme);
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', THEME_COLORS[theme] || THEME_COLORS.light);
   syncThemeToggleUI(theme);
   if (persist){
     try{ localStorage.setItem('splitbill-theme', theme); }catch(e){}

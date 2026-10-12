@@ -1,21 +1,25 @@
 :root{
+    /* 配色原則：中性色（paper／card／surface／line／chip）只用同一個色相、只改明度，
+       強調色的淡底（tint／credit-bg／debt-bg／fee-bg）一律用 color-mix() 從主色
+       混進卡片色推導，不另外挑 hex——這樣兩個主題的色調一定一致，改主色也會連動。 */
     --ink:#1E2A33;
-    --ink-soft:#4A5A62;
-    --paper:#EEF0E6;
-    --card:#FBFBF6;
-    --card-line:#D9DCC9;
+    --ink-soft:#4E5A60;
+    --paper:#F1EFE8;
+    --card:#FCFBF7;
+    --card-line:#DDD9CC;
     --brass:#8A6A28;         /* 深化以提高文字對比度，且此後只代表「跟 Bot 雲端同步」 */
-    --brass-bg:#9C7A34;
+    --brass-bg:#8A6A28;      /* 填色徽章／按鈕底；上面疊 --on-brass（白字 5.0:1） */
     --brass-soft:#C9A85C;
     --credit:#2F6E52;
-    --credit-bg:#E4EFE7;
+    --credit-bg:color-mix(in srgb, var(--credit) 11%, var(--card));
     --debt:#A63D3D;
-    --debt-bg:#F5E6E2;
-    --header-bg:#1B2731;
+    --debt-bg:color-mix(in srgb, var(--debt) 10%, var(--card));
     --shadow: 0 1px 0 rgba(30,42,51,0.06), 0 8px 24px rgba(30,42,51,0.06);
+    --shadow-sm: 0 1px 3px rgba(30,42,51,0.22);
+    --shadow-up: 0 -4px 16px rgba(30,42,51,0.08);
     --safe-b: env(safe-area-inset-bottom, 0px);
     --bottomnav-h: 62px;
-    --focus-ring: 0 0 0 3px rgba(154,116,52,0.35);
+    --focus-ring: 0 0 0 3px color-mix(in srgb, var(--brass) 35%, transparent);
     /* 🆕 [下拉選單深色模式] 讓瀏覽器原生繪製的表單控制項（select 選單展開
        後的選項清單、date/time picker、捲軸等）套用正確的亮/暗配色。少了
        這個屬性，瀏覽器只會依系統偏好（prefers-color-scheme）決定這些原生
@@ -30,62 +34,84 @@
        現在統一收斂成語意化變數，讓 :root[data-theme="dark"] 只要覆寫這裡
        就能讓整個頁面（表單欄位、卡片、徽章、彈窗遮罩...）跟著換膚，不用
        在每個元件各自判斷目前是什麼主題。 */
-    --surface:#fff;               /* 輸入框／卡片內的「白色」表面（chip、modal-list-item、member-tag...） */
-    --surface-hover:#F7F6F0;      /* 可互動列表項目的 hover 背景（member-detail-head） */
-    --chip-bg:#EDEAD9;            /* 徽章/標籤類背景（receipt-type-badge、code.inline、幣別標籤...） */
-    --chip-bg-hover:#E0DCC5;
-    --fee-bg:#FBF7EE;             /* 帳單辨識「雜費」項目列背景 */
-    --fee-badge-bg:#F0D9A0;
-    --fee-badge-bg-hover:#E8CC85;
+    --surface:#FFFEFB;            /* 輸入框／卡片內的「白色」表面（chip、modal-list-item、member-tag...） */
+    --surface-hover:#F6F4EC;      /* 可互動列表項目的 hover 背景（member-detail-head） */
+    --chip-bg:#ECE8DC;            /* 徽章/標籤類背景（receipt-type-badge、code.inline、幣別標籤...） */
+    --chip-bg-hover:#E1DCCC;
+    --fee-bg:color-mix(in srgb, var(--brass-soft) 10%, var(--card)); /* 帳單辨識「雜費」項目列背景 */
+    --fee-badge-bg:color-mix(in srgb, var(--brass-soft) 45%, var(--card));
+    --fee-badge-bg-hover:color-mix(in srgb, var(--brass-soft) 60%, var(--card));
     --fee-badge-text:#5C4415;
-    --zero-bg:#EEE;               /* 淨額為 0（已結清）時的中性徽章背景 */
-    --brass-tint:#FBF4E4;         /* 勾選中／hover 時的暖色高亮底（chip、claim-chip、modal-list-item） */
+    --zero-bg:var(--chip-bg);     /* 淨額為 0（已結清）時的中性徽章背景 */
+    --brass-tint:color-mix(in srgb, var(--brass-soft) 16%, var(--card)); /* 勾選中／hover 時的暖色高亮底 */
     --scrim:rgba(20,26,30,0.55);  /* Modal 遮罩層 */
-    --paper-stripe:rgba(156,122,52,0.035); /* 背景那道很淡的直紋線 */
+    --paper-stripe:color-mix(in srgb, var(--brass) 4%, transparent); /* 背景那道很淡的直紋線 */
 
-    /* 這兩個是「固定深色」用途：不管淺色/暗色模式，都要維持深底＋淺字的按鈕
-       （主要按鈕、作用中分頁、toast），所以刻意不放進 dark 覆寫區塊，兩個
-       主題共用同一組值，避免 --ink 為了適應暗色模式整個翻轉成淺色後，
-       這些「本來就設計成深色底」的元件反而失去對比度。 */
+    /* 頁首：淺色模式是深石板色漸層；暗色模式改成只比頁面亮一階的平面＋細底線，
+       避免一塊偏藍的深色補丁浮在頁面上。頁首上的文字一律用 --on-dark 系列。 */
+    --header-bg:linear-gradient(155deg,#22303A,#1B2731 60%,#182229);
+    --header-line:transparent;
+    --header-shadow:0 2px 10px rgba(0,0,0,0.18);
+    --on-dark:#F3EEDD;
+    --on-dark-muted:#C7CDC2;
+    --on-dark-faint:#8B978E;
+    --header-accent:#C9A85C;      /* 頁首品牌字／頁首內焦點框 */
+
+    /* 主要按鈕／作用中分頁／toast 的「強調面」：淺色模式是深底淺字，暗色模式翻成
+       淺底深字（原本固定深色在暗色卡片上對比只有 1.1:1，幾乎看不見）。 */
     --emphasis:#1E2A33;
+    --emphasis-hover:#0F171C;
+    --on-emphasis:#F3EEDD;
+    --on-brass:#FFFFFF;
+    --toast-success-bg:#1F3A2C;
+    --toast-error-bg:#3E2222;
     --debt-solid:#B94A3C;         /* 目前唯一用途：確認刪除 Modal 的紅色按鈕背景（白字疊在上面） */
   }
 
-  /* 🆕 暗色模式調色盤。切換方式見頁尾主程式的 setTheme()／toggleTheme() 函式，
+  /* 🆕 暗色模式調色盤。切換方式見 js/theme.js 的 setTheme()／toggleTheme()，
      並在頁面最前面有一段行內小型腳本，提早依 localStorage／系統偏好設定
-     好 data-theme，避免第一次畫面出現「先亮後暗」的閃爍。 */
+     好 data-theme，避免第一次畫面出現「先亮後暗」的閃爍。
+     中性色全部是同一個石板色相（約 205°）的不同明度，不再混用綠灰／咖啡灰。 */
   :root[data-theme="dark"]{
-    --ink:#ECEDE8;
-    --ink-soft:#9BA6A1;
-    --paper:#12181C;
-    --card:#1B2226;
-    --card-line:#323C41;
-    --brass:#D9B36C;
-    --brass-bg:#B0863C;
-    --brass-soft:#E8C77E;
-    --credit:#6FCB94;
-    --credit-bg:#173428;
-    --debt:#E38B8B;
-    --debt-bg:#3A2020;
-    --shadow: 0 1px 0 rgba(0,0,0,0.4), 0 10px 26px rgba(0,0,0,0.5);
-    --focus-ring: 0 0 0 3px rgba(217,179,108,0.4);
+    --ink:#E6E4DD;
+    --ink-soft:#9DA5A9;
+    --paper:#13171A;
+    --card:#1C2125;
+    --card-line:#2F363B;
+    --brass:#D6B06A;
+    --brass-bg:#C9A25C;          /* 上面疊 --on-brass（深字 7.3:1） */
+    --brass-soft:#A88B55;        /* 暗色下當邊框用，壓低亮度避免框線搶眼 */
+    --credit:#72C295;
+    --credit-bg:color-mix(in srgb, var(--credit) 14%, var(--card));
+    --debt:#E6908A;
+    --debt-bg:color-mix(in srgb, var(--debt) 14%, var(--card));
+    --shadow: 0 1px 0 rgba(0,0,0,0.4), 0 10px 26px rgba(0,0,0,0.45);
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.5);
+    --shadow-up: 0 -4px 16px rgba(0,0,0,0.35);
     color-scheme: dark; /* 🆕 讓深色模式下的原生 select 選項清單等控制項跟著換成深色 */
 
-    --surface:#20282D;
-    --surface-hover:#273136;
-    --chip-bg:#2A332F;
-    --chip-bg-hover:#333E39;
-    --fee-bg:#2B2417;
-    --fee-badge-bg:#4A3A1B;
-    --fee-badge-bg-hover:#5C4823;
-    --fee-badge-text:#E8C77E;
-    --zero-bg:#2A2F33;
-    --brass-tint:#3A2E15;
+    --surface:#22282C;
+    --surface-hover:#282F34;
+    --chip-bg:#272D32;
+    --chip-bg-hover:#30373D;
+    --fee-bg:color-mix(in srgb, var(--brass) 7%, var(--card));
+    --fee-badge-bg:color-mix(in srgb, var(--brass) 24%, var(--card));
+    --fee-badge-bg-hover:color-mix(in srgb, var(--brass) 32%, var(--card));
+    --fee-badge-text:var(--brass);
+    --brass-tint:color-mix(in srgb, var(--brass) 12%, var(--card));
     --scrim:rgba(0,0,0,0.65);
-    --paper-stripe:rgba(217,179,108,0.05);
-    /* --header-bg／--emphasis／--debt-solid 刻意不在這裡覆寫：
-       頁首跟主要按鈕本來就設計成固定深色，暗色模式下維持原樣反而更一致，
-       不需要額外規則。 */
+
+    --header-bg:#191E22;
+    --header-line:#2A3136;
+    --header-shadow:0 2px 10px rgba(0,0,0,0.3);
+    --header-accent:var(--brass);
+
+    --emphasis:#E6E1D3;
+    --emphasis-hover:#F3EFE4;
+    --on-emphasis:#161B1F;
+    --on-brass:#161B1F;
+    --toast-success-bg:#CFE6D7;
+    --toast-error-bg:#F1D3CE;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
   html,body{margin:0;padding:0;}
@@ -116,31 +142,32 @@
   /* ---------- Sticky app header ---------- */
   .app-header{
     position:sticky; top:0; z-index:50;
-    background:linear-gradient(155deg,#22303A,#1B2731 60%,#182229);
-    color:#F3EEDD;
+    background:var(--header-bg);
+    color:var(--on-dark);
+    border-bottom:1px solid var(--header-line);
     padding:calc(10px + env(safe-area-inset-top, 0px)) 14px 10px;
-    box-shadow:0 2px 10px rgba(0,0,0,0.18);
+    box-shadow:var(--header-shadow);
   }
   .app-header-inner{max-width:880px; margin:0 auto;}
   .header-row1{display:flex; align-items:center; gap:10px;}
   .header-row1 .brand{
     font-family:'Noto Serif TC',serif; font-weight:900; font-size:16px;
-    color:var(--brass-soft); white-space:nowrap; letter-spacing:.02em;
+    color:var(--header-accent); white-space:nowrap; letter-spacing:.02em;
   }
   #tripName{
     flex:1; min-width:0;
-    background:transparent; border:none; color:#F3EEDD;
+    background:transparent; border:none; color:var(--on-dark);
     font-family:'Noto Serif TC',serif; font-weight:700; font-size:16px;
     padding:6px 8px; border-radius:6px;
   }
-  #tripName:focus-visible{outline:2px solid var(--brass-soft); background:rgba(255,255,255,0.08);}
+  #tripName:focus-visible{outline:2px solid var(--header-accent); background:rgba(255,255,255,0.08);}
   /* 讓人看得出行程名稱可以直接點來改：hover 時淡淡的底色＋虛線底線 */
-  #tripName:not([readonly]):hover{background:rgba(255,255,255,0.06); box-shadow:inset 0 -1px 0 rgba(243,238,221,0.35);}
+  #tripName:not([readonly]):hover{background:rgba(255,255,255,0.06); box-shadow:inset 0 -1px 0 color-mix(in srgb, var(--on-dark) 35%, transparent);}
   #tripName[readonly]{cursor:default;}
-  #tripName::placeholder{color:#8B978E;}
+  #tripName::placeholder{color:var(--on-dark-faint);}
   .header-currency{
     background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.22);
-    color:#F3EEDD; padding:6px 8px; border-radius:8px; font-size:12.5px;
+    color:var(--on-dark); padding:6px 8px; border-radius:8px; font-size:12.5px;
     font-family:'IBM Plex Mono',monospace; flex-shrink:0;
     white-space:nowrap; display:inline-flex; align-items:center;
   }
@@ -150,13 +177,13 @@
      頁首那顆「固定深色底、不隨主題切換」的特例（見上面 .header-currency
      本身的設計說明），所以背景也要一併鎖死成淺色，避免深色模式下背景跟
      文字都變深色、選單本身反而看不清楚。 */
-  .header-currency option{background-color:#FBFBF6; color:#1E2A33;}
+  .header-currency option{background-color:var(--card); color:var(--ink);}
   /* 🆕 深色/淺色模式切換鈕：跟旁邊的幣別選單用一樣的視覺語言（半透明白底、淡邊框），
      因為頁首本身固定深色，不隨主題切換，這裡沿用同一套 header 專用配色即可，
      不需要另外引用 --surface 之類會隨主題翻轉的變數。 */
   .theme-toggle-btn{
     background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.22);
-    color:#F3EEDD; width:34px; height:34px; border-radius:8px;
+    color:var(--on-dark); width:34px; height:34px; border-radius:8px;
     display:flex; align-items:center; justify-content:center;
     font-size:16px; line-height:1; cursor:pointer; flex-shrink:0; padding:0;
   }
@@ -166,7 +193,7 @@
   /* 頁首小圖示按鈕（切換行程），跟深色模式切換鈕同一套固定深色頁首配色 */
   .header-icon-btn{
     background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.22);
-    color:#F3EEDD; width:34px; height:34px; border-radius:8px; flex-shrink:0; padding:0;
+    color:var(--on-dark); width:34px; height:34px; border-radius:8px; flex-shrink:0; padding:0;
     font-size:15px; line-height:1; cursor:pointer;
   }
   .header-icon-btn:hover{background:rgba(255,255,255,0.16);}
@@ -176,7 +203,7 @@
     display:inline-flex; align-items:center; gap:6px; flex-shrink:0;
     height:34px; padding:0 10px; border-radius:8px; cursor:pointer;
     background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.22);
-    color:#C7CDC2; font-family:'Noto Sans TC',sans-serif; font-size:12px; font-weight:500; white-space:nowrap;
+    color:var(--on-dark-muted); font-family:'Noto Sans TC',sans-serif; font-size:12px; font-weight:500; white-space:nowrap;
   }
   .sync-status:hover{background:rgba(255,255,255,0.16);}
   .sync-dot{width:8px; height:8px; border-radius:50%; background:#7C8A80; flex-shrink:0;}
@@ -264,7 +291,7 @@
     display:flex; background:var(--card);
     border-top:1px solid var(--card-line);
     padding-bottom:var(--safe-b);
-    box-shadow:0 -4px 16px rgba(30,42,51,0.08);
+    box-shadow:var(--shadow-up);
   }
   .bottom-nav .nav-btn{
     flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
@@ -296,7 +323,7 @@
     display:inline-flex; align-items:center; gap:6px;
   }
   .subtab-btn .ic{width:15px; height:15px;}
-  .subtab-btn.active{background:var(--emphasis); color:#F3EEDD; border-color:var(--emphasis);}
+  .subtab-btn.active{background:var(--emphasis); color:var(--on-emphasis); border-color:var(--emphasis);}
 
   h2.section-title{
     font-family:'Noto Serif TC',serif; font-weight:700; font-size:17px;
@@ -353,7 +380,7 @@
   .form-card.collapsed .form-card-body{ display:none; }
   .form-card-badge{
     display:none; font-family:'Noto Sans TC',sans-serif; font-size:11px; font-weight:700;
-    color:#fff; background:var(--brass-bg); padding:2px 8px; border-radius:20px;
+    color:var(--on-brass); background:var(--brass-bg); padding:2px 8px; border-radius:20px;
   }
   .form-card.editing{ border-color:var(--brass-bg); box-shadow:inset 4px 0 0 var(--brass-bg), var(--shadow); }
   .form-card.editing .form-card-badge{ display:inline-block; }
@@ -398,10 +425,10 @@
   }
   .btn:active{transform:scale(.97);}
   .btn:disabled{opacity:.55; cursor:not-allowed; transform:none;}
-  .btn-primary{background:var(--emphasis); color:#F3EEDD;}
-  .btn-primary:hover{background:#0F171C;}
-  .btn-brass{background:var(--brass-bg); color:#fff;}
-  .btn-brass:hover{background:var(--brass);}
+  .btn-primary{background:var(--emphasis); color:var(--on-emphasis);}
+  .btn-primary:hover{background:var(--emphasis-hover);}
+  .btn-brass{background:var(--brass-bg); color:var(--on-brass);}
+  .btn-brass:hover{background:color-mix(in srgb, var(--brass-bg) 85%, var(--ink));}
   .btn-ghost{background:transparent; color:var(--ink-soft); border:1px solid var(--card-line);}
   .btn-ghost:hover{border-color:var(--ink-soft); color:var(--ink);}
   .btn-danger{background:transparent; color:var(--debt); border:1px solid var(--debt-bg);}
@@ -414,7 +441,7 @@
 
   .spinner{
     width:14px; height:14px; border-radius:50%;
-    border:2px solid rgba(255,255,255,0.4); border-top-color:#fff;
+    border:2px solid color-mix(in srgb, currentColor 40%, transparent); border-top-color:currentColor;
     animation:spin .7s linear infinite; flex-shrink:0;
   }
   .btn-ghost .spinner, .btn-danger .spinner{border-color:var(--card-line); border-top-color:var(--ink);}
@@ -467,9 +494,9 @@
     content:"✎";
     position:absolute; top:-6px; right:-6px;
     width:16px; height:16px; border-radius:50%;
-    background:var(--brass-bg); color:#fff;
+    background:var(--brass-bg); color:var(--on-brass);
     font-size:9px; line-height:16px; text-align:center;
-    box-shadow:0 1px 3px rgba(30,42,51,0.3);
+    box-shadow:var(--shadow-sm);
     pointer-events:none;
   }
   /* 可點擊區：整個左半部（勾選方塊＋名字）都是 label，觸控目標 ≥ 44px 高 */
@@ -486,7 +513,7 @@
   }
   .chip-box::after{
     content:""; position:absolute; left:5px; top:1px; width:5px; height:10px;
-    border:solid #fff; border-width:0 2px 2px 0;
+    border:solid var(--on-brass); border-width:0 2px 2px 0;
     transform:rotate(45deg) scale(0); transition:transform .12s ease-out;
   }
   .chip-checkbox:checked ~ .chip-box{background:var(--brass-bg); border-color:var(--brass-bg);}
@@ -571,8 +598,8 @@
   }
   .receipt-drop-overlay-inner{
     font-family:'Noto Serif TC',serif; font-weight:700; font-size:20px;
-    color:#fff; background:rgba(139,106,40,0.92);
-    padding:20px 32px; border-radius:16px; border:2px dashed rgba(255,255,255,0.6);
+    color:var(--on-brass); background:color-mix(in srgb, var(--brass-bg) 92%, transparent);
+    padding:20px 32px; border-radius:16px; border:2px dashed color-mix(in srgb, var(--on-brass) 60%, transparent);
     text-align:center;
   }
   .receipt-preview-row{display:flex; gap:12px; align-items:flex-start; margin-bottom:12px;}
@@ -647,7 +674,7 @@
   .toast{
     pointer-events:auto;
     max-width:480px; width:100%;
-    background:var(--emphasis); color:#F3EEDD;
+    background:var(--emphasis); color:var(--on-emphasis);
     border-radius:10px; padding:12px 14px;
     display:flex; align-items:center; gap:10px;
     font-size:13.5px; line-height:1.5;
@@ -656,14 +683,14 @@
   }
   .toast .ic{font-size:16px; flex-shrink:0;}
   .toast .msg-text{flex:1;}
-  .toast.success{background:#1F3A2C;}
-  .toast.error{background:#3E2222;}
+  .toast.success{background:var(--toast-success-bg);}
+  .toast.error{background:var(--toast-error-bg);}
   .toast .undo-btn{
-    background:rgba(255,255,255,0.12); border:none; color:#F3EEDD;
+    background:color-mix(in srgb, currentColor 12%, transparent); border:none; color:inherit;
     font-weight:700; font-size:12.5px; padding:6px 11px; border-radius:7px;
     cursor:pointer; flex-shrink:0;
   }
-  .toast .undo-btn:hover{background:rgba(255,255,255,0.22);}
+  .toast .undo-btn:hover{background:color-mix(in srgb, currentColor 22%, transparent);}
   .toast.closing{animation:toast-out .18s ease forwards;}
   @keyframes toast-in{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:none;}}
   @keyframes toast-out{to{opacity:0; transform:translateY(8px);}}
@@ -792,7 +819,7 @@
   .ledger-day-badge{
     display:inline-flex; align-items:center;
     font-family:'Noto Serif TC',serif; font-weight:700; font-size:12.5px;
-    color:#fff; background:var(--brass-bg);
+    color:var(--on-brass); background:var(--brass-bg);
     padding:4px 13px; border-radius:20px; letter-spacing:.02em;
   }
   .ledger-day-subtotal{
@@ -898,7 +925,7 @@
     color:var(--ink-soft); cursor:pointer; white-space:nowrap;
   }
   .seg-tab:hover{ color:var(--ink); }
-  .seg-tab[aria-selected="true"]{ background:var(--card); color:var(--ink); box-shadow:0 1px 2px rgba(30,42,51,0.12); }
+  .seg-tab[aria-selected="true"]{ background:var(--card); color:var(--ink); box-shadow:var(--shadow-sm); }
 
   /* 建議轉帳／你的狀態：每列右側的「標記已付」按鈕 */
   .settle-paid-btn{ flex-shrink:0; min-height:30px; padding:5px 10px; font-size:12px; }
