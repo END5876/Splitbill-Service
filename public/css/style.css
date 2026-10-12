@@ -214,6 +214,10 @@
   .sync-status[data-state="error"] .sync-dot{background:#F08A7A;}
   .sync-status[data-state="readonly"] .sync-dot{background:#8FB4E0;}
   @keyframes sync-pulse{50%{opacity:.35;}}
+  /* 窄手機：頁首四顆按鈕已經佔掉大半寬度，品牌字讓位給行程名稱 */
+  @media (max-width:400px){
+    .header-row1 .brand{display:none;}
+  }
   @media (max-width:520px){
     .sync-status:not([data-state="error"]):not([data-state="readonly"]){padding:0; width:34px; justify-content:center;}
     .sync-status:not([data-state="error"]):not([data-state="readonly"]) .sync-label{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap;}
@@ -317,6 +321,12 @@
   @keyframes fade{from{opacity:0; transform:translateY(3px);} to{opacity:1; transform:none;}}
 
   .settings-subnav{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px;}
+  /* 手機上子分頁維持單行、可左右滑，不讓最後一顆單獨掉到第二行 */
+  @media (max-width:520px){
+    .settings-subnav{flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch; padding-bottom:2px;}
+    .settings-subnav::-webkit-scrollbar{display:none;}
+    .settings-subnav .subtab-btn{flex-shrink:0;}
+  }
   .subtab-btn{
     font-family:'Noto Sans TC',sans-serif; font-weight:700; font-size:12.5px;
     background:var(--card); border:1px solid var(--card-line); border-radius:20px;
@@ -867,7 +877,8 @@
     display:flex; align-items:center; gap:6px; flex-wrap:wrap;
     margin-top:3px; font-size:12.5px; color:var(--ink-soft);
   }
-  .ledger-entry-teaser .sep{ opacity:.5; }
+  .ledger-entry-meta{ min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ledger-entry-teaser .sep{ opacity:.5; margin:0 5px; }
   .ledger-entry-teaser .muted{ font-style:italic; opacity:.75; }
   .ledger-entry-amt{ flex-shrink:0; text-align:right; white-space:nowrap; }
   .ledger-entry-amt b{ display:block; font:600 15px 'IBM Plex Mono',monospace; }
@@ -889,6 +900,8 @@
 
   @media (max-width:520px){
     .ledger-entry-detail{ padding-left:4px; }
+    /* 摘要文字佔滿一整行（太長截斷），「對你 ±」標籤換到下一行 */
+    .ledger-entry-meta{ flex:1 1 100%; }
     .ledger-entry-amt b{ font-size:14px; }
   }
 

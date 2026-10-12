@@ -66,7 +66,8 @@ function ledgerAmountHtml(amount, currency, amountInBase){
   return `<span class="ledger-entry-amt"><b>${fmtMoneyCompact(amount)} <span class="cur">${currency}</span></b>${base}</span>`;
 }
 
-// 單筆支出列：收合時顯示「付款人頭像 + 說明 + 時間・誰付・幾人分 + 對你的影響」與金額；
+// 單筆支出列：收合時顯示「付款人頭像 + 說明 + 誰付・幾人分・時間 + 對你的影響」與金額；
+// 摘要文字單行、太長就截斷（手機上被截掉的是最不重要的時間），對你的影響在手機上自成一行。
 // 展開後才顯示「先付／分攤」膠囊與編輯/刪除按鈕，避免筆數一多畫面被撐開。
 function renderExpenseRow(e){
   const expanded = expandedExpenseIds.has(e.id);
@@ -95,7 +96,7 @@ function renderExpenseRow(e){
         <span class="ledger-entry-lead">${e.payers.slice(0,2).map(p=>memberAvatarHtml(p.userId)).join('')}</span>
         <span class="ledger-entry-main">
           <span class="ledger-entry-title">${escapeHtml(e.description)}</span>
-          <span class="ledger-entry-teaser">${fmtTime(e.createdAt)}<span class="sep">·</span>${payerText}<span class="sep">·</span>${shareText} ${ledgerMePill(e)}</span>
+          <span class="ledger-entry-teaser"><span class="ledger-entry-meta">${payerText}<span class="sep">·</span>${shareText}<span class="sep">·</span>${fmtTime(e.createdAt)}</span>${ledgerMePill(e)}</span>
         </span>
         ${ledgerAmountHtml(e.amount, e.currency, e.amountInBase)}
       </button>
@@ -121,7 +122,7 @@ function renderDepositRow(d){
         <span class="ledger-entry-flow">${memberAvatarHtml(d.payerId,'sm')}${ICON_ARROW_RIGHT}${memberAvatarHtml(d.collectorId,'sm')}</span>
         <span class="ledger-entry-main">
           <span class="ledger-entry-title">${ledgerWho(d.payerId)} → ${ledgerWho(d.collectorId)}</span>
-          <span class="ledger-entry-teaser">${fmtTime(d.createdAt)}<span class="sep">·</span>${d.note ? escapeHtml(d.note) : '<span class="muted">無備註</span>'}</span>
+          <span class="ledger-entry-teaser"><span class="ledger-entry-meta">${d.note ? escapeHtml(d.note) : '<span class="muted">無備註</span>'}<span class="sep">·</span>${fmtTime(d.createdAt)}</span></span>
         </span>
         ${ledgerAmountHtml(d.amount, d.currency, d.amountInBase)}
       </button>
