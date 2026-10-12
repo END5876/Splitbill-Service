@@ -844,9 +844,11 @@
 
   /* --- 條目列：收合時固定兩行、左右對齊——「項目｜金額」與「誰付的（轉帳是備註）｜你應收或應付」。
          時間、換算金額、每個人怎麼分都收進展開後，手機的窄畫面一次只放最需要的資訊 --- */
-  .ledger-entry + .ledger-entry{ border-top:1px solid var(--card-line); margin-left:14px; }
-  .ledger-entry + .ledger-entry .ledger-entry-row,
-  .ledger-entry + .ledger-entry .ledger-entry-detail{ padding-left:0; }
+  /* 內縮分隔線用偽元素畫，整列仍維持全寬——展開時的底色才會一路填到左邊 */
+  .ledger-entry{ position:relative; }
+  .ledger-entry + .ledger-entry::before{
+    content:""; position:absolute; top:0; left:14px; right:0; height:1px; background:var(--card-line);
+  }
   .ledger-entry.open{ background:color-mix(in srgb, var(--brass) 5%, var(--surface)); }
   .ledger-entry-row{
     display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:baseline; gap:3px 14px;
@@ -879,12 +881,13 @@
   .split-list li + li{ border-top:1px dashed var(--card-line); }
   .split-name{ min-width:0; overflow-wrap:anywhere; }
   .split-name small{ display:block; margin-top:1px; font:11.5px 'IBM Plex Mono',monospace; color:var(--ink-soft); }
-  .split-net{ flex-shrink:0; font-size:13px; font-weight:700; white-space:nowrap; }
-  .split-net .num{ font-family:'IBM Plex Mono',monospace; }
+  /* 右側兩欄：「應收／應付」｜數字。數字欄固定寬度（--num-w，見 renderExpenseSplit）並靠右，位數不同也對齊 */
+  .split-net{ flex-shrink:0; display:inline-flex; align-items:baseline; gap:8px; font-size:13px; font-weight:700; white-space:nowrap; }
+  .split-net .num{ min-width:var(--num-w, auto); text-align:right; font-family:'IBM Plex Mono',monospace; }
 
   @media (max-width:520px){
     .ledger-entry-row{ column-gap:10px; padding:11px 12px; }
-    .ledger-entry + .ledger-entry{ margin-left:12px; }
+    .ledger-entry + .ledger-entry::before{ left:12px; }
     .ledger-entry-detail{ padding:0 12px 14px; }
   }
 

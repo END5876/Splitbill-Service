@@ -84,12 +84,21 @@ function renderExpenseSplit(e, evenShare){
   const caption = evenShare
     ? `${e.participants.length} 人平均分攤，每人 <b>${fmtMoneyCompact(e.participants[0].amount)} ${e.currency}</b>`
     : `依金額分攤（${e.currency}）`;
-  const rows = ids.map(id=>{
+  // 右側拆成「應收／應付」與數字兩欄：數字欄寬取這筆裡最長的數字（等寬字型的 ch），
+  // 每一列的數字都靠右對齊、「應收／應付」也因此排成一直線。
+  const items = ids.map(id=>{
     const paid = sum(e.payers, id), share = sum(e.participants, id);
+    const net = round2(paid - share);
+    return { id, paid, share, net, numText: Math.abs(net) < 0.005 ? '' : fmtMoneyCompact(Math.abs(net)) };
+  });
+  const numWidth = Math.max(1, ...items.map(it=>it.numText.length));
+  const rows = items.map(({ id, paid, share, net, numText })=>{
     const note = paid ? `<small>先付 ${fmtMoneyCompact(paid)}・${share ? `分攤 ${fmtMoneyCompact(share)}` : '不分攤'}</small>` : '';
-    return `<li><span class="split-name">${ledgerWho(id)}${note}</span><span class="split-net">${netPhraseHtml(round2(paid - share))}</span></li>`;
+    const cls = numText ? (net > 0 ? 'amt-pos' : 'amt-neg') : 'amt-zero';
+    const label = numText ? (net > 0 ? '應收' : '應付') : '打平';
+    return `<li><span class="split-name">${ledgerWho(id)}${note}</span><span class="split-net ${cls}"><span>${label}</span><span class="num">${numText}</span></span></li>`;
   }).join('');
-  return `<div class="split-box"><div class="split-caption">${caption}</div><ul class="split-list">${rows}</ul></div>`;
+  return `<div class="split-box"><div class="split-caption">${caption}</div><ul class="split-list" style="--num-w:${numWidth}ch">${rows}</ul></div>`;
 }
 
 // 展開後最上方的一行補充資訊（時間、換算金額…），用「・」串起來
