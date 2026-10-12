@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#1B2731">
+<meta name="theme-color" content="#2B2D42">
 <title>拆帳本｜Mousebot Splitbill</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,7 +15,7 @@
     var theme = saved || ((window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light');
     document.documentElement.setAttribute('data-theme', theme);
     // 跟 js/theme.js 的 THEME_COLORS 保持一致（瀏覽器網址列／PWA 狀態列顏色）
-    if (theme === 'dark') document.querySelector('meta[name="theme-color"]').setAttribute('content', '#191E22');
+    if (theme === 'dark') document.querySelector('meta[name="theme-color"]').setAttribute('content', '#1E1F22');
   }catch(e){}
 })();
 </script>
