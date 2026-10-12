@@ -868,21 +868,17 @@
   .empty-state p{font-size:13.5px; margin:0 0 12px;}
 
   /* ---------- Member tags ---------- */
-  .member-list{display:flex; flex-wrap:wrap; gap:10px;}
+  /* 用等寬欄位的 grid：每張卡片寬度一致，標籤長短（例如「🔗 你」）不會把同列的卡片推歪 */
+  .member-list{display:grid; grid-template-columns:repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap:10px;}
   .member-tag{
-    display:flex; align-items:center; gap:8px;
+    display:flex; align-items:center; gap:8px; min-width:0;
     background:var(--surface); border:1px solid var(--card-line); border-radius:10px;
     padding:8px 10px 8px 12px;
   }
   .member-tag .dot{width:9px; height:9px; border-radius:50%; background:var(--brass-soft); flex-shrink:0;}
-  .member-tag input{border:none; background:transparent; font-size:14px; width:100px; min-width:0; padding:2px;}
+  .member-tag input{border:none; background:transparent; font-size:14px; flex:1 1 auto; width:auto; min-width:0; padding:2px;}
   .member-tag .member-actions{display:flex; align-items:center; gap:8px; flex-shrink:0;}
   .member-btn .btn-ic{display:none; flex-shrink:0;}
-  /* 手機：每位成員佔滿一列、永遠維持單行，名字欄位吃掉剩餘寬度 */
-  @media (max-width:640px){
-    .member-tag{flex:1 1 100%; min-width:0;}
-    .member-tag input{flex:1 1 auto; width:auto;}
-  }
   /* 較窄的手機（文字按鈕會把名字擠掉）：按鈕只顯示圖示，間距也收緊 */
   @media (max-width:430px){
     .member-tag{gap:6px; padding:6px 6px 6px 10px;}
