@@ -56,6 +56,7 @@ function showSettingsSub(sub){
   document.querySelectorAll('.subpanel[data-subpanel]').forEach(p=>p.classList.toggle('active', p.dataset.subpanel===sub));
   if (sub === 'people') renderTripLinksPanel();
   if (sub === 'trip') renderDiscordPanel();
+  if (sub === 'history') renderHistoryIfVisible();
   // 有指定卡片就捲過去；否則切換分組後回到頂端，不要停在上一個分組的捲動位置
   const anchorEl = alias && alias.anchor && document.getElementById(alias.anchor);
   if (anchorEl) requestAnimationFrame(()=>anchorEl.scrollIntoView({ behavior:'smooth', block:'start' }));

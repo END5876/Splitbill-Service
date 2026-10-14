@@ -45,6 +45,7 @@ const createOAuthRouter = require('./routes/oauth');
 const createMembersRouter = require('./routes/members');
 const createAttachRouter = require('./routes/attach');
 const createEntriesRouter = require('./routes/entries');
+const createHistoryRouter = require('./routes/history');
 const upstream = require('./lib/upstreamStatus');
 
 // 🔒 [安全性] Content-Security-Policy：腳本只能來自本站檔案，inline <script> 與
@@ -165,6 +166,7 @@ function startWebApi(options = {}) {
   app.use('/api', createMembersRouter(ctx));
   app.use('/api', createAttachRouter(ctx));
   app.use('/api', createEntriesRouter(ctx));
+  app.use('/api', createHistoryRouter(ctx));
 
   // ---- 統一的錯誤回應：路由裡丟出的例外（例如寫入資料庫失敗）都在這裡轉成
   // { error } JSON，路由不用各自包 try/catch。body 解析錯誤（JSON 格式錯、太大）

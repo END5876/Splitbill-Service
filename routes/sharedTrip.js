@@ -12,7 +12,7 @@ const { mergeIncomingMembers } = require('../lib/members');
 // SSE 版本（GET /api/shared-trip/:token/events）放在 routes/sse.js。
 // ════════════════════════════════════════════════════════════════
 module.exports = function createSharedTripRouter(ctx) {
-  const { storage, requireGuestLink } = ctx;
+  const { storage, requireGuestLink, actorOf } = ctx;
   const router = express.Router();
 
   // ---- GET /api/shared-trip/:token：依分享連結 token 取得對應的行程資料 ----
@@ -57,7 +57,7 @@ module.exports = function createSharedTripRouter(ctx) {
     storage.setTrip(repaired);
     // 🆕 [多人協作 / 即時同步] 同上，改用 touchTrip() 才會觸發 SSE 廣播，
     // 並一併帶上 writerId 讓寫入者本人可以被正確辨識出來。
-    storage.touchTrip(repaired, { writerId });
+    storage.touchTrip(repaired, { writerId, actor: actorOf(req, found.link) });
     storage.persist();
     res.json({ trip: storage.toPublicTrip(repaired), permission: found.link.guest });
   });

@@ -20,7 +20,10 @@ Mousebot 分帳系統的獨立服務：**網頁記帳介面（`public/`）＋ RE
 - **讀不懂就不啟動**：`splitbill.json` 或資料庫損毀時服務直接啟動失敗，不會以空資料上線。
 - **每日備份**：`backups/splitbill-YYYY-MM-DD.db`（UTC 日期），啟動時與之後每小時檢查一次，保留最近 7 份。
   還原方式：停掉服務，把備份檔複製成 `splitbill.db`（並刪掉同名的 `-wal`／`-shm` 檔）再啟動。
-- **歷史版本**：每次行程內容變動（`updatedAt` 改變）會在 `trip_revisions` 留一份不含憑證的快照，每個行程保留最近 20 份。
+- **歷史版本**：每次行程內容變動（`updatedAt` 改變）會在 `trip_revisions` 留一份不含憑證的快照，每個行程保留最近 50 份，網頁可以整份「回到此版本」。
+- **操作紀錄**：同一時間在 `trip_activity` 記下「誰、改了什麼」（`lib/activity.js` 比較寫入前後的行程自動產生，路由只需要在 `touchTrip()` 帶上 `actor`），
+  每個行程保留最近 500 筆。支出／轉帳的變動帶完整的修改前後內容，所以就算快照已經被清掉，刪掉的帳目仍然可以單筆還原。
+  紀錄只存操作者的顯示名稱，API 不會回傳 Discord ID。
 - `updatedAt` 是行程的版本號，保證嚴格遞增；SSE 的 `trip-updated` 事件在資料確實寫進資料庫之後才發出。
 - **只能跑單一實例**：所有路由讀寫的是記憶體裡的 cache，SSE 推播、限流、帳單辨識協作也都在記憶體裡。
   同一個資料庫檔若同時被兩個實例寫入（例如滾動部署時新舊版本重疊），寫入前會用 `PRAGMA data_version`
@@ -61,7 +64,8 @@ Mousebot 分帳系統的獨立服務：**網頁記帳介面（`public/`）＋ RE
    | `GEMINI_API_KEY` | 選填。網頁版帳單照片辨識（登入者每小時 30 次） |
    | `PORT` / `SPLITBILL_DATA_DIR` | 預設 3000 / Dockerfile 的 `/app/data` |
    | `SPLITBILL_BACKUP_KEEP` | 選填。每日備份保留幾份，預設 7；`0` 關閉 |
-   | `SPLITBILL_REVISIONS_KEEP` | 選填。每個行程保留幾個歷史版本，預設 20；`0` 關閉 |
+   | `SPLITBILL_REVISIONS_KEEP` | 選填。每個行程保留幾個歷史版本，預設 50；`0` 關閉 |
+   | `SPLITBILL_ACTIVITY_KEEP` | 選填。每個行程保留幾筆操作紀錄，預設 500；`0` 關閉 |
    | `SPLITBILL_SQLITE_JOURNAL` | 選填。預設 `WAL`；Volume 若是不支援共享記憶體的網路檔案系統，改成 `DELETE` |
 3. 健康檢查路徑：`/healthz`。回應裡的 `upstream` 是外部服務最近的狀態（`fx`＝匯率、`gemini`＝帳單辨識）：
    `ok`／`degraded`（最近一次失敗）／`unknown`（啟動後還沒用過）。外部服務壞掉不影響 `ok: true`，網頁都有退路。
@@ -74,8 +78,11 @@ Mousebot 分帳系統的獨立服務：**網頁記帳介面（`public/`）＋ RE
 - 行程：`GET /api/my/trips`、`POST /api/trips`、`GET|PUT|DELETE /api/trip/:tripId`、`GET /api/trip/:tripId/events`（SSE）
 - 行程連結：`GET|POST /api/trip/:tripId/links`、`PATCH|DELETE /api/trip/:tripId/links/:token`（建立者）、
   `GET /api/trip/:tripId/invite`（成員取得預設邀請連結）、`GET /api/link/:token`（解析）、`POST /api/link/:token/claim`（認領）
+- 紀錄：`GET /api/trip/:tripId/activity?before=&limit=`、`GET /api/trip/:tripId/revisions/:updatedAt`、
+  `POST /api/trip/:tripId/revisions/:updatedAt/restore`（整份還原；行程連結、建立者、綁定、基準幣別不變，已連結 Discord 的成員一律保留）。
+  訪客路徑 `/api/shared-trip/:token/…` 也有同一組，唯讀連結只能看
 - 單筆帳目：`PUT|DELETE /api/trip/:tripId/expenses/:id`、`PUT|DELETE /api/trip/:tripId/deposits/:id`
-  （body `{ entry, writerId }`；回傳 `prevUpdatedAt`／`updatedAt`）。網頁記帳一律走這裡，整包 PUT 只用在設定與 Bot
+  （body `{ entry, writerId, restore? }`；回傳 `prevUpdatedAt`／`updatedAt`；`restore: true` 只會讓紀錄標示為「還原」）。網頁記帳一律走這裡，整包 PUT 只用在設定與 Bot
 - 連結訪客：`GET|PUT /api/shared-trip/:token`，以及同路徑下的 `events`、`fx-rate`、`parse-receipt`、`receipt-session`、`expenses/:id`、`deposits/:id`
 - 成員：`POST /api/trip/:tripId/members/:memberId/unlink`
 - 綁定：`POST /api/trip/:tripId/bind-code`、`POST /api/attach`（Bot）、`POST /api/trip/:tripId/detach`

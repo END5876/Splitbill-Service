@@ -333,8 +333,8 @@ function applyEntryToBase(kind, id, entry, updatedAt){
   base.updatedAt = updatedAt;
   lastSyncedTripJSON = JSON.stringify(repairTrip(base));
 }
-// entry 為 null 代表刪除
-async function syncEntry(kind, id, entry){
+// entry 為 null 代表刪除；opts.restore：這是從「紀錄」還原的（只影響操作紀錄上的說明）
+async function syncEntry(kind, id, entry, opts){
   if ((!currentTripId && !shareMode) || (shareMode && shareMode.permission !== 'write')){
     return saveTripToApi(); // 沒開雲端行程／唯讀：沿用整包儲存的提示訊息
   }
@@ -345,7 +345,7 @@ async function syncEntry(kind, id, entry){
     const res = await fetch(entryApiUrl(kind, id), {
       method: entry ? 'PUT' : 'DELETE',
       headers: Object.assign({ 'Content-Type': 'application/json' }, apiHeaders()),
-      body: JSON.stringify(entry ? { entry, writerId: CLIENT_INSTANCE_ID } : { writerId: CLIENT_INSTANCE_ID }),
+      body: JSON.stringify(Object.assign(entry ? { entry } : {}, { writerId: CLIENT_INSTANCE_ID }, opts && opts.restore ? { restore: true } : {})),
     });
     const body = await apiJson(res);
     const saved = entry ? repairTrip({ [kind]: [body.entry] })[kind][0] : null;

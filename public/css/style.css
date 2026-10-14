@@ -725,7 +725,7 @@
   }
   @keyframes modal-in{from{transform:translateY(24px); opacity:0;} to{transform:none; opacity:1;}}
   .modal-title{font-family:'Noto Serif TC',serif; font-weight:700; font-size:17px; margin:0 0 10px;}
-  .modal-body{font-size:14px; color:var(--ink-soft); line-height:1.65; margin-bottom:18px;}
+  .modal-body{font-size:14px; color:var(--ink-soft); line-height:1.65; margin-bottom:18px; white-space:pre-line;}
   .modal-actions{display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;}
   .modal-list{display:flex; flex-direction:column; gap:8px; margin-bottom:6px;}
   .modal-list-item{
@@ -1329,3 +1329,24 @@
     .tl-preset-sub{flex-basis:100%;}
     .tl-hero-btn{width:100%;}
   }
+
+  /* ═════════ 紀錄分頁（js/history.js）：沿用帳目清單的日期分組，每筆紀錄是區塊裡的一列 ═════════ */
+  .hist-item{ position:relative; padding:12px 14px; }
+  .hist-item + .hist-item::before{
+    content:""; position:absolute; top:0; left:14px; right:0; height:1px; background:var(--card-line);
+  }
+  .hist-head{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; }
+  .hist-actor{ font-weight:700; font-size:14px; display:inline-flex; gap:6px; align-items:baseline; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .hist-me, .hist-via{ font-weight:500; font-size:12px; color:var(--ink-soft); }
+  .hist-time{ font:12px 'IBM Plex Mono',monospace; color:var(--ink-soft); white-space:nowrap; }
+  .hist-badge{
+    display:inline-block; margin-top:6px; padding:1px 8px; border-radius:999px; font-size:11.5px; font-weight:600;
+    color:var(--brass); background:color-mix(in srgb, var(--brass) 12%, var(--card));
+  }
+  .hist-changes{ list-style:none; margin:6px 0 0; padding:0; display:flex; flex-direction:column; gap:6px; }
+  .hist-changes li{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; font-size:13.5px; line-height:1.5; }
+  .hist-change{ min-width:0; overflow-wrap:anywhere; }
+  .hist-fields{ display:block; margin-top:2px; font-size:12.5px; color:var(--ink-soft); }
+  .hist-action{ flex-shrink:0; font-size:12.5px; white-space:nowrap; }
+  .hist-meta{ display:inline-flex; align-items:baseline; gap:10px; flex-shrink:0; }
+  .hist-revert{ font-size:12px; white-space:nowrap; color:var(--ink-soft); font-weight:600; }

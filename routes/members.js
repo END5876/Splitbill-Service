@@ -4,7 +4,7 @@ const express = require('express');
 // 🆕 [行程獨立化] 成員的 Discord 連結管理：解除連結。
 // 認領成員（寫入 discordId）走行程連結，見 routes/links.js。
 module.exports = function createMembersRouter(ctx) {
-  const { storage, requireTripAccess, requireUser, userRoleInTrip } = ctx;
+  const { storage, requireTripAccess, requireUser, userRoleInTrip, actorOf } = ctx;
   const router = express.Router();
 
   function loadTripOr404(req, res) {
@@ -31,7 +31,7 @@ module.exports = function createMembersRouter(ctx) {
       return res.status(403).json({ error: '只有行程建立者可以解除其他成員的連結' });
     }
     delete member.discordId;
-    storage.touchTrip(trip);
+    storage.touchTrip(trip, { actor: actorOf(req) });
     storage.persist();
     res.json({ ok: true, trip: storage.toPublicTrip(trip) });
   });

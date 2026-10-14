@@ -27,6 +27,7 @@
   <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></symbol>
   <symbol id="i-switch" viewBox="0 0 24 24"><path d="M7 15l5 5 5-5M7 9l5-5 5 5"/></symbol>
   <symbol id="i-camera" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></symbol>
+  <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></symbol>
   <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></symbol>
   <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
   <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></symbol>
@@ -328,6 +329,7 @@
       <button class="subtab-btn active" data-subtab="trip" data-click="showSettingsSub" data-args='["trip"]'><svg class="ic" aria-hidden="true"><use href="#i-luggage"/></svg>行程</button>
       <button class="subtab-btn" data-subtab="people" data-click="showSettingsSub" data-args='["people"]'><svg class="ic" aria-hidden="true"><use href="#i-users"/></svg>成員與分享</button>
       <button class="subtab-btn" data-subtab="account" data-click="showSettingsSub" data-args='["account"]'><svg class="ic" aria-hidden="true"><use href="#i-user"/></svg>帳號</button>
+      <button class="subtab-btn" data-subtab="history" data-click="showSettingsSub" data-args='["history"]'><svg class="ic" aria-hidden="true"><use href="#i-history"/></svg>紀錄</button>
       <button class="subtab-btn" data-subtab="advanced" data-click="showSettingsSub" data-args='["advanced"]'><svg class="ic" aria-hidden="true"><use href="#i-tool"/></svg>進階</button>
     </div>
 
@@ -433,6 +435,15 @@
       </div>
     </div>
 
+    <!-- ---------- 🕘 紀錄：操作紀錄與還原（js/history.js） ---------- -->
+    <div class="subpanel" id="panel-history" data-subpanel="history">
+      <div class="card">
+        <h2 class="section-title">操作紀錄</h2>
+        <p class="hint" style="margin-top:0;">每一次修改都會記下來：誰、什麼時候、改了什麼。刪錯或改錯的帳目可以單筆還原，也可以把整個行程回到某個時間點（最近 50 個版本）。</p>
+        <div id="historyList"></div>
+      </div>
+    </div>
+
     <!-- ---------- 🛠 進階：備份與匯入（js/importExport.js） ---------- -->
     <div class="subpanel" id="panel-advanced" data-subpanel="advanced">
       <div class="card">
@@ -485,6 +496,7 @@
 <script src="js/tripLinks.js"></script>
 <script src="js/linkEntry.js"></script>
 <script src="js/account.js"></script>
+<script src="js/history.js"></script>
 <script src="js/bootstrap.js"></script>
 
 </body>

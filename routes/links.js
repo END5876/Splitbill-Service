@@ -31,7 +31,7 @@ const GUEST_LEVELS = new Set(['none', 'read', 'write']);
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 module.exports = function createLinksRouter(ctx) {
-  const { storage, requireTripAccess, principalUserId, userRoleInTrip } = ctx;
+  const { storage, requireTripAccess, principalUserId, userRoleInTrip, actorOf } = ctx;
   const router = express.Router();
 
   function loadTripOr404(req, res) {
@@ -202,7 +202,7 @@ module.exports = function createLinksRouter(ctx) {
       trip.members.push(member);
     }
 
-    storage.touchTrip(trip);
+    storage.touchTrip(trip, { actor: actorOf(req) });
     storage.persist();
     res.json({ ok: true, tripId: trip.id, memberId: member.id });
   });

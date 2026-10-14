@@ -16,25 +16,28 @@ const { isSafeId, validateExpenseEntry, validateDepositEntry, str } = require('.
 // 前端手上的版本若等於 prevUpdatedAt，代表中間沒有別人寫入，直接把版本號往前推即可；
 // 不相等就表示漏了別人的更新，前端會重新取一次完整行程來合併。
 //
+// body 可以帶 restore: true，代表這是從操作紀錄「還原」的（只影響紀錄上的說明）。
+//
 // 同一組端點掛在兩種路徑上，只差在怎麼找到行程、怎麼驗證權限：
 //   /api/trip/:tripId/…           成員／Bot（需要 write）
 //   /api/shared-trip/:token/…     可編輯的分享連結
 // ════════════════════════════════════════════════════════════════
 module.exports = function createEntriesRouter(ctx) {
-  const { storage, requireTripAccess, requireGuestLink } = ctx;
+  const { storage, requireTripAccess, requireGuestLink, actorOf } = ctx;
   const router = express.Router();
 
+  // 找出行程並確認可以寫入；回傳 { trip, actor }，不通過時已經寫好錯誤回應、回傳 null
   function tripByTripId(req, res) {
     const trip = storage.getTrip(req.params.tripId);
     if (!trip) {
       res.status(404).json({ error: '找不到這個行程' });
       return null;
     }
-    return requireTripAccess(req, res, trip, 'write') ? trip : null;
+    return requireTripAccess(req, res, trip, 'write') ? { trip, actor: actorOf(req) } : null;
   }
   function tripByShareToken(req, res) {
     const found = requireGuestLink(req, res, '此分享連結為唯讀，無法儲存變更');
-    return found && found.trip;
+    return found && { trip: found.trip, actor: actorOf(req, found.link) };
   }
 
   const KINDS = {
@@ -57,9 +60,11 @@ module.exports = function createEntriesRouter(ctx) {
     return typeof w === 'string' ? w.slice(0, 64) : null;
   }
 
-  function commit(trip, req) {
+  function commit(trip, req, actor) {
     const prevUpdatedAt = typeof trip.updatedAt === 'number' ? trip.updatedAt : null;
-    storage.touchTrip(trip, { writerId: writerIdOf(req) });
+    const meta = { writerId: writerIdOf(req), actor };
+    if (req.body && req.body.restore === true) meta.reason = { type: 'restore-entry' };
+    storage.touchTrip(trip, meta);
     storage.persist();
     return { prevUpdatedAt, updatedAt: trip.updatedAt };
   }
@@ -67,8 +72,9 @@ module.exports = function createEntriesRouter(ctx) {
   function mount(base, resolveTrip) {
     for (const [kind, spec] of Object.entries(KINDS)) {
       router.put(`${base}/${kind}/:entryId`, (req, res) => {
-        const trip = resolveTrip(req, res);
-        if (!trip) return;
+        const resolved = resolveTrip(req, res);
+        if (!resolved) return;
+        const { trip, actor } = resolved;
         const entryId = req.params.entryId;
         if (!isSafeId(entryId)) return res.status(400).json({ error: '資料 ID 格式錯誤' });
         const raw = req.body && req.body.entry;
@@ -78,23 +84,26 @@ module.exports = function createEntriesRouter(ctx) {
         const list = trip[kind];
         const index = list.findIndex((x) => x.id === entryId);
         const existing = index === -1 ? null : list[index];
-        const entry = { ...spec.repair({ ...raw, id: entryId }, trip, existing), id: entryId };
+        // 編輯時沒帶日期就沿用原本的（不然會被當成「現在」，日期悄悄變掉）
+        const withDate = existing && raw.createdAt === undefined ? { ...raw, createdAt: existing.createdAt } : raw;
+        const entry = { ...spec.repair({ ...withDate, id: entryId }, trip, existing), id: entryId };
         if (index === -1) list.push(entry);
         else list[index] = entry;
 
-        res.json({ entry, ...commit(trip, req) });
+        res.json({ entry, ...commit(trip, req, actor) });
       });
 
       router.delete(`${base}/${kind}/:entryId`, (req, res) => {
-        const trip = resolveTrip(req, res);
-        if (!trip) return;
+        const resolved = resolveTrip(req, res);
+        if (!resolved) return;
+        const { trip, actor } = resolved;
         const index = trip[kind].findIndex((x) => x.id === req.params.entryId);
         if (index === -1) {
           const v = typeof trip.updatedAt === 'number' ? trip.updatedAt : null;
           return res.json({ deleted: false, prevUpdatedAt: v, updatedAt: v });
         }
         trip[kind].splice(index, 1);
-        res.json({ deleted: true, ...commit(trip, req) });
+        res.json({ deleted: true, ...commit(trip, req, actor) });
       });
     }
   }

@@ -15,7 +15,7 @@ function cleanName(v, max) {
 }
 
 module.exports = function createMeRouter(ctx) {
-  const { storage, requireUser, userRoleInTrip, isBotOwner } = ctx;
+  const { storage, requireUser, userRoleInTrip, isBotOwner, actorOf } = ctx;
   const router = express.Router();
 
   // ---- GET /api/me：目前登入的 Discord 使用者（沒登入回 user:null） ----
@@ -133,7 +133,7 @@ module.exports = function createMeRouter(ctx) {
     });
     storage.setTrip(trip);
     if (guildId) storage.attachTripToGuild(trip, guildId);
-    storage.touchTrip(trip);
+    storage.touchTrip(trip, { actor: actorOf(req) });
     storage.persist();
     res.status(201).json(storage.toPublicTrip(trip));
   });

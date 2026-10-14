@@ -7,7 +7,7 @@ const { mergeIncomingMembers } = require('../lib/members');
 // 舊網址 /api/trip/:guildId/:tripId 由 lib/legacyPaths.js 改寫到這裡。
 
 module.exports = function createTripsRouter(ctx) {
-  const { storage, requireTripAccess, requireService, canLinkMembers } = ctx;
+  const { storage, requireTripAccess, requireService, canLinkMembers, actorOf } = ctx;
   const router = express.Router();
 
   function loadTripOr404(req, res) {
@@ -101,7 +101,7 @@ module.exports = function createTripsRouter(ctx) {
     storage.setTrip(repaired);
     if (!existing && req.legacyGuildId) storage.attachTripToGuild(repaired, req.legacyGuildId);
 
-    storage.touchTrip(repaired, { writerId });
+    storage.touchTrip(repaired, { writerId, actor: actorOf(req) });
     storage.persist();
     res.json(storage.toPublicTrip(repaired));
   });

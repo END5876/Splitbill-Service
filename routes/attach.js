@@ -41,7 +41,7 @@ function normalizeCode(v) {
 }
 
 module.exports = function createAttachRouter(ctx) {
-  const { storage, requireTripAccess, userRoleInTrip } = ctx;
+  const { storage, requireTripAccess, userRoleInTrip, actorOf } = ctx;
   const router = express.Router();
 
   // ---- POST /api/trip/:tripId/bind-code：產生綁定碼（建立者） ----
@@ -102,7 +102,7 @@ module.exports = function createAttachRouter(ctx) {
     }
     storage.ensureGuildState(guildId).activeTripByUser[actor] = trip.id;
 
-    if (!alreadyHere || joined) storage.touchTrip(trip);
+    if (!alreadyHere || joined) storage.touchTrip(trip, { actor: actorOf(req) });
     storage.persist();
     res.json({ ok: true, alreadyAttached: alreadyHere, joined, trip: storage.toPublicTrip(trip) });
   });
@@ -114,7 +114,7 @@ module.exports = function createAttachRouter(ctx) {
     if (!requireTripAccess(req, res, trip, 'owner')) return;
     if (trip.guildId) {
       storage.detachTripFromGuild(trip);
-      storage.touchTrip(trip);
+      storage.touchTrip(trip, { actor: actorOf(req) });
       storage.persist();
     }
     res.json({ ok: true, trip: storage.toPublicTrip(trip) });

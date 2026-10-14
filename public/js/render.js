@@ -296,6 +296,7 @@ function renderDepositList(){
 }
 
 function renderAll(){
+  renderHistoryIfVisible(); // 「設定 → 紀錄」開著時，行程有更新就重新載入（js/history.js）
   // cover
   document.getElementById('tripName').value = trip.name;
   document.getElementById('baseCurrencyLabel').textContent = trip.baseCurrency;
