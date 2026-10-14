@@ -147,7 +147,7 @@ async function saveTripToApiImpl(){
           if (!proceed) return;
         } else if (serverTrip.updatedAt && trip.updatedAt && serverTrip.updatedAt !== trip.updatedAt) {
           // 伺服器版本比本地版本新，嘗試智慧合併
-          const merged = tryMergeTrips(trip, serverTrip);
+          const merged = mergeWithServer(serverTrip);
           if (merged) {
             // 合併成功：靜默套用合併結果，不打擾使用者
             trip = merged;
@@ -160,7 +160,7 @@ async function saveTripToApiImpl(){
           }
         } else if (lastSyncedTripJSON && JSON.stringify(serverTrip) !== lastSyncedTripJSON && !serverTrip.updatedAt) {
           // 舊版伺服器（沒有 updatedAt），退回原本的整包比對
-          const merged = tryMergeTrips(trip, serverTrip);
+          const merged = mergeWithServer(serverTrip);
           if (merged) {
             trip = merged;
             renderAll();
@@ -190,7 +190,7 @@ async function saveTripToApiImpl(){
         // 合併不了（真衝突）就不再重試，請使用者重新整理頁面。
         const body = await res.json().catch(()=>({}));
         const serverTrip = body.currentTrip;
-        const merged = serverTrip ? tryMergeTrips(trip, serverTrip) : null;
+        const merged = serverTrip ? mergeWithServer(serverTrip) : null;
 
         if (!merged){
           toast('儲存失敗：資料版本衝突且無法自動合併，請重新整理頁面後再試一次。', 'error');
@@ -225,58 +225,162 @@ async function saveTripToApiImpl(){
   }
 }
 
-// 🆕 [多人協作] 智慧合併：把「本地版本」與「伺服器版本」的 expenses/deposits/members
-// 以 id 為鍵進行合併。策略：
-// - 本地有、伺服器沒有的筆數（本地新增的）→ 保留
-// - 伺服器有、本地沒有的筆數（別人新增的）→ 加進來
-// - 兩邊都有同一個 id 的筆數 → 以本地版本為準（使用者正在編輯的優先）
-// - 如果同一筆 id 的內容不同（衝突），回傳 null 表示無法自動合併
-// 注意：members 的合併比較寬鬆，只要 id 一致就視為同一人（不管名稱是否被改過）
-function tryMergeTrips(localTrip, serverTrip){
+// 🆕 [多人協作] 三方合併：local（畫面上的版本）、server（伺服器最新版本）、
+// base（雙方最後一次一致的版本＝lastSyncedTripJSON）。以 id 為鍵逐筆比較：
+//   只有一邊改過 → 用改過的那邊（包含「刪除」也算改過）
+//   兩邊都改、而且改得不一樣 → 以本地為準（使用者正在操作的優先），計入 lastMergeConflicts
+// 以前只做兩方合併，看不出「本地沒有」是被刪掉還是根本沒拿到，結果別人刪掉的帳目
+// 會在自己存檔時復活、自己刪掉的帳目也會被別人的版本補回來。
+// 沒有 base（第一次儲存、或舊資料）時退回原本的作法：聯集、同 id 以本地為準。
+let lastMergeConflicts = 0;
+function syncBase(){
+  try{ return lastSyncedTripJSON ? JSON.parse(lastSyncedTripJSON) : null; }catch(e){ return null; }
+}
+function sameJson(a, b){ return JSON.stringify(a) === JSON.stringify(b); }
+function mergeById(localList, serverList, baseList){
+  const L = new Map(localList.map(x=>[x.id, x]));
+  const S = new Map(serverList.map(x=>[x.id, x]));
+  const B = baseList ? new Map(baseList.map(x=>[x.id, x])) : null;
+  const out = [];
+  let conflicts = 0;
+  for (const [id, s] of S){
+    const l = L.get(id), b = B && B.get(id);
+    if (!l){
+      if (!b){ out.push(s); continue; }              // 別人新增的
+      if (!sameJson(b, s)){ conflicts++; out.push(s); } // 我刪掉、別人改過：保留別人的修改
+      continue;                                        // 我刪掉、別人沒動：刪除
+    }
+    if (sameJson(l, s) || (b && sameJson(b, l))){ out.push(s); continue; } // 一樣，或只有別人改過
+    if (b && !sameJson(b, s)){ conflicts++; }          // 兩邊都改過
+    else if (!b){ conflicts++; }
+    out.push(l);
+  }
+  for (const [id, l] of L){
+    if (S.has(id)) continue;
+    const b = B && B.get(id);
+    if (!b){ out.push(l); continue; }                  // 我新增的
+    if (!sameJson(b, l)){ conflicts++; out.push(l); }  // 別人刪掉、我改過：保留我的修改
+    // 別人刪掉、我沒動：刪除
+  }
+  return { list: out, conflicts };
+}
+function mergeRates(local, server, base){
+  const out = {};
+  for (const code of new Set([...Object.keys(local), ...Object.keys(server)])){
+    const l = local[code], s = server[code], b = base ? base[code] : undefined;
+    const v = (base && l === b) ? s : (l !== undefined ? l : (base && b !== undefined ? undefined : s));
+    if (v !== undefined) out[code] = v;
+  }
+  return out;
+}
+function tryMergeTrips(localTrip, serverTrip, baseTrip){
   try{
-    // 合併 expenses
-    const localExpMap = new Map(localTrip.expenses.map(e=>[e.id, e]));
-    const serverExpMap = new Map(serverTrip.expenses.map(e=>[e.id, e]));
-    const mergedExpenses = [];
-    // 先加入本地的所有 expenses（本地版本優先）
-    for (const [id, exp] of localExpMap) mergedExpenses.push(exp);
-    // 再加入伺服器有但本地沒有的（別人新增的）
-    for (const [id, exp] of serverExpMap){
-      if (!localExpMap.has(id)) mergedExpenses.push(exp);
-    }
-    // 按 createdAt 排序
-    mergedExpenses.sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
-
-    // 合併 deposits
-    const localDepMap = new Map(localTrip.deposits.map(d=>[d.id, d]));
-    const serverDepMap = new Map(serverTrip.deposits.map(d=>[d.id, d]));
-    const mergedDeposits = [];
-    for (const [id, dep] of localDepMap) mergedDeposits.push(dep);
-    for (const [id, dep] of serverDepMap){
-      if (!localDepMap.has(id)) mergedDeposits.push(dep);
-    }
-    mergedDeposits.sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
-
-    // 合併 members（伺服器有但本地沒有的成員也加進來，避免別人新增的成員消失）
-    const localMemMap = new Map(localTrip.members.map(m=>[m.id, m]));
-    const serverMemMap = new Map(serverTrip.members.map(m=>[m.id, m]));
-    const mergedMembers = [...localTrip.members];
-    for (const [id, mem] of serverMemMap){
-      if (!localMemMap.has(id)) mergedMembers.push(mem);
-    }
-
-    // 建立合併後的 trip（保留本地的基本設定，更新 expenses/deposits/members）
-    const merged = Object.assign({}, localTrip, {
-      expenses: mergedExpenses,
-      deposits: mergedDeposits,
-      members: mergedMembers,
-      // updatedAt 設為伺服器版本（合併後儲存時伺服器會再更新）
+    const base = baseTrip || null;
+    const byTime = (a,b)=>(a.createdAt||0)-(b.createdAt||0);
+    const exp = mergeById(localTrip.expenses, serverTrip.expenses, base && base.expenses);
+    const dep = mergeById(localTrip.deposits, serverTrip.deposits, base && base.deposits);
+    const mem = mergeById(localTrip.members, serverTrip.members, base && base.members);
+    lastMergeConflicts = exp.conflicts + dep.conflicts + mem.conflicts;
+    // 行程名稱、基準幣別、封存狀態：本地沒改過就用伺服器的
+    const scalar = (key) => (base && sameJson(localTrip[key], base[key])) ? serverTrip[key] : localTrip[key];
+    const merged = Object.assign({}, serverTrip, {
+      name: scalar('name'),
+      baseCurrency: scalar('baseCurrency'),
+      archived: scalar('archived'),
+      rates: base ? mergeRates(localTrip.rates, serverTrip.rates, base.rates) : Object.assign({}, serverTrip.rates, localTrip.rates),
+      expenses: exp.list.sort(byTime),
+      deposits: dep.list.sort(byTime),
+      members: mem.list,
+      // 版本號用伺服器的（合併後儲存時伺服器會再更新）
       updatedAt: serverTrip.updatedAt,
     });
     return repairTrip(merged);
   }catch(e){
     return null; // 合併過程出錯，回傳 null 讓呼叫端改走衝突提示
   }
+}
+// 跟伺服器版本做三方合併；成功時 base 換成伺服器版本，之後的比較都以它為準。
+function mergeWithServer(serverTrip){
+  const server = repairTrip(serverTrip);
+  const merged = tryMergeTrips(trip, server, syncBase());
+  if (merged) lastSyncedTripJSON = JSON.stringify(server);
+  return merged;
+}
+
+/* =====================================================================
+   🆕 單筆支出／轉帳同步（伺服器端見 routes/entries.js）
+   ---------------------------------------------------------------------
+   新增、編輯、刪除一筆支出或轉帳時，只送那一筆，不再整包 PUT 行程：
+   多人同時記帳時，改的是不同筆就完全不會衝突，傳輸量也不會隨行程變大。
+   伺服器回傳 prevUpdatedAt（寫入前的版本）：等於本地版本代表中間沒有漏掉
+   別人的更新，直接把版本往前推；不相等就重新抓一次完整行程合併。
+   失敗時本地的修改還在，頁首會顯示「未儲存」，點一下改用整包儲存重試。
+===================================================================== */
+function entryApiUrl(kind, id){
+  const base = shareMode
+    ? `/api/shared-trip/${encodeURIComponent(shareMode.token)}`
+    : tripApiUrl();
+  return `${base}/${kind}/${encodeURIComponent(id)}`;
+}
+// 把這次寫入套用到 base，base 才會繼續等於「伺服器上的內容」
+function applyEntryToBase(kind, id, entry, updatedAt){
+  const base = syncBase();
+  if (!base) return;
+  const list = base[kind] || (base[kind] = []);
+  const idx = list.findIndex(x => x.id === id);
+  if (entry){ if (idx === -1) list.push(entry); else list[idx] = entry; }
+  else if (idx !== -1) list.splice(idx, 1);
+  base.updatedAt = updatedAt;
+  lastSyncedTripJSON = JSON.stringify(repairTrip(base));
+}
+// entry 為 null 代表刪除
+async function syncEntry(kind, id, entry){
+  if ((!currentTripId && !shareMode) || (shareMode && shareMode.permission !== 'write')){
+    return saveTripToApi(); // 沒開雲端行程／唯讀：沿用整包儲存的提示訊息
+  }
+  syncSaving++;
+  renderSyncStatus();
+  let ok = false;
+  try{
+    const res = await fetch(entryApiUrl(kind, id), {
+      method: entry ? 'PUT' : 'DELETE',
+      headers: Object.assign({ 'Content-Type': 'application/json' }, apiHeaders()),
+      body: JSON.stringify(entry ? { entry, writerId: CLIENT_INSTANCE_ID } : { writerId: CLIENT_INSTANCE_ID }),
+    });
+    const body = await apiJson(res);
+    const saved = entry ? repairTrip({ [kind]: [body.entry] })[kind][0] : null;
+    if (saved){
+      const idx = trip[kind].findIndex(x => x.id === id);
+      if (idx !== -1) trip[kind][idx] = saved; // 用伺服器整理過的版本
+    }
+    const inSync = typeof trip.updatedAt === 'number' && body.prevUpdatedAt === trip.updatedAt;
+    if (inSync){
+      trip.updatedAt = body.updatedAt;
+      applyEntryToBase(kind, id, saved, body.updatedAt);
+    } else {
+      await refreshTripFromServer();
+    }
+    ok = true;
+    toast('已儲存', 'success');
+    renderAll();
+    // 這次只送了一筆；同時還有別的本地修改（例如記帳時順手更新的匯率）就補一次整包儲存
+    if (lastSyncedTripJSON && JSON.stringify(trip) !== lastSyncedTripJSON) scheduleCloudSave(0);
+  }catch(err){
+    toast('儲存失敗：' + err.message + '（點頁首的「未儲存」可以重試）', 'error');
+  }finally{
+    syncSaving--;
+    syncFailed = !ok;
+    renderSyncStatus();
+  }
+  return ok;
+}
+// 重新抓一次完整行程，跟本地合併（本地還沒存的修改不會被蓋掉）
+async function refreshTripFromServer(){
+  const url = shareMode ? `/api/shared-trip/${encodeURIComponent(shareMode.token)}` : tripApiUrl();
+  const res = await fetch(url, { headers: apiHeaders() });
+  const body = await apiJson(res);
+  const merged = mergeWithServer(shareMode ? body.trip : body);
+  if (merged) trip = merged;
 }
 
 // 🆕 [分享連結] 分享連結模式下的儲存：直接 PUT /api/shared-trip/:token，
@@ -307,7 +411,7 @@ async function saveSharedTripToApi(){
       if (res.status === 409){
         const body = await res.json().catch(()=>({}));
         const serverTrip = body.currentTrip;
-        const merged = serverTrip ? tryMergeTrips(trip, serverTrip) : null;
+        const merged = serverTrip ? mergeWithServer(serverTrip) : null;
 
         if (!merged){
           toast('儲存失敗：資料版本衝突且無法自動合併，請重新整理頁面後再試一次。', 'error');

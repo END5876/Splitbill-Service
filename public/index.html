@@ -8,17 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700;900&family=Noto+Sans+TC:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" referrerpolicy="no-referrer-when-downgrade">
-<script>
-(function(){
-  try{
-    var saved = localStorage.getItem('splitbill-theme');
-    var theme = saved || ((window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light');
-    document.documentElement.setAttribute('data-theme', theme);
-    // 跟 js/theme.js 的 THEME_COLORS 保持一致（瀏覽器網址列／PWA 狀態列顏色）
-    if (theme === 'dark') document.querySelector('meta[name="theme-color"]').setAttribute('content', '#1E1F22');
-  }catch(e){}
-})();
-</script>
+<script src="js/theme-init.js"></script>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -62,13 +52,13 @@
     <div class="header-row1">
       <span class="brand">拆帳本</span>
       <input type="text" id="tripName" placeholder="行程名稱，例如：沖繩三天兩夜" title="點擊修改行程名稱" aria-label="行程名稱">
-      <button class="header-icon-btn" id="tripSwitchBtn" type="button" onclick="openTripSwitcher()" aria-label="切換行程" title="切換行程" style="display:none;"><svg class="ic" aria-hidden="true"><use href="#i-switch"/></svg></button>
+      <button class="header-icon-btn" id="tripSwitchBtn" type="button" data-click="openTripSwitcher" aria-label="切換行程" title="切換行程" style="display:none;"><svg class="ic" aria-hidden="true"><use href="#i-switch"/></svg></button>
       <span class="header-currency" id="baseCurrencyLabel" title="基準幣別於建立行程時決定，之後無法更改"></span>
       <!-- 同步狀態：已同步／儲存中／未儲存（點擊重試）／未開啟行程／唯讀，見 js/tripSync.js 的 renderSyncStatus() -->
-      <button class="sync-status" id="syncStatus" type="button" onclick="onSyncStatusClick()" data-state="offline">
+      <button class="sync-status" id="syncStatus" type="button" data-click="onSyncStatusClick" data-state="offline">
         <span class="sync-dot" aria-hidden="true"></span><span class="sync-label">未開啟行程</span>
       </button>
-      <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" type="button" aria-label="切換深色/淺色模式" title="切換深色/淺色模式">
+      <button class="theme-toggle-btn" id="themeToggleBtn" data-click="toggleTheme" type="button" aria-label="切換深色/淺色模式" title="切換深色/淺色模式">
         <svg class="ic" aria-hidden="true"><use id="themeToggleIcon" href="#i-moon"/></svg>
       </button>
     </div>
@@ -76,10 +66,10 @@
 </header>
 
 <nav class="top-nav wrap" id="topNav">
-  <button class="nav-btn active" data-tab="overview" onclick="showMainTab('overview')"><svg class="ic" aria-hidden="true"><use href="#i-overview"/></svg>總覽結算</button>
-  <button class="nav-btn" data-tab="expenses" onclick="showMainTab('expenses')"><svg class="ic" aria-hidden="true"><use href="#i-receipt"/></svg>支出記帳</button>
-  <button class="nav-btn" data-tab="deposits" onclick="showMainTab('deposits')"><svg class="ic" aria-hidden="true"><use href="#i-transfer"/></svg>轉帳／預收</button>
-  <button class="nav-btn" data-tab="settings" onclick="showMainTab('settings')" data-owner-only><svg class="ic" aria-hidden="true"><use href="#i-settings"/></svg>設定</button>
+  <button class="nav-btn active" data-tab="overview" data-click="showMainTab" data-args='["overview"]'><svg class="ic" aria-hidden="true"><use href="#i-overview"/></svg>總覽結算</button>
+  <button class="nav-btn" data-tab="expenses" data-click="showMainTab" data-args='["expenses"]'><svg class="ic" aria-hidden="true"><use href="#i-receipt"/></svg>支出記帳</button>
+  <button class="nav-btn" data-tab="deposits" data-click="showMainTab" data-args='["deposits"]'><svg class="ic" aria-hidden="true"><use href="#i-transfer"/></svg>轉帳／預收</button>
+  <button class="nav-btn" data-tab="settings" data-click="showMainTab" data-args='["settings"]' data-owner-only><svg class="ic" aria-hidden="true"><use href="#i-settings"/></svg>設定</button>
 </nav>
 
 <main class="wrap">
@@ -99,13 +89,13 @@
           <div class="t2" id="debtViewSubtitle">最少轉帳次數，一次結清</div>
         </div>
         <div class="seg-tabs" role="tablist" aria-label="切換要顯示的結算方式">
-          <button type="button" role="tab" class="seg-tab" data-view="transfer" aria-selected="true" onclick="onDebtViewChange('transfer')">建議轉帳</button>
-          <button type="button" role="tab" class="seg-tab" data-view="pairwise" aria-selected="false" onclick="onDebtViewChange('pairwise')">彼此欠款</button>
+          <button type="button" role="tab" class="seg-tab" data-view="transfer" aria-selected="true" data-click="onDebtViewChange" data-args='["transfer"]'>建議轉帳</button>
+          <button type="button" role="tab" class="seg-tab" data-view="pairwise" aria-selected="false" data-click="onDebtViewChange" data-args='["pairwise"]'>彼此欠款</button>
         </div>
       </div>
       <div class="convert-bar">
         <label class="convert-label" for="debtCurrencySelect">換算幣別</label>
-        <select id="debtCurrencySelect" class="convert-select" onchange="onDebtCurrencyChange(this.value)"></select>
+        <select id="debtCurrencySelect" class="convert-select" data-change="onDebtCurrencyChange" data-args='["$value"]'></select>
         <span class="convert-note" id="debtRateNote"></span>
       </div>
       <div class="settle-list" id="debtSettleList"></div>
@@ -165,7 +155,7 @@
           </span>
           <span class="receipt-scan-arrow" aria-hidden="true">→</span>
         </span>
-        <input type="file" id="receiptFileInput" accept="image/*" onchange="handleReceiptUpload(event)">
+        <input type="file" id="receiptFileInput" accept="image/*" data-change="handleReceiptUpload" data-args='["$event"]'>
       </label>
       <div id="receiptWorkArea" style="display:none;"></div>
     </div>
@@ -174,7 +164,7 @@
          編輯既有一筆時會加上 .editing 標示，並自動展開。見 js/uiKit.js 的 setFormCardOpen()。 -->
     <div class="card form-card" id="expenseFormCard" data-write-only>
       <h2 class="section-title form-card-head">
-        <button type="button" class="form-card-toggle" aria-expanded="true" aria-controls="expenseFormBody" onclick="toggleFormCard('expenseFormCard')">
+        <button type="button" class="form-card-toggle" aria-expanded="true" aria-controls="expenseFormBody" data-click="toggleFormCard" data-args='["expenseFormCard"]'>
           <span id="expenseFormTitle">新增一筆支出</span>
           <span class="form-card-badge">編輯中</span>
           <span class="form-card-chevron" aria-hidden="true">▾</span>
@@ -184,7 +174,7 @@
       <div class="row">
         <div class="field" style="flex:2;">
           <label for="expDesc">項目說明</label>
-          <input type="text" id="expDesc" placeholder="例如：晚餐、租車費" oninput="this.removeAttribute('aria-invalid')">
+          <input type="text" id="expDesc" placeholder="例如：晚餐、租車費" data-input="clearInvalid" data-args='["$el"]'>
         </div>
         <div class="field date-field">
           <label for="expDate">日期</label>
@@ -231,15 +221,15 @@
         <div class="chip-select" id="participantChips"></div>
         <!-- 窄螢幕會隱藏 .lbl-long 的字，讓三顆按鈕維持在同一行（「重新平均／全部平均／各付各的」） -->
         <div class="btn-row split-actions">
-          <button class="btn btn-ghost btn-sm" onclick="equalFillChips('participant')" title="依已勾選人數重新平均"><span><span class="lbl-long">依已勾選人數</span>重新平均</span></button>
-          <button class="btn btn-ghost btn-sm" onclick="checkAllParticipants()" title="全部人平均分攤"><span>全部<span class="lbl-long">人</span>平均<span class="lbl-long">分攤</span></span></button>
-          <button class="btn btn-ghost btn-sm" onclick="selfShareParticipants()" title="誰付的就算誰的，不分攤給其他人（只是記一筆帳）">各付各的</button>
+          <button class="btn btn-ghost btn-sm" data-click="equalFillChips" data-args='["participant"]' title="依已勾選人數重新平均"><span><span class="lbl-long">依已勾選人數</span>重新平均</span></button>
+          <button class="btn btn-ghost btn-sm" data-click="checkAllParticipants" title="全部人平均分攤"><span>全部<span class="lbl-long">人</span>平均<span class="lbl-long">分攤</span></span></button>
+          <button class="btn btn-ghost btn-sm" data-click="selfShareParticipants" title="誰付的就算誰的，不分攤給其他人（只是記一筆帳）">各付各的</button>
         </div>
       </div>
 
       <div class="btn-row">
-        <button class="btn btn-brass btn-block" id="btnSaveExpenseSync" onclick="withLoading(this,'儲存中…',saveExpenseAndSync)">儲存</button>
-        <button class="btn btn-ghost" id="btnResetExpense" onclick="resetExpenseForm()">清空表單</button>
+        <button class="btn btn-brass btn-block" id="btnSaveExpenseSync" data-click="saveExpenseAndSync" data-loading="儲存中…">儲存</button>
+        <button class="btn btn-ghost" id="btnResetExpense" data-click="resetExpenseForm">清空表單</button>
       </div>
       </div>
     </div>
@@ -249,8 +239,8 @@
       </h2>
       <div class="ledger-toolbar">
         <div class="ledger-search-wrap">
-          <input type="text" id="expenseFilterText" class="ledger-search" placeholder="搜尋項目說明…" oninput="onExpenseFilterChange()">
-          <button type="button" class="ledger-search-clear" id="expenseFilterClearBtn" onclick="clearExpenseFilter()" title="清除篩選" aria-label="清除篩選" style="display:none;">✕</button>
+          <input type="text" id="expenseFilterText" class="ledger-search" placeholder="搜尋項目說明…" data-input="onExpenseFilterChange">
+          <button type="button" class="ledger-search-clear" id="expenseFilterClearBtn" data-click="clearExpenseFilter" title="清除篩選" aria-label="清除篩選" style="display:none;">✕</button>
         </div>
         <div class="ledger-toolbar-chips" id="expenseFilterMemberChips"></div>
         <div class="ledger-toolbar-summary" id="expenseFilterSummary" style="display:none;"></div>
@@ -263,7 +253,7 @@
   <div class="panel" id="panel-deposits" data-panel="deposits">
     <div class="card form-card" id="depositFormCard" data-write-only>
       <h2 class="section-title form-card-head">
-        <button type="button" class="form-card-toggle" aria-expanded="true" aria-controls="depositFormBody" onclick="toggleFormCard('depositFormCard')">
+        <button type="button" class="form-card-toggle" aria-expanded="true" aria-controls="depositFormBody" data-click="toggleFormCard" data-args='["depositFormCard"]'>
           <span id="depositFormTitle">新增一筆轉帳／預收款</span>
           <span class="form-card-badge">編輯中</span>
           <span class="form-card-chevron" aria-hidden="true">▾</span>
@@ -308,8 +298,8 @@
         </div>
       </div>
       <div class="btn-row">
-        <button class="btn btn-brass btn-block" id="btnSaveDepositSync" onclick="withLoading(this,'儲存中…',saveDepositAndSync)">儲存</button>
-        <button class="btn btn-ghost" id="btnResetDeposit" onclick="resetDepositForm()">清空表單</button>
+        <button class="btn btn-brass btn-block" id="btnSaveDepositSync" data-click="saveDepositAndSync" data-loading="儲存中…">儲存</button>
+        <button class="btn btn-ghost" id="btnResetDeposit" data-click="resetDepositForm">清空表單</button>
       </div>
       </div>
     </div>
@@ -319,8 +309,8 @@
       </h2>
       <div class="ledger-toolbar">
         <div class="ledger-search-wrap">
-          <input type="text" id="depositFilterText" class="ledger-search" placeholder="搜尋備註…" oninput="onDepositFilterChange()">
-          <button type="button" class="ledger-search-clear" id="depositFilterClearBtn" onclick="clearDepositFilter()" title="清除篩選" aria-label="清除篩選" style="display:none;">✕</button>
+          <input type="text" id="depositFilterText" class="ledger-search" placeholder="搜尋備註…" data-input="onDepositFilterChange">
+          <button type="button" class="ledger-search-clear" id="depositFilterClearBtn" data-click="clearDepositFilter" title="清除篩選" aria-label="清除篩選" style="display:none;">✕</button>
         </div>
         <div class="ledger-toolbar-chips" id="depositFilterMemberChips"></div>
         <div class="ledger-toolbar-summary" id="depositFilterSummary" style="display:none;"></div>
@@ -335,10 +325,10 @@
        會自動切到新的分組並捲到對應卡片，見 js/state.js 的 SETTINGS_SUB_ALIASES。 -->
   <div class="panel" id="panel-settings" data-panel="settings" data-owner-only>
     <div class="settings-subnav" aria-label="設定分類">
-      <button class="subtab-btn active" data-subtab="trip" onclick="showSettingsSub('trip')"><svg class="ic" aria-hidden="true"><use href="#i-luggage"/></svg>行程</button>
-      <button class="subtab-btn" data-subtab="people" onclick="showSettingsSub('people')"><svg class="ic" aria-hidden="true"><use href="#i-users"/></svg>成員與分享</button>
-      <button class="subtab-btn" data-subtab="account" onclick="showSettingsSub('account')"><svg class="ic" aria-hidden="true"><use href="#i-user"/></svg>帳號</button>
-      <button class="subtab-btn" data-subtab="advanced" onclick="showSettingsSub('advanced')"><svg class="ic" aria-hidden="true"><use href="#i-tool"/></svg>進階</button>
+      <button class="subtab-btn active" data-subtab="trip" data-click="showSettingsSub" data-args='["trip"]'><svg class="ic" aria-hidden="true"><use href="#i-luggage"/></svg>行程</button>
+      <button class="subtab-btn" data-subtab="people" data-click="showSettingsSub" data-args='["people"]'><svg class="ic" aria-hidden="true"><use href="#i-users"/></svg>成員與分享</button>
+      <button class="subtab-btn" data-subtab="account" data-click="showSettingsSub" data-args='["account"]'><svg class="ic" aria-hidden="true"><use href="#i-user"/></svg>帳號</button>
+      <button class="subtab-btn" data-subtab="advanced" data-click="showSettingsSub" data-args='["advanced"]'><svg class="ic" aria-hidden="true"><use href="#i-tool"/></svg>進階</button>
     </div>
 
     <!-- ---------- 🧳 行程：這個行程本身的設定 ---------- -->
@@ -358,7 +348,7 @@
         <div class="btn-row add-rate-row">
           <input type="text" id="newRateCurrency" placeholder="幣別代碼 (如 JPY)" style="max-width:140px; text-transform:uppercase;" aria-label="幣別代碼">
           <input type="number" inputmode="decimal" id="newRateValue" placeholder="匯率" step="0.0001" style="max-width:120px;" aria-label="匯率">
-          <button class="btn btn-primary" onclick="addRate()">＋ 新增幣別</button>
+          <button class="btn btn-primary" data-click="addRate">＋ 新增幣別</button>
         </div>
       </div>
 
@@ -375,8 +365,8 @@
         <h2 class="section-title">成員名單 <span class="n" id="memberCount"></span></h2>
         <div class="member-list" id="memberList"></div>
         <div class="btn-row inline-add-row">
-          <input type="text" id="newMemberName" placeholder="新成員名稱" style="max-width:180px;" aria-label="新成員名稱" onkeydown="if(event.key==='Enter'){event.preventDefault(); addMember();}">
-          <button class="btn btn-primary" onclick="addMember()">＋ 新增成員</button>
+          <input type="text" id="newMemberName" placeholder="新成員名稱" style="max-width:180px;" aria-label="新成員名稱" data-enter="addMember">
+          <button class="btn btn-primary" data-click="addMember">＋ 新增成員</button>
         </div>
         <p class="hint">在這裡新增的成員一開始是「未連結」：可以照常記帳，但他本人要看到這個行程，需要用下方的邀請連結認領。</p>
       </div>
@@ -402,11 +392,11 @@
           <select id="tripSelect"><option value="">－ 讀取中 －</option></select>
         </div>
         <div class="btn-row trip-actions">
-          <button class="btn btn-brass" id="btnLoadTrip" onclick="withLoading(this,'載入中…',loadTripFromApi)">⬇ 開啟這個行程</button>
-          <button class="btn btn-ghost btn-sm" onclick="withLoading(this,'讀取中…',()=>refreshTripList())">重新整理清單</button>
+          <button class="btn btn-brass" id="btnLoadTrip" data-click="loadTripFromApi" data-loading="載入中…">⬇ 開啟這個行程</button>
+          <button class="btn btn-ghost btn-sm" data-click="refreshTripList" data-loading="讀取中…">重新整理清單</button>
         </div>
         <label class="check-row" id="showAllTripsRow" style="display:none;">
-          <input type="checkbox" id="showAllTripsToggle" onchange="setShowAllTrips(this.checked)">
+          <input type="checkbox" id="showAllTripsToggle" data-change="setShowAllTrips" data-args='["$checked"]'>
           <span>列出所有行程（Bot 擁有者）</span>
         </label>
         <p class="hint">也可以直接點頁首行程名稱旁的切換按鈕快速換行程。所有變更都會自動寫入雲端，頁首會顯示同步狀態；如果別人剛好也改過，會先自動合併，無法合併時才會詢問你。</p>
@@ -437,7 +427,7 @@
           </div>
         </div>
         <div class="btn-row">
-          <button class="btn btn-primary" onclick="withLoading(this,'建立中…',createTripOnServer)">＋ 建立行程</button>
+          <button class="btn btn-primary" data-click="createTripOnServer" data-loading="建立中…">＋ 建立行程</button>
         </div>
         <p class="hint">你會是這個行程的建立者，也是第一位成員。之後可以到「成員與分享」邀請朋友，或到「行程」綁定 Discord 伺服器。</p>
       </div>
@@ -449,18 +439,18 @@
         <h2 class="section-title">下載備份</h2>
         <p class="hint" style="margin-top:0;">行程的資料都存在雲端，平常不需要另外備份；想自己留一份，或要搬到別的地方時，可以下載成 JSON 檔。</p>
         <div class="btn-row">
-          <button class="btn btn-brass" type="button" onclick="downloadJson()">⬇ 下載這個行程的 JSON</button>
-          <button class="btn btn-ghost" type="button" onclick="copyJson()">複製 JSON</button>
+          <button class="btn btn-brass" type="button" data-click="downloadJson">⬇ 下載這個行程的 JSON</button>
+          <button class="btn btn-ghost" type="button" data-click="copyJson">複製 JSON</button>
         </div>
       </div>
 
       <div class="card">
         <h2 class="section-title">匯入成新行程</h2>
         <p class="hint" style="margin-top:0;">選擇之前下載的 JSON 檔（或直接貼上內容），會建立成一個<b>新的</b>雲端行程，不會動到目前開著的行程。匯入時會問你是裡面的哪一位成員。</p>
-        <input type="file" id="fileInput" accept="application/json,.json" onchange="handleFileImport(event)" aria-label="選擇 JSON 檔案">
+        <input type="file" id="fileInput" accept="application/json,.json" data-change="handleFileImport" data-args='["$event"]' aria-label="選擇 JSON 檔案">
         <textarea id="jsonInput" rows="6" placeholder="或把 JSON 內容貼在這裡…" style="margin-top:10px;" aria-label="貼上 JSON 內容"></textarea>
         <div class="btn-row">
-          <button class="btn btn-primary" type="button" onclick="withLoading(this,'匯入中…',importJsonAsNewTrip)">匯入成新行程</button>
+          <button class="btn btn-primary" type="button" data-click="importJsonAsNewTrip" data-loading="匯入中…">匯入成新行程</button>
         </div>
       </div>
     </div>
@@ -469,13 +459,14 @@
 </main>
 
 <nav class="bottom-nav" id="bottomNav">
-  <button class="nav-btn active" data-tab="overview" onclick="showMainTab('overview')"><svg class="ic" aria-hidden="true"><use href="#i-overview"/></svg>總覽</button>
-  <button class="nav-btn" data-tab="expenses" onclick="showMainTab('expenses')"><svg class="ic" aria-hidden="true"><use href="#i-receipt"/></svg>支出</button>
-  <button class="nav-btn" data-tab="deposits" onclick="showMainTab('deposits')"><svg class="ic" aria-hidden="true"><use href="#i-transfer"/></svg>轉帳</button>
-  <button class="nav-btn" data-tab="settings" onclick="showMainTab('settings')" data-owner-only><svg class="ic" aria-hidden="true"><use href="#i-settings"/></svg>設定</button>
+  <button class="nav-btn active" data-tab="overview" data-click="showMainTab" data-args='["overview"]'><svg class="ic" aria-hidden="true"><use href="#i-overview"/></svg>總覽</button>
+  <button class="nav-btn" data-tab="expenses" data-click="showMainTab" data-args='["expenses"]'><svg class="ic" aria-hidden="true"><use href="#i-receipt"/></svg>支出</button>
+  <button class="nav-btn" data-tab="deposits" data-click="showMainTab" data-args='["deposits"]'><svg class="ic" aria-hidden="true"><use href="#i-transfer"/></svg>轉帳</button>
+  <button class="nav-btn" data-tab="settings" data-click="showMainTab" data-args='["settings"]' data-owner-only><svg class="ic" aria-hidden="true"><use href="#i-settings"/></svg>設定</button>
 </nav>
 
 <script src="js/helpers.js"></script>
+<script src="js/actions.js"></script>
 <script src="js/theme.js"></script>
 <script src="js/tripModel.js"></script>
 <script src="js/overview.js"></script>

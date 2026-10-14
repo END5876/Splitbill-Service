@@ -111,7 +111,7 @@ function settleRowHtml(t, whoHtml, amount, currency, withPaidBtn){
 }
 function markPaidButtonHtml(t){
   return `<button type="button" class="settle-paid-link" data-write-only
-    onclick="withLoading(this,'記錄中…',()=>markTransferPaid('${t.from}','${t.to}'))">標記已付</button>`;
+    ${act('click','markTransferPaid',t.from,t.to)} data-loading="記錄中…">標記已付</button>`;
 }
 async function markTransferPaid(fromId, toId){
   const t = lastTransferTx.find(x => x.from === fromId && x.to === toId);
@@ -123,13 +123,14 @@ async function markTransferPaid(fromId, toId){
     { title: '標記為已付款', confirmText: '已付款' }
   );
   if (!ok) return;
-  trip.deposits.push({
+  const dep = {
     id: genId('dep'), payerId: fromId, collectorId: toId,
     amount, currency: base, amountInBase: amount, note: '結算轉帳', createdAt: Date.now()
-  });
+  };
+  trip.deposits.push(dep);
   renderAll();
   toast(`已記錄：${memberName(fromId)} → ${memberName(toId)} ${fmtMoney(amount, base)} ${base}`, 'success');
-  if (currentTripId || shareMode) await saveTripToApi();
+  if (currentTripId || shareMode) await syncEntry('deposits', dep.id, dep);
 }
 
 /* =====================================================================
@@ -173,7 +174,7 @@ function renderBalanceBarChart(net) {
   if (!el) return;
   if (!trip.members.length) {
     el.innerHTML = emptyState('👥', '尚未新增成員，先到「設定 → 成員與分享」加人吧', '前往新增成員 →',
-      "showMainTab('settings'); showSettingsSub('members'); document.getElementById('newMemberName').focus()");
+      "goAddMember");
     return;
   }
   // 找最大絕對值，用來計算長條寬度比例
@@ -356,7 +357,7 @@ function renderMemberDetails(net) {
 
     const isOpen = openMemberDetailIds.has(m.id);
     return `<div class="member-detail-card ${isOpen ? 'open' : ''}" id="mdc-${m.id}">
-      <button type="button" class="member-detail-head" aria-expanded="${isOpen}" aria-controls="mdb-${m.id}" onclick="toggleMemberDetail('${m.id}')">
+      <button type="button" class="member-detail-head" aria-expanded="${isOpen}" aria-controls="mdb-${m.id}" ${act('click','toggleMemberDetail',m.id)}>
         <div class="member-detail-name">
           <span class="status-dot" style="background:${v>0.01?'var(--credit)':v<-0.01?'var(--debt)':'var(--card-line)'}"></span>
           ${escapeHtml(m.name)}

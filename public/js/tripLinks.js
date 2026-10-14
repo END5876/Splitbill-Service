@@ -97,7 +97,7 @@ function renderInviteSection(){
         <div class="tl-hero-title">邀請朋友加入</div>
         <p class="tl-hero-sub">${who}</p>
       </div>
-      <button class="btn btn-brass tl-hero-btn" type="button" onclick="withLoading(this,'產生中…',copyInviteLink)">複製邀請連結</button>
+      <button class="btn btn-brass tl-hero-btn" type="button" data-click="copyInviteLink" data-loading="產生中…">複製邀請連結</button>
     </div>
     ${canManageTrip() ? '' : '<p class="hint tl-foot">想讓沒有 Discord 的朋友看帳或一起記帳，可以請行程建立者建立免登入的連結。</p>'}`;
 }
@@ -113,14 +113,14 @@ function renderLinkManager(){
   const inviteToken = defaultInviteToken(links);
   let body;
   if (s.links === null && !s.error) body = '<p class="hint">讀取中…</p>';
-  else if (s.error) body = `<p class="hint">讀取連結失敗：${escapeHtml(s.error)}　<button type="button" class="link-btn" onclick="loadTripLinks()">重試</button></p>`;
+  else if (s.error) body = `<p class="hint">讀取連結失敗：${escapeHtml(s.error)}　<button type="button" class="link-btn" data-click="loadTripLinks">重試</button></p>`;
   else if (!links.length && !s.composer) body = '<p class="hint tl-empty">還沒有任何連結。邀請朋友成為成員用上面的「複製邀請連結」；要給沒有 Discord 的人看帳或一起記帳，按「＋ 新增免登入連結」。</p>';
   else body = `<div class="tl-list">${sorted.map(l => linkRowHtml(l, l.token === inviteToken)).join('')}</div>`;
 
   el.innerHTML = `
     <div class="tl-section-head">
       <h3 class="section-subtitle">所有連結 ${s.links ? `<span class="n">(${links.length})</span>` : ''}</h3>
-      ${s.composer ? '' : '<button class="btn btn-ghost btn-sm" type="button" onclick="openLinkComposer()">＋ 新增免登入連結</button>'}
+      ${s.composer ? '' : '<button class="btn btn-ghost btn-sm" type="button" data-click="openLinkComposer">＋ 新增免登入連結</button>'}
     </div>
     ${s.composer ? linkComposerHtml(s.composer) : ''}
     ${body}`;
@@ -135,7 +135,6 @@ function linkTagsHtml(l){
   return tags.join('');
 }
 function linkRowHtml(l, isDefaultInvite){
-  const t = escapeHtml(l.token);
   const editing = tripLinksState.editing && tripLinksState.editing.token === l.token ? tripLinksState.editing : null;
   const expired = linkIsExpired(l);
   return `
@@ -147,8 +146,8 @@ function linkRowHtml(l, isDefaultInvite){
           <div class="tl-tags">${linkTagsHtml(l)}</div>
         </div>
         <div class="tl-row-actions">
-          ${expired ? '' : `<button class="btn btn-brass btn-sm" type="button" onclick="copyLinkUrl('${t}')">複製</button>`}
-          <button class="btn btn-ghost btn-sm" type="button" aria-expanded="${editing ? 'true' : 'false'}" onclick="toggleLinkEditor('${t}')">${editing ? '收起' : '設定'}</button>
+          ${expired ? '' : `<button class="btn btn-brass btn-sm" type="button" ${act('click','copyLinkUrl',l.token)}>複製</button>`}
+          <button class="btn btn-ghost btn-sm" type="button" aria-expanded="${editing ? 'true' : 'false'}" ${act('click','toggleLinkEditor',l.token)}>${editing ? '收起' : '設定'}</button>
         </div>
       </div>
       ${editing ? linkEditorHtml(l, editing, isDefaultInvite) : ''}
@@ -157,9 +156,13 @@ function linkRowHtml(l, isDefaultInvite){
 
 function segTabsHtml(name, options, value, onPick){
   return `<div class="seg-tabs tl-seg" role="radiogroup" aria-label="${name}">${options.map(o =>
-    `<button type="button" role="radio" class="seg-tab" aria-checked="${o.value === value}" aria-selected="${o.value === value}" onclick="${onPick}(${JSON.stringify(o.value).replace(/"/g, '&quot;')})">${o.label}</button>`
+    `<button type="button" role="radio" class="seg-tab" aria-checked="${o.value === value}" aria-selected="${o.value === value}" ${act('click', onPick, o.value)}>${o.label}</button>`
   ).join('')}</div>`;
 }
+function setLinkEditJoin(checked){ tripLinksState.editing.join = checked; renderLinkManager(); }
+function setLinkEditLabel(value){ tripLinksState.editing.label = value; }
+function setLinkComposerJoin(checked){ tripLinksState.composer.join = checked; renderLinkManager(); }
+function setLinkComposerLabel(value){ tripLinksState.composer.label = value; }
 function linkSummaryText(guest, join){
   if (guest === 'none' && !join) return '⚠️ 兩項都關掉的話，這條連結就沒有用途了。';
   const parts = [];
@@ -176,18 +179,18 @@ function linkEditorHtml(l, d, isDefaultInvite){
         ${segTabsHtml('不登入的訪客', Object.entries(LINK_GUEST_LABELS).map(([value, label]) => ({ value, label })), d.guest, 'setLinkEditGuest')}
       </div>
       <label class="check-row tl-field">
-        <input type="checkbox" ${d.join ? 'checked' : ''} onchange="tripLinksState.editing.join = this.checked; renderLinkManager()">
+        <input type="checkbox" ${d.join ? 'checked' : ''} data-change="setLinkEditJoin" data-args='["$checked"]'>
         允許用 Discord 登入加入成為成員
       </label>
       <div class="field tl-field">
         <label for="linkEditLabel">名稱（選填）</label>
-        <input type="text" id="linkEditLabel" maxlength="50" placeholder="${escapeHtml(linkDefaultName(d))}" value="${escapeHtml(d.label)}" oninput="tripLinksState.editing.label = this.value">
+        <input type="text" id="linkEditLabel" maxlength="50" placeholder="${escapeHtml(linkDefaultName(d))}" value="${escapeHtml(d.label)}" data-input="setLinkEditLabel" data-args='["$value"]'>
       </div>
       <p class="hint tl-summary">${linkSummaryText(d.guest, d.join)}</p>
       <div class="tl-editor-actions">
-        <button class="btn btn-brass btn-sm" type="button" ${d.guest === 'none' && !d.join ? 'disabled' : ''} onclick="withLoading(this,'儲存中…',saveLinkEdit)">儲存</button>
-        <button class="btn btn-ghost btn-sm" type="button" onclick="toggleLinkEditor(null)">取消</button>
-        <button class="btn btn-danger btn-sm tl-revoke" type="button" onclick="revokeTripLink('${escapeHtml(l.token)}')">撤銷連結</button>
+        <button class="btn btn-brass btn-sm" type="button" ${d.guest === 'none' && !d.join ? 'disabled' : ''} data-click="saveLinkEdit" data-loading="儲存中…">儲存</button>
+        <button class="btn btn-ghost btn-sm" type="button" data-click="toggleLinkEditor" data-args='[null]'>取消</button>
+        <button class="btn btn-danger btn-sm tl-revoke" type="button" ${act('click','revokeTripLink',l.token)}>撤銷連結</button>
       </div>
       ${isDefaultInvite ? '<p class="hint tl-foot">這是成員共用的邀請連結。撤銷後舊網址立刻失效，下次有人複製邀請連結時會自動產生新的。</p>' : ''}
     </div>`;
@@ -200,14 +203,14 @@ function linkComposerHtml(c){
       <div class="tl-label">給不用登入的朋友（沒有 Discord 也能開）：</div>
       <div class="tl-presets" role="radiogroup" aria-label="連結用途">
         ${LINK_PRESETS.map(p => `
-          <button type="button" role="radio" aria-checked="${p.id === c.preset}" class="tl-preset ${p.id === c.preset ? 'on' : ''}" onclick="pickLinkPreset('${p.id}')">
+          <button type="button" role="radio" aria-checked="${p.id === c.preset}" class="tl-preset ${p.id === c.preset ? 'on' : ''}" ${act('click','pickLinkPreset',p.id)}>
             <span class="tl-preset-ic" aria-hidden="true">${p.icon}</span>
             <span class="tl-preset-title">${p.title}</span>
             <span class="tl-preset-sub">${p.sub}</span>
           </button>`).join('')}
       </div>
       <label class="check-row tl-field">
-        <input type="checkbox" ${c.join ? 'checked' : ''} onchange="tripLinksState.composer.join = this.checked; renderLinkManager()">
+        <input type="checkbox" ${c.join ? 'checked' : ''} data-change="setLinkComposerJoin" data-args='["$checked"]'>
         也允許用 Discord 登入加入成為成員
       </label>
       <div class="tl-field">
@@ -216,12 +219,12 @@ function linkComposerHtml(c){
       </div>
       <div class="field tl-field">
         <label for="linkNewLabel">名稱（選填，方便你認得這是給誰的）</label>
-        <input type="text" id="linkNewLabel" maxlength="50" placeholder="例如：小華、公司同事" value="${escapeHtml(c.label)}" oninput="tripLinksState.composer.label = this.value">
+        <input type="text" id="linkNewLabel" maxlength="50" placeholder="例如：小華、公司同事" value="${escapeHtml(c.label)}" data-input="setLinkComposerLabel" data-args='["$value"]'>
       </div>
       <p class="hint tl-summary">${linkSummaryText(preset.guest, c.join)}${c.days ? `${c.days} 天後失效。` : ''}</p>
       <div class="tl-editor-actions">
-        <button class="btn btn-brass" type="button" onclick="withLoading(this,'建立中…',createTripLink)">建立並複製連結</button>
-        <button class="btn btn-ghost" type="button" onclick="closeLinkComposer()">取消</button>
+        <button class="btn btn-brass" type="button" data-click="createTripLink" data-loading="建立中…">建立並複製連結</button>
+        <button class="btn btn-ghost" type="button" data-click="closeLinkComposer">取消</button>
       </div>
     </div>`;
 }

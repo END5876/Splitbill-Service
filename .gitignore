@@ -1,6 +1,6 @@
 node_modules/
 data/
 .env
-/test
+
 # 版面／配色預覽（本機比較用，不進版控）
 layout-previews/

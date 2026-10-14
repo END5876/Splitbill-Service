@@ -1,5 +1,6 @@
 'use strict';
 const express = require('express');
+const { sanitizeReceiptState } = require('../lib/validate');
 
 // ════════════════════════════════════════════════════════════════
 // 🆕 [多人協作] 帳單辨識認領進度的即時同步端點。
@@ -59,11 +60,13 @@ module.exports = function createReceiptSessionRouter(ctx) {
       const trip = resolveTrip(req, res, false);
       if (!trip) return;
       const body = req.body || {};
-      if (!body.state || typeof body.state !== 'object') {
+      // 🔒 這份狀態會原樣廣播給同一個行程的其他人，只留下已知欄位（見 lib/validate.js）
+      const state = sanitizeReceiptState(body.state);
+      if (!state) {
         return res.status(400).json({ error: '缺少 state 資料' });
       }
       const writerId = typeof body.writerId === 'string' ? body.writerId.slice(0, 64) : null;
-      const entry = setReceiptSession(trip.id, body.state, writerId);
+      const entry = setReceiptSession(trip.id, state, writerId);
       broadcastReceiptSession(trip.id, entry);
       res.json({ ok: true, updatedAt: entry.updatedAt, needImage: !entry.state.imageDataUrl });
     });

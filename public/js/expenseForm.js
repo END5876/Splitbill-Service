@@ -72,13 +72,13 @@ function buildChips(containerId, prefix){
   container.innerHTML = trip.members.map(m=>`
     <div class="chip" data-id="${m.id}">
       <label class="chip-main">
-        <input type="checkbox" class="chip-checkbox" onchange="onChipToggle('${prefix}','${m.id}',this.checked)">
+        <input type="checkbox" class="chip-checkbox" ${act('change','onChipToggle',prefix,m.id,'$checked')}>
         <span class="chip-box" aria-hidden="true"></span>
         <span class="chip-label" title="${escapeHtml(m.name)}">${escapeHtml(m.name)}</span>
       </label>
       <input type="number" class="amt" inputmode="decimal" step="0.01" min="0"
         aria-label="${escapeHtml(m.name)} 的金額" data-id="${m.id}" disabled
-        oninput="${prefix==='payer' ? `onPayerAmountInput('${m.id}')` : `onParticipantAmountInput('${m.id}')`}">
+        ${act('input', prefix==='payer' ? 'onPayerAmountInput' : 'onParticipantAmountInput', m.id)}>
     </div>`).join('') || '<p class="hint">尚未新增成員，請先到「設定 → 成員與分享」新增。</p>';
   updateChipFieldMeta(container);
   syncManualMarks(prefix); // 🆕 重建後保險起見清掉舊的手動標記樣式（此時集合已重設為空）

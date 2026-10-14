@@ -87,7 +87,7 @@ function renderReceiptSessionBanner(){
     zone.innerHTML = `
       <div class="receipt-session-banner">
         <span>📡 有人正在進行帳單辨識認領中，加入即可立刻同步、一起點選品項</span>
-        <button type="button" class="btn btn-brass btn-sm" onclick="withLoading(this,'加入中…',joinReceiptSession)">加入認領</button>
+        <button type="button" class="btn btn-brass btn-sm" data-click="joinReceiptSession" data-loading="加入中…">加入認領</button>
       </div>`;
   } else {
     zone.style.display = 'none';
@@ -279,7 +279,7 @@ async function fileToResizedDataUrl(file, maxDim, quality){
 }
 
 // 🆕 [帳單辨識收斂] 這個函式現在有兩種呼叫方式：
-//   1. 原本的 <input type="file" onchange="handleReceiptUpload(event)">，
+//   1. 原本的 <input type="file" data-change="handleReceiptUpload" data-args='["$event"]'>，
 //      傳進來的是 change 事件，檔案要從 evt.target.files[0] 取。
 //   2. 拖放上傳（見下方 handleReceiptDrop()），已經在外層做完格式檢查與
 //      二次確認，直接把 File 物件傳進來，不需要再包一層假事件。
@@ -455,6 +455,11 @@ function receiptRemoveItem(itemId){
   markReceiptSessionDirty();
   renderReceiptWorkArea();
 }
+// 認領表單上的說明／付款人／幣別（只改本地狀態，跟原本 inline 寫法一樣不另外同步）
+const RECEIPT_EDITABLE_FIELDS = new Set(['description', 'payerId', 'currency']);
+function receiptSetField(field, value){
+  if (receiptState && RECEIPT_EDITABLE_FIELDS.has(field)) receiptState[field] = value;
+}
 // 手動新增一個辨識漏掉的品項
 function receiptAddManualItem(){
   receiptState.items.push({
@@ -547,7 +552,7 @@ function renderReceiptWorkArea(){
 
   const memberChipsHtml = (item)=> trip.members.map(m=>{
     const on = Array.isArray(item.assignedTo) && item.assignedTo.includes(m.id);
-    return `<button type="button" class="claim-chip ${on?'on':''}" onclick="receiptToggleClaim('${item.id}','${m.id}')">${escapeHtml(m.name)}</button>`;
+    return `<button type="button" class="claim-chip ${on?'on':''}" ${act('click','receiptToggleClaim',item.id,m.id)}>${escapeHtml(m.name)}</button>`;
   }).join('');
 
   const itemsHtml = receiptState.items.map(item=>{
@@ -565,15 +570,15 @@ function renderReceiptWorkArea(){
     return `
     <div class="receipt-item-row ${item.type==='fee'?'fee':''} ${unclaimed?'unclaimed':''}">
       <div class="receipt-item-head">
-        <button type="button" class="receipt-type-badge ${item.type==='fee'?'fee':''}" onclick="receiptToggleItemType('${item.id}')" title="點一下切換品項／雜費分類">${item.type==='fee'?'雜費':'品項'} ⇄</button>
-        <input type="text" value="${escapeHtml(item.name)}" placeholder="品項名稱" onchange="receiptUpdateField('${item.id}','name',this.value)">
-        <input type="number" inputmode="decimal" class="num amt-input" value="${item.price}" step="0.01" onchange="receiptUpdateField('${item.id}','price',this.value)">
-        <button type="button" class="btn btn-ghost btn-sm" onclick="receiptRemoveItem('${item.id}')" title="刪除這個項目">✕</button>
+        <button type="button" class="receipt-type-badge ${item.type==='fee'?'fee':''}" ${act('click','receiptToggleItemType',item.id)} title="點一下切換品項／雜費分類">${item.type==='fee'?'雜費':'品項'} ⇄</button>
+        <input type="text" value="${escapeHtml(item.name)}" placeholder="品項名稱" ${act('change','receiptUpdateField',item.id,'name','$value')}>
+        <input type="number" inputmode="decimal" class="num amt-input" value="${item.price}" step="0.01" ${act('change','receiptUpdateField',item.id,'price','$value')}>
+        <button type="button" class="btn btn-ghost btn-sm" ${act('click','receiptRemoveItem',item.id)} title="刪除這個項目">✕</button>
       </div>
       ${translationHint}
       <div class="receipt-claim-chips">
         ${memberChipsHtml(item)}
-        <button type="button" class="claim-chip shared ${isShared?'on':''}" onclick="receiptSetShared('${item.id}')">🤝 共同分擔</button>
+        <button type="button" class="claim-chip shared ${isShared?'on':''}" ${act('click','receiptSetShared',item.id)}>🤝 共同分擔</button>
       </div>
       ${serviceChargeHint}
       ${unclaimed ? '<p class="hint" style="color:var(--debt); margin-top:6px;">尚未認領——請點選人名或「共同分擔」</p>' : ''}
@@ -582,7 +587,7 @@ function renderReceiptWorkArea(){
 
   const attendeeChipsHtml = trip.members.map(m=>{
     const on = receiptState.attendeeIds.includes(m.id);
-    return `<button type="button" class="claim-chip ${on?'on':''}" onclick="receiptToggleAttendee('${m.id}')">${escapeHtml(m.name)}</button>`;
+    return `<button type="button" class="claim-chip ${on?'on':''}" ${act('click','receiptToggleAttendee',m.id)}>${escapeHtml(m.name)}</button>`;
   }).join('');
 
   const detectedCur = receiptState.detectedCurrency;
@@ -596,12 +601,12 @@ function renderReceiptWorkArea(){
 
   area.innerHTML = `
     <div class="receipt-preview-row">
-      <img class="receipt-thumb" src="${receiptState.imageDataUrl}" alt="帳單照片預覽">
+      <img class="receipt-thumb" src="${escapeHtml(receiptState.imageDataUrl || '')}" alt="帳單照片預覽">
       <div style="flex:1;">
         <p class="hint" style="margin-top:0;">共 ${receiptState.items.length} 個項目。點選品項下方的人名即可認領（可多選＝一起分攤這項），服務費與訂金已自動歸入「共同分擔」。辨識錯誤都可以直接修改，或用下方「新增項目」補上漏掉的品項。${receiptState.items.some(it => it.nameTranslated) ? `<br>🌐 偵測到帳單為<b>${escapeHtml(receiptState.detectedLanguage)}</b>，品項下方已附上繁體中文翻譯供核對。` : ''}</p>
         <div class="btn-row">
-          <button type="button" class="btn btn-ghost btn-sm" onclick="receiptResetUpload()">🔄 重新上傳照片</button>
-          ${receiptSessionJoined ? '<button type="button" class="btn btn-danger btn-sm" onclick="abandonReceiptSession()">🛑 結束認領（放棄）</button>' : ''}
+          <button type="button" class="btn btn-ghost btn-sm" data-click="receiptResetUpload">🔄 重新上傳照片</button>
+          ${receiptSessionJoined ? '<button type="button" class="btn btn-danger btn-sm" data-click="abandonReceiptSession">🛑 結束認領（放棄）</button>' : ''}
         </div>
       </div>
     </div>
@@ -609,7 +614,7 @@ function renderReceiptWorkArea(){
     <div class="row">
       <div class="field" style="max-width:160px;">
         <label>服務費 %（辨識錯了可修正）</label>
-        <input type="number" inputmode="decimal" step="0.1" min="0" value="${Math.round(receiptState.serviceChargeRate*10000)/100}" onchange="receiptUpdateServiceChargeRate(this.value)">
+        <input type="number" inputmode="decimal" step="0.1" min="0" value="${Math.round(receiptState.serviceChargeRate*10000)/100}" data-change="receiptUpdateServiceChargeRate" data-args='["$value"]'>
       </div>
     </div>
     <p class="hint" style="margin-top:-6px;">調整比例會自動套用到所有尚未手動改過金額的「品項」；雜費（如訂金）不受影響，已手動改過金額的品項也不會被覆寫。</p>
@@ -622,28 +627,28 @@ function renderReceiptWorkArea(){
     <h2 class="section-title" style="font-size:14.5px; margin-top:16px;">品項認領</h2>
     ${itemsHtml}
     <div class="btn-row">
-      <button type="button" class="btn btn-ghost btn-sm" onclick="receiptAddManualItem()">＋ 新增一個項目（辨識漏掉的）</button>
+      <button type="button" class="btn btn-ghost btn-sm" data-click="receiptAddManualItem">＋ 新增一個項目（辨識漏掉的）</button>
     </div>
 
     ${buildReceiptSummaryHtml()}
 
     <div class="field" style="margin-top:14px;">
       <label>項目說明</label>
-      <input type="text" id="receiptDesc" placeholder="例如：聚餐晚餐" value="${escapeHtml(receiptState.description||'')}" oninput="receiptState.description=this.value">
+      <input type="text" id="receiptDesc" placeholder="例如：聚餐晚餐" value="${escapeHtml(receiptState.description||'')}" data-input="receiptSetField" data-args='["description","$value"]'>
     </div>
     <div class="row">
       <div class="field">
         <label>誰墊付這筆帳單？</label>
-        <select id="receiptPayer" onchange="receiptState.payerId=this.value">${payerOptions}</select>
+        <select id="receiptPayer" data-change="receiptSetField" data-args='["payerId","$value"]'>${payerOptions}</select>
       </div>
       <div class="field" style="max-width:130px;">
         <label>幣別</label>
-        <select id="receiptCurrency" onchange="receiptState.currency=this.value">${currencyOptions(defaultCur)}</select>
+        <select id="receiptCurrency" data-change="receiptSetField" data-args='["currency","$value"]'>${currencyOptions(defaultCur)}</select>
       </div>
     </div>
     ${currencyHint}
     <div class="btn-row">
-      <button class="btn btn-brass btn-block" onclick="withLoading(this,'儲存中…',finalizeReceiptExpense)">建立這筆支出</button>
+      <button class="btn btn-brass btn-block" data-click="finalizeReceiptExpense" data-loading="儲存中…">建立這筆支出</button>
     </div>`;
 }
 
@@ -694,7 +699,7 @@ async function finalizeReceiptExpense(){
   const perPerson = computeReceiptSplit(items, receiptState.attendeeIds);
   const participants = receiptState.attendeeIds.map(id => ({ userId:id, amount: perPerson[id]||0 }));
 
-  trip.expenses.push({
+  const newExpense = {
     id: genId('exp'),
     description,
     amount: grandTotal,
@@ -704,12 +709,13 @@ async function finalizeReceiptExpense(){
     participants,
     createdAt: Date.now(),
     createdBy: 'web-ui-receipt',
-  });
+  };
+  trip.expenses.push(newExpense);
   toast(`已建立支出「${description}」，共 ${fmtMoney(grandTotal, currency)} ${currency}`, 'success');
   const wasJoined = receiptSessionJoined; // 🆕 [多人協作] 先記住這次是不是正在協作中，等 reset 完再決定要不要通知大家結束
   receiptResetUpload();
   renderAll();
-  await saveTripToApi();
+  await syncEntry('expenses', newExpense.id, newExpense);
   if (wasJoined) clearReceiptSessionOnServer('finalized'); // 🆕 這筆帳單已經正式記入支出，通知所有協作者這次認領已經結束
 }
 

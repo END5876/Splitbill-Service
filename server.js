@@ -44,6 +44,33 @@ const createMeRouter = require('./routes/me');
 const createOAuthRouter = require('./routes/oauth');
 const createMembersRouter = require('./routes/members');
 const createAttachRouter = require('./routes/attach');
+const createEntriesRouter = require('./routes/entries');
+const upstream = require('./lib/upstreamStatus');
+
+// 🔒 [安全性] Content-Security-Policy：腳本只能來自本站檔案，inline <script> 與
+// onclick="…" 一律不執行（前端改用 js/actions.js 的事件委派）。就算哪天又有資料沒跳脫
+// 就進了 HTML，也跑不起來。樣式仍允許 inline（style="…" 屬性很多，而且不能執行程式）。
+const CONTENT_SECURITY_POLICY = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' https://fonts.gstatic.com",
+  "img-src 'self' data: blob: https://cdn.discordapp.com",
+  "connect-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+].join('; ');
+
+function securityHeaders(req, res, next) {
+  res.setHeader('Content-Security-Policy', CONTENT_SECURITY_POLICY);
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  // 行程連結的 token 在網址的 # 後面，本來就不會送出；這裡再保險一次不帶完整網址給外站
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  next();
+}
 
 // 把 index.html 裡 href="css/..." / src="js/..." 的本地資源加上 ?v=<檔案內容雜湊>
 function buildVersionedIndexHtml(publicDir) {
@@ -63,6 +90,8 @@ function startWebApi(options = {}) {
   const apiKey = options.apiKey || process.env.SPLITBILL_API_KEY || '';
 
   const app = express();
+  app.disable('x-powered-by');
+  app.use(securityHeaders);
   // gzip：index.html／js／css／JSON 回應都很適合壓縮（手機網路差很多）。
   // SSE 一定要排除，否則事件會被壓縮緩衝卡住、不會即時送出。
   app.use(compression({
@@ -74,8 +103,10 @@ function startWebApi(options = {}) {
   app.use(['/api/parse-receipt', '/api/shared-trip/:token/parse-receipt'], express.json({ limit: '12mb' }));
   app.use(express.json({ limit: '5mb' }));
 
-  // 健康檢查：不經金鑰驗證，讓平台的 health probe 可以直接探測
-  app.get('/healthz', (req, res) => res.json({ ok: true }));
+  // 健康檢查：不經金鑰驗證，讓平台的 health probe 可以直接探測。
+  // 外部服務（匯率、Gemini）壞掉不影響 ok——它們都有退路，服務本身仍然可用；
+  // 只在 upstream 欄位標示 degraded，方便從監控看出來。
+  app.get('/healthz', (req, res) => res.json({ ok: true, upstream: upstream.snapshot() }));
 
   // 提供前端靜態頁面（public/index.html），同源存取可避免 CORS 問題
   // index.html 裡的 css/js 網址會加上內容雜湊（?v=xxxx），每次部署只要檔案有改，
@@ -133,6 +164,7 @@ function startWebApi(options = {}) {
   app.use('/api', createMeRouter(ctx));
   app.use('/api', createMembersRouter(ctx));
   app.use('/api', createAttachRouter(ctx));
+  app.use('/api', createEntriesRouter(ctx));
 
   // ---- 統一的錯誤回應：路由裡丟出的例外（例如寫入資料庫失敗）都在這裡轉成
   // { error } JSON，路由不用各自包 try/catch。body 解析錯誤（JSON 格式錯、太大）

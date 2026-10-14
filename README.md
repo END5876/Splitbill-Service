@@ -22,6 +22,10 @@ Mousebot 分帳系統的獨立服務：**網頁記帳介面（`public/`）＋ RE
   還原方式：停掉服務，把備份檔複製成 `splitbill.db`（並刪掉同名的 `-wal`／`-shm` 檔）再啟動。
 - **歷史版本**：每次行程內容變動（`updatedAt` 改變）會在 `trip_revisions` 留一份不含憑證的快照，每個行程保留最近 20 份。
 - `updatedAt` 是行程的版本號，保證嚴格遞增；SSE 的 `trip-updated` 事件在資料確實寫進資料庫之後才發出。
+- **只能跑單一實例**：所有路由讀寫的是記憶體裡的 cache，SSE 推播、限流、帳單辨識協作也都在記憶體裡。
+  同一個資料庫檔若同時被兩個實例寫入（例如滾動部署時新舊版本重疊），寫入前會用 `PRAGMA data_version`
+  發現對方寫過，拒絕這次寫入（回 503、請使用者重試）並重新載入，不會悄悄蓋掉對方的資料；
+  但重疊期間各自的 SSE 推播看不到對方的更新。正式環境請設定成「先停舊的再起新的」，或確保同時只有一個實例。
 - 用 sqlite3 查資料：`sqlite3 splitbill.db "select id, guild_id, owner_id, updated_at from trips"`。
 
 ## 權限
@@ -59,7 +63,8 @@ Mousebot 分帳系統的獨立服務：**網頁記帳介面（`public/`）＋ RE
    | `SPLITBILL_BACKUP_KEEP` | 選填。每日備份保留幾份，預設 7；`0` 關閉 |
    | `SPLITBILL_REVISIONS_KEEP` | 選填。每個行程保留幾個歷史版本，預設 20；`0` 關閉 |
    | `SPLITBILL_SQLITE_JOURNAL` | 選填。預設 `WAL`；Volume 若是不支援共享記憶體的網路檔案系統，改成 `DELETE` |
-3. 健康檢查路徑：`/healthz`。
+3. 健康檢查路徑：`/healthz`。回應裡的 `upstream` 是外部服務最近的狀態（`fx`＝匯率、`gemini`＝帳單辨識）：
+   `ok`／`degraded`（最近一次失敗）／`unknown`（啟動後還沒用過）。外部服務壞掉不影響 `ok: true`，網頁都有退路。
 4. Bot 端：`SPLITBILL_SERVICE_URL=http://<本服務名稱>.internal:3000`、`SPLITBILL_SERVICE_KEY=<同一把金鑰>`。
 5. **升級順序：先部署本服務，再更新 Mousebot。** 舊網址 `/api/trip/:guildId/:tripId` 仍可用，
    過渡期間舊版 Mousebot 照常運作；新版 Mousebot 需要本服務的新端點。
@@ -69,11 +74,22 @@ Mousebot 分帳系統的獨立服務：**網頁記帳介面（`public/`）＋ RE
 - 行程：`GET /api/my/trips`、`POST /api/trips`、`GET|PUT|DELETE /api/trip/:tripId`、`GET /api/trip/:tripId/events`（SSE）
 - 行程連結：`GET|POST /api/trip/:tripId/links`、`PATCH|DELETE /api/trip/:tripId/links/:token`（建立者）、
   `GET /api/trip/:tripId/invite`（成員取得預設邀請連結）、`GET /api/link/:token`（解析）、`POST /api/link/:token/claim`（認領）
-- 連結訪客：`GET|PUT /api/shared-trip/:token`，以及同路徑下的 `events`、`fx-rate`、`parse-receipt`、`receipt-session`
+- 單筆帳目：`PUT|DELETE /api/trip/:tripId/expenses/:id`、`PUT|DELETE /api/trip/:tripId/deposits/:id`
+  （body `{ entry, writerId }`；回傳 `prevUpdatedAt`／`updatedAt`）。網頁記帳一律走這裡，整包 PUT 只用在設定與 Bot
+- 連結訪客：`GET|PUT /api/shared-trip/:token`，以及同路徑下的 `events`、`fx-rate`、`parse-receipt`、`receipt-session`、`expenses/:id`、`deposits/:id`
 - 成員：`POST /api/trip/:tripId/members/:memberId/unlink`
 - 綁定：`POST /api/trip/:tripId/bind-code`、`POST /api/attach`（Bot）、`POST /api/trip/:tripId/detach`
 - Bot 專用：`GET /api/guild/:guildId`、`PATCH /api/guild/:guildId/active-trip`
 - cookie 登入的寫入請求必須帶 `x-requested-with: splitbill`（CSRF）
+
+## 安全性
+- **資料格式**：成員／支出／轉帳的 id 只能是 `[A-Za-z0-9_-]`（1～64 字元），幣別是 2～10 個大寫英數（`lib/validate.js`）。
+  整包 PUT 為了相容舊版 Bot 只做修復：不合格的 id 換新（成員 id 會連帳目裡的引用一起改），數字欄位不是有限數字就當 0。
+  單筆帳目 API 則嚴格驗證（成員必須存在、代墊與分攤的總和要等於總金額），不合格回 400。
+- **帳單辨識協作狀態**會廣播給同一個行程的其他人，伺服器只保留已知欄位並檢查格式。
+- **前端不使用 inline 事件屬性**（onclick 等）：一律寫成 `data-click="函式名" data-args='[…]'`，由 `public/js/actions.js`
+  統一處理，可呼叫的函式要登記在 `UI_ACTIONS`。伺服器送出 `Content-Security-Policy: script-src 'self'`，
+  inline script 與 inline 事件屬性在瀏覽器裡都不會執行。新增按鈕時用 `act('click', '函式名', 參數…)` 產生屬性。
 
 ## 本機執行與測試
 ```

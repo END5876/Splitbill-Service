@@ -87,20 +87,23 @@ function saveDeposit(){
     amountInBase = round2(amount*rate);
   }
 
+  let saved;
   if (editingDepositId){
-    const dep = trip.deposits.find(d=>d.id===editingDepositId);
-    Object.assign(dep, { payerId, collectorId, amount, currency, amountInBase, note, createdAt: applyDateToTimestamp(dateStr, dep.createdAt) });
+    saved = trip.deposits.find(d=>d.id===editingDepositId);
+    Object.assign(saved, { payerId, collectorId, amount, currency, amountInBase, note, createdAt: applyDateToTimestamp(dateStr, saved.createdAt) });
     toast('已更新轉帳紀錄', 'success');
   } else {
-    trip.deposits.push({ id: genId('dep'), payerId, collectorId, amount, currency, amountInBase, note, createdAt: applyDateToTimestamp(dateStr, Date.now()) });
+    saved = { id: genId('dep'), payerId, collectorId, amount, currency, amountInBase, note, createdAt: applyDateToTimestamp(dateStr, Date.now()) };
+    trip.deposits.push(saved);
     toast('已新增轉帳紀錄', 'success');
   }
   resetDepositForm();
   renderAll();
-  return true;
+  return saved;
 }
 async function saveDepositAndSync(){
-  if (saveDeposit()) await saveTripToApi();
+  const saved = saveDeposit();
+  if (saved) await syncEntry('deposits', saved.id, saved);
 }
 function editDeposit(id){
   const dep = trip.deposits.find(d=>d.id===id);
@@ -147,7 +150,7 @@ async function deleteDeposit(id){
 
   renderAll();
 
-  // 確認刪除後立即寫入伺服器；分享連結模式也會自動走對應的儲存 API。
-  await saveTripToApi();
+  // 確認刪除後立即寫入伺服器；分享連結模式也會自動走對應的 API。
+  await syncEntry('deposits', id, null);
 }
 

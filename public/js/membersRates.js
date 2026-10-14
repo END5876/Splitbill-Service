@@ -47,6 +47,8 @@ function addRate(){
   const code = codeInput.value.trim().toUpperCase();
   const val = parseFloat(valInput.value);
   if (!code){ toast('請輸入幣別代碼', 'error'); return; }
+  // 跟伺服器的格式一致（lib/validate.js），不合格的代碼存檔時會被伺服器丟掉
+  if (!/^[A-Z][A-Z0-9]{1,9}$/.test(code)){ toast('幣別代碼只能是英文字母開頭的 2～10 個英文或數字，例如 JPY', 'error'); return; }
   if (!(val>0)){ toast('匯率需為大於 0 的數字', 'error'); return; }
   trip.rates[code] = val;
   codeInput.value=''; valInput.value='';

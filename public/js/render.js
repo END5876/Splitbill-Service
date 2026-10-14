@@ -21,11 +21,12 @@ function syncDepositPartyOptions(){
   [...collectorSel.options].forEach(o=>{ o.disabled = !!o.value && o.value === payerSel.value; });
   [...payerSel.options].forEach(o=>{ o.disabled = !!o.value && o.value === collectorSel.value; });
 }
-function emptyState(icon, text, ctaLabel, ctaOnclick){
+// ctaAction：按鈕要呼叫的動作名稱（見 js/actions.js）
+function emptyState(icon, text, ctaLabel, ctaAction){
   return `<div class="empty-state">
     <div class="ic">${icon}</div>
     <p>${escapeHtml(text)}</p>
-    ${ctaLabel ? `<button class="btn btn-ghost btn-sm" onclick="${ctaOnclick}">${escapeHtml(ctaLabel)}</button>` : ''}
+    ${ctaLabel ? `<button class="btn btn-ghost btn-sm" ${act('click', ctaAction)}>${escapeHtml(ctaLabel)}</button>` : ''}
   </div>`;
 }
 
@@ -120,13 +121,13 @@ function renderExpenseRow(e){
         ${ledgerFactsHtml([`${fmtTime(e.createdAt)} 記錄`, ledgerBaseNote(e.amount, e.currency, e.amountInBase)])}
         ${renderExpenseSplit(e, evenShare)}
         <div class="ledger-actions" data-write-only>
-          <button class="btn btn-ghost btn-sm" onclick="editExpense('${e.id}')">編輯</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteExpense('${e.id}')">刪除</button>
+          <button class="btn btn-ghost btn-sm" ${act('click','editExpense',e.id)}>編輯</button>
+          <button class="btn btn-danger btn-sm" ${act('click','deleteExpense',e.id)}>刪除</button>
         </div>
       </div>` : '';
   return `
     <div class="ledger-entry ${expanded?'open':''}">
-      <button type="button" class="ledger-entry-row" onclick="toggleExpenseExpand('${e.id}')" aria-expanded="${expanded}">
+      <button type="button" class="ledger-entry-row" ${act('click','toggleExpenseExpand',e.id)} aria-expanded="${expanded}">
         <span class="ledger-entry-title">${escapeHtml(e.description)}</span>
         <span class="ledger-entry-amt">${ledgerAmountHtml(e.amount, e.currency)}</span>
         <span class="ledger-entry-sub">${payerText}</span>
@@ -143,13 +144,13 @@ function renderDepositRow(d){
       <div class="ledger-entry-detail">
         ${ledgerFactsHtml([`${fmtTime(d.createdAt)} 記錄`, ledgerBaseNote(d.amount, d.currency, d.amountInBase)])}
         <div class="ledger-actions" data-write-only>
-          <button class="btn btn-ghost btn-sm" onclick="editDeposit('${d.id}')">編輯</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteDeposit('${d.id}')">刪除</button>
+          <button class="btn btn-ghost btn-sm" ${act('click','editDeposit',d.id)}>編輯</button>
+          <button class="btn btn-danger btn-sm" ${act('click','deleteDeposit',d.id)}>刪除</button>
         </div>
       </div>` : '';
   return `
     <div class="ledger-entry ${expanded?'open':''}">
-      <button type="button" class="ledger-entry-row" onclick="toggleDepositExpand('${d.id}')" aria-expanded="${expanded}">
+      <button type="button" class="ledger-entry-row" ${act('click','toggleDepositExpand',d.id)} aria-expanded="${expanded}">
         <span class="ledger-entry-title">${ledgerWho(d.payerId)}<span class="ledger-entry-arrow">→</span>${ledgerWho(d.collectorId)}</span>
         <span class="ledger-entry-amt">${ledgerAmountHtml(d.amount, d.currency)}</span>
         <span class="ledger-entry-sub">${d.note ? escapeHtml(d.note) : '<span class="muted">無備註</span>'}</span>
@@ -181,7 +182,7 @@ function renderFilterMemberChips(selectedIds, toggleFnName){
   if (!trip.members.length) return '';
   return trip.members.map(m=>{
     const on = selectedIds.has(m.id);
-    return `<button type="button" class="claim-chip ${on?'on':''}" onclick="${toggleFnName}('${m.id}')">${escapeHtml(m.name)}</button>`;
+    return `<button type="button" class="claim-chip ${on?'on':''}" ${act('click', toggleFnName, m.id)}>${escapeHtml(m.name)}</button>`;
   }).join('');
 }
 
@@ -268,8 +269,8 @@ function renderExpenseList(){
   document.getElementById('expenseList').innerHTML = filteredExpenses.length
     ? renderDateGroupedList(filteredExpenses, renderExpenseRow)
     : (allExpenses.length
-        ? emptyState('🔍', '沒有符合篩選條件的支出', '清除篩選 →', "clearExpenseFilter()")
-        : emptyState('🧾', '還沒有任何支出', '新增第一筆 →', "showMainTab('expenses'); setFormCardOpen('expenseFormCard', true); document.getElementById('expDesc').focus();"));
+        ? emptyState('🔍', '沒有符合篩選條件的支出', '清除篩選 →', "clearExpenseFilter")
+        : emptyState('🧾', '還沒有任何支出', '新增第一筆 →', "startFirstExpense"));
 }
 // 轉帳／預收清單，同上。
 function renderDepositList(){
@@ -290,8 +291,8 @@ function renderDepositList(){
   document.getElementById('depositList').innerHTML = filteredDeposits.length
     ? renderDateGroupedList(filteredDeposits, renderDepositRow)
     : (allDeposits.length
-        ? emptyState('🔍', '沒有符合篩選條件的轉帳／預收紀錄', '清除篩選 →', "clearDepositFilter()")
-        : emptyState('💸', '還沒有任何轉帳／預收紀錄', '新增第一筆 →', "showMainTab('deposits'); setFormCardOpen('depositFormCard', true); document.getElementById('depPayer').focus();"));
+        ? emptyState('🔍', '沒有符合篩選條件的轉帳／預收紀錄', '清除篩選 →', "clearDepositFilter")
+        : emptyState('💸', '還沒有任何轉帳／預收紀錄', '新增第一筆 →', "startFirstDeposit"));
 }
 
 function renderAll(){
@@ -305,19 +306,19 @@ function renderAll(){
   document.getElementById('memberList').innerHTML = trip.members.map(m=>`
     <div class="member-tag">
       <span class="dot"></span>
-      <input type="text" value="${escapeHtml(m.name)}" onchange="renameMember('${m.id}', this.value)">
+      <input type="text" value="${escapeHtml(m.name)}" ${act('change','renameMember',m.id,'$value')}>
       <span class="member-actions">
         ${memberLinkBadgeHtml(m)}
-        <button class="btn btn-danger btn-sm member-btn" onclick="removeMember('${m.id}')" title="刪除這位成員" aria-label="刪除">${ICON_TRASH}<span class="btn-label">刪除</span></button>
+        <button class="btn btn-danger btn-sm member-btn" ${act('click','removeMember',m.id)} title="刪除這位成員" aria-label="刪除">${ICON_TRASH}<span class="btn-label">刪除</span></button>
       </span>
-    </div>`).join('') || emptyState('👥', '尚未新增任何成員', '新增第一位成員 →', "document.getElementById('newMemberName').focus()");
+    </div>`).join('') || emptyState('👥', '尚未新增任何成員', '新增第一位成員 →', "focusNewMemberInput");
 
   // rates tab
   document.getElementById('rateTableBody').innerHTML = Object.entries(trip.rates).sort().map(([code,rate])=>`
     <tr>
       <td data-label="幣別"><span><b>${code}</b>${code===trip.baseCurrency?' <span class="hint">（基準）</span>':''}</span></td>
-      <td data-label="匯率"><input type="number" inputmode="decimal" step="0.0001" value="${rate}" ${code===trip.baseCurrency?'disabled':''} onchange="updateRate('${code}', this.value)"></td>
-      <td data-label="">${code===trip.baseCurrency?'':`<button class="btn btn-danger btn-sm" onclick="removeRate('${code}')">刪除</button>`}</td>
+      <td data-label="匯率"><input type="number" inputmode="decimal" step="0.0001" value="${rate}" ${code===trip.baseCurrency?'disabled':''} ${act('change','updateRate',code,'$value')}></td>
+      <td data-label="">${code===trip.baseCurrency?'':`<button class="btn btn-danger btn-sm" ${act('click','removeRate',code)}>刪除</button>`}</td>
     </tr>`).join('');
 
   // 換行程／匯入時會直接把 editingExpenseId 清成 null，這裡把表單的「編輯中」外觀一起還原

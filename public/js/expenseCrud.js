@@ -18,23 +18,6 @@ function hasUnsavedExpenseFormContent(){
   return false;
 }
 
-// 🆕 [即時同步保護] 轉帳／預收款表單版本；轉帳表單用的是 <select> 而不是
-// chip-checkbox，renderAll() 重繪時本來就會保留選取值（見 renderDepositSelects()
-// 的「先記住、再重套用」寫法），不會像支出表單那樣被無聲清空，但這裡仍然
-// 一併提供，讓 handleIncomingTripUpdate() 判斷「使用者是否正在操作中」時
-// 可以把轉帳表單也納入考量，行為更一致。
-function hasUnsavedDepositFormContent(){
-  if (editingDepositId) return true;
-  const payer = document.getElementById('depPayer');
-  const collector = document.getElementById('depCollector');
-  const amount = document.getElementById('depAmount');
-  const note = document.getElementById('depNote');
-  return !!(
-    (payer && payer.value) || (collector && collector.value) ||
-    (amount && amount.value.trim()) || (note && note.value.trim())
-  );
-}
-
 function resetExpenseForm(){
   editingExpenseId = null;
   participantsDirty = false;
@@ -91,23 +74,27 @@ function saveExpense(){
   const partSum = round2(participants.reduce((s,p)=>s+p.amount,0));
   if (round2(Math.abs(partSum-amount)) > 0.01){ toast(`分攤金額總和 (${partSum}) 與總金額 (${amount}) 不相符`, 'error'); return false; }
 
+  let saved;
   if (editingExpenseId){
-    const exp = trip.expenses.find(e=>e.id===editingExpenseId);
-    Object.assign(exp, { description, amount, currency, amountInBase, payers, participants, createdAt: applyDateToTimestamp(dateStr, exp.createdAt) });
+    saved = trip.expenses.find(e=>e.id===editingExpenseId);
+    Object.assign(saved, { description, amount, currency, amountInBase, payers, participants, createdAt: applyDateToTimestamp(dateStr, saved.createdAt) });
     toast('已更新支出', 'success');
   } else {
-    trip.expenses.push({
+    saved = {
       id: genId('exp'), description, amount, currency, amountInBase,
       payers, participants, createdAt: applyDateToTimestamp(dateStr, Date.now()), createdBy: 'web-ui'
-    });
+    };
+    trip.expenses.push(saved);
     toast('已新增支出', 'success');
   }
   resetExpenseForm();
   renderAll();
-  return true;
+  return saved;
 }
+// 只把這一筆送到伺服器（見 js/tripSync.js 的 syncEntry）
 async function saveExpenseAndSync(){
-  if (saveExpense()) await saveTripToApi();
+  const saved = saveExpense();
+  if (saved) await syncEntry('expenses', saved.id, saved);
 }
 function editExpense(id){
   const exp = trip.expenses.find(e=>e.id===id);
@@ -180,6 +167,6 @@ async function deleteExpense(id){
 
   renderAll();
 
-  // 確認刪除後立即寫入伺服器；分享連結模式也會自動走對應的儲存 API。
-  await saveTripToApi();
+  // 確認刪除後立即寫入伺服器；分享連結模式也會自動走對應的 API。
+  await syncEntry('expenses', id, null);
 }

@@ -132,30 +132,19 @@ function handleIncomingTripUpdate(rawPushedTrip){
   // 我們自己剛存檔造成的那次廣播，或是一則過期的訊息，直接忽略即可。
   if (trip.updatedAt && pushedTrip.updatedAt && pushedTrip.updatedAt <= trip.updatedAt) return;
 
-  const isEditing = !!(
-    hasUnsavedExpenseFormContent() || hasUnsavedDepositFormContent() ||
-    (receiptState && Array.isArray(receiptState.items) && receiptState.items.length)
-  );
-
-  if (!isEditing){
-    trip = pushedTrip;
-    lastSyncedTripJSON = JSON.stringify(trip);
-    renderAll();
-    toast('偵測到其他人更新了這個行程，畫面已同步', 'info');
+  // 一律做三方合併（見 js/tripSync.js 的 tryMergeTrips）：本地沒有未儲存的修改時，
+  // 結果就等於伺服器的版本；有的話（表單填到一半、設定還在防抖等待中…）會保留下來，
+  // 不會被無聲蓋掉，之後照常存回去。
+  const hadLocalChanges = !!lastSyncedTripJSON && JSON.stringify(trip) !== lastSyncedTripJSON;
+  const merged = mergeWithServer(pushedTrip);
+  if (!merged){
+    toast('其他人剛更新了這個行程，但無法自動合併，請儘快儲存或重新整理頁面取得最新版本', 'error');
     return;
   }
-
-  // 目前有未儲存的編輯內容（表單填到一半、或正在認領帳單品項）：
-  // 嘗試自動合併，避免正在輸入的東西被無聲蓋掉。
-  const merged = tryMergeTrips(trip, pushedTrip);
-  if (merged){
-    trip = merged;
-    lastSyncedTripJSON = JSON.stringify(trip);
-    renderAll();
-    toast('已自動合併其他人剛剛的更新', 'info');
-  } else {
-    toast('其他人剛更新了這個行程，但無法自動合併，請儘快儲存或重新整理頁面取得最新版本', 'error');
-  }
+  trip = merged;
+  renderAll();
+  if (lastMergeConflicts) toast(`其他人剛更新了這個行程，其中 ${lastMergeConflicts} 筆跟你還沒儲存的修改衝突，暫時以你的版本為準`, 'error', { duration: 7000 });
+  else toast(hadLocalChanges ? '已自動合併其他人剛剛的更新' : '偵測到其他人更新了這個行程，畫面已同步', 'info');
 }
 
 // 🆕 [即時同步] 行程被刪除時的處理：訪客模式下這個 token 本身也已經

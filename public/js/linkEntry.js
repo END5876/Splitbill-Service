@@ -82,7 +82,7 @@ function showLinkError(message){
     <p>${escapeHtml(message)}</p>
     <p style="margin-top:14px;">可以請給你連結的人再傳一組新的給你。</p>
     <div class="btn-row" style="justify-content:center; margin-top:20px;">
-      <button class="btn btn-ghost" type="button" onclick="location.href = location.pathname">回到首頁</button>
+      <button class="btn btn-ghost" type="button" data-click="goHome">回到首頁</button>
     </div>
   `;
   el.style.display = 'block';
@@ -104,7 +104,7 @@ function showNoAccessScreen(){
         <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><div><b>最少轉帳次數結清</b><span>算出誰該付誰多少，付完一鍵標記</span></div></li>
         <li><svg class="ic" aria-hidden="true"><use href="#i-chat"/></svg><div><b>Discord 即時同步</b><span>綁定伺服器後，用 Mousebot 的 /splitbill 面板也能記帳</span></div></li>
       </ul>
-      <button class="btn btn-brass no-access-login" type="button" onclick="loginWithDiscord()">用 Discord 登入</button>
+      <button class="btn btn-brass no-access-login" type="button" data-click="loginWithDiscord">用 Discord 登入</button>
       <p class="no-access-note">只會讀取你的 Discord 名稱與頭像。<br>朋友傳了連結給你的話，直接點開那個連結即可。</p>    </div>
   ` : `
     <div class="no-access-card">
@@ -180,13 +180,12 @@ function showJoinScreen(token, info){
   setMainUiVisible(false);
   const el = document.getElementById('inviteScreen');
   el.style.display = 'block';
-  const t = escapeHtml(token);
   const head = `<div class="ic">🧳</div><h1>${escapeHtml(info.tripName)}</h1>`;
   const guestLabel = info.guest === 'write' ? '不登入，直接開啟（可編輯）' : '不登入，直接檢視';
   // 連結同時開放訪客時，「先不要」改成「以訪客身分開啟」
   const secondary = info.guest !== 'none'
-    ? `<button class="btn btn-ghost btn-sm" type="button" onclick="chooseGuestMode('${t}')">${guestLabel}</button>`
-    : `<button class="btn btn-ghost btn-sm" type="button" onclick="leaveJoinScreen()">先不要</button>`;
+    ? `<button class="btn btn-ghost btn-sm" type="button" ${act('click','chooseGuestMode',token)}>${guestLabel}</button>`
+    : `<button class="btn btn-ghost btn-sm" type="button" data-click="leaveJoinScreen">先不要</button>`;
 
   if (!currentUser){
     el.innerHTML = `
@@ -195,7 +194,7 @@ function showJoinScreen(token, info){
         <p>有人邀請你一起記這個行程的帳。<br>用 Discord 登入後，選擇你是哪一位就能加入。</p>
         <div class="btn-row" style="justify-content:center;">
           ${oauthEnabled
-            ? `<button class="btn btn-brass" type="button" onclick="loginWithDiscord('/#link=${encodeURIComponent(token)}')">用 Discord 登入並加入</button>`
+            ? `<button class="btn btn-brass" type="button" ${act('click','loginWithDiscord','/#link=' + encodeURIComponent(token))}>用 Discord 登入並加入</button>`
             : '<p class="hint">這個網站尚未開啟 Discord 登入，請聯絡網站管理者。</p>'}
         </div>
         <div class="btn-row" style="justify-content:center; margin-top:14px;">${secondary}</div>
@@ -214,15 +213,15 @@ function showJoinScreen(token, info){
       ${unlinked.length ? `
       <p>你是下面哪一位？選了之後，這位成員過去的代墊與分攤紀錄都會連結到你的 Discord 帳號（${escapeHtml(currentUser.name)}）。</p>
       <div class="invite-members">
-        ${unlinked.map(m => `<button class="modal-list-item" type="button" onclick="confirmJoinClaim('${t}', '${escapeHtml(m.id)}', this)"><div class="mli-title">我是「${escapeHtml(m.name)}」</div></button>`).join('')}
+        ${unlinked.map(m => `<button class="modal-list-item" type="button" ${act('click','confirmJoinClaim',token,m.id,'$el')}><div class="mli-title">我是「${escapeHtml(m.name)}」</div></button>`).join('')}
       </div>` : '<p>名單上的成員都已經被認領了，你可以用新成員的身分加入。</p>'}
       ${linked.length ? `<div class="hint" style="margin-top:8px;">已經有人認領：${linked.map(m => escapeHtml(m.name)).join('、')}</div>` : ''}
-      ${unlinked.length ? `<button type="button" class="link-btn invite-new-toggle" onclick="this.hidden=true; document.getElementById('inviteNewBlock').hidden=false; document.getElementById('inviteNewName').focus();">都不是？以新成員身分加入</button>` : ''}
+      ${unlinked.length ? `<button type="button" class="link-btn invite-new-toggle" data-click="revealInviteNewBlock" data-args='["$el"]'>都不是？以新成員身分加入</button>` : ''}
       <div class="invite-new" id="inviteNewBlock" ${unlinked.length ? 'hidden' : ''}>
         <div class="hint" style="margin:14px 0 6px;">以新成員身分加入：</div>
         <div class="btn-row" style="justify-content:center;">
           <input type="text" id="inviteNewName" maxlength="60" placeholder="你的名字" aria-label="你的名字" value="${escapeHtml(currentUser.name || '')}" style="max-width:180px;">
-          <button class="btn btn-primary" type="button" onclick="claimJoin('${t}', { newMemberName: document.getElementById('inviteNewName').value }, this)">加入</button>
+          <button class="btn btn-primary" type="button" ${act('click','claimJoinAsNew',token,'$el')}>加入</button>
         </div>
       </div>
       <div class="btn-row" style="justify-content:center; margin-top:14px;">${secondary}</div>
@@ -237,6 +236,18 @@ async function confirmJoinClaim(token, memberId, btn){
     { title: '認領成員', confirmText: '是我，認領' }
   );
   if (ok) await claimJoin(token, { memberId }, btn);
+}
+// 「以新成員身分加入」：名字從輸入框讀
+function claimJoinAsNew(token, btn){
+  return claimJoin(token, { newMemberName: document.getElementById('inviteNewName').value }, btn);
+}
+function revealInviteNewBlock(btn){
+  btn.hidden = true;
+  document.getElementById('inviteNewBlock').hidden = false;
+  document.getElementById('inviteNewName').focus();
+}
+function goHome(){
+  location.href = location.pathname;
 }
 async function claimJoin(token, body, btn){
   if (body.newMemberName !== undefined && !String(body.newMemberName).trim()){
