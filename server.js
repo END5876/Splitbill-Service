@@ -64,6 +64,13 @@ const CONTENT_SECURITY_POLICY = [
   "frame-ancestors 'none'",
 ].join('; ');
 
+// 帳單辨識端點（需要較大的 body）：/api/parse-receipt、/api/shared-trip/:token/parse-receipt
+const RECEIPT_PATH_RE = /^\/api\/(?:shared-trip\/([^/]+)\/)?parse-receipt\/?$/;
+
+function decodeURIComponentSafe(s) {
+  try { return decodeURIComponent(s); } catch (_) { return s; }
+}
+
 function securityHeaders(req, res, next) {
   res.setHeader('Content-Security-Policy', CONTENT_SECURITY_POLICY);
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -100,9 +107,10 @@ function startWebApi(options = {}) {
   }));
   // 帳單照片辨識會傳一張壓縮過的 base64 圖片，只有這個端點需要放寬到 12mb；
   // 其他端點（行程整包 PUT 最多 5000 筆支出＋5000 筆轉帳）5mb 綽綽有餘。
-  // 先跑的 parser 解析過之後，後面的 express.json() 會直接略過。
-  app.use(['/api/parse-receipt', '/api/shared-trip/:token/parse-receipt'], express.json({ limit: '12mb' }));
-  app.use(express.json({ limit: '5mb' }));
+  // 🔒 12mb 的 parser 要等身分辨識之後、確認呼叫者有權使用帳單辨識才會跑（見下方
+  // receiptBodyGate），匿名請求不能讓伺服器解析 12mb 的 JSON。
+  const jsonDefault = express.json({ limit: '5mb' });
+  app.use((req, res, next) => (RECEIPT_PATH_RE.test(req.path) ? next() : jsonDefault(req, res, next)));
 
   // 健康檢查：不經金鑰驗證，讓平台的 health probe 可以直接探測。
   // 外部服務（匯率、Gemini）壞掉不影響 ok——它們都有退路，服務本身仍然可用；
@@ -125,14 +133,40 @@ function startWebApi(options = {}) {
     },
   }));
 
-  // ---- 🆕 [行程獨立化] 舊網址 /api/trip/:guildId/:tripId → /api/trip/:tripId ----
-  app.use('/api', createLegacyTripPathRewrite(storage));
+  // 🆕 [登出撤銷] 已登出的 session 記在資料庫（見 lib/session.js、storage.revokeSession）
+  session.setRevocationStore({ isRevoked: storage.isSessionRevoked, revoke: storage.revokeSession });
 
   // ---- 🆕 [Discord 登入] OAuth 登入／登出（不在 /api 底下，瀏覽器直接導向） ----
   app.use('/auth', createOAuthRouter());
 
   // ---- 身分辨識：金鑰（Bot）／登入 cookie（網頁）；分享 token 只走網址路徑（細節見 lib/auth.js） ----
   app.use('/api', createIdentityMiddleware(apiKey));
+
+  // ---- 帳單辨識的大型 body：只有登入者／Bot，或有效的可編輯分享連結才解析 ----
+  const jsonReceipt = express.json({ limit: '12mb' });
+  app.use((req, res, next) => {
+    const m = RECEIPT_PATH_RE.exec(req.path);
+    if (!m) return next();
+    const token = m[1] ? decodeURIComponentSafe(m[1]) : null;
+    let allowed = !!req.principal;
+    if (token) {
+      const found = storage.peekTripByLinkToken(token);
+      allowed = !!found && !storage.isLinkExpired(found.link) && found.link.guest === 'write';
+    }
+    // 不允許時不解析 body，交給路由回應正確的錯誤（401／403／404）
+    return allowed ? jsonReceipt(req, res, next) : next();
+  });
+
+  // ---- 🔒 /api/trip/... 一律需要身分：沒登入的請求在查行程之前就回 401，
+  // 不會因為「行程存不存在」回 404／401 不同而洩漏行程 ID。用票券開 SSE 的例外。 ----
+  app.use('/api/trip', (req, res, next) => {
+    if (req.principal) return next();
+    if (req.method === 'GET' && /\/events\/?$/.test(req.path) && typeof req.query.ticket === 'string') return next();
+    res.status(401).json({ error: '請先登入', needLogin: true });
+  });
+
+  // ---- 🆕 [行程獨立化] 舊網址 /api/trip/:guildId/:tripId → /api/trip/:tripId ----
+  app.use('/api', createLegacyTripPathRewrite(storage));
 
   // ---- 🆕 [即時同步] 掛上 SSE 廣播：任何一條寫入路徑呼叫 storage.touchTrip()
   // 時，都會自動推播給該行程目前所有開著的 SSE 連線（見 lib/sse.js）。
@@ -176,7 +210,10 @@ function startWebApi(options = {}) {
     const status = Number.isInteger(err.status) && err.status >= 400 && err.status < 600 ? err.status : 500;
     if (status >= 500) console.error(`[splitbill-web] ${req.method} ${req.originalUrl} 失敗：`, err);
     if (res.headersSent) return res.end();
-    res.status(status).json({ error: err.message });
+    // 🔒 非預期的例外（資料庫錯誤之類）不把內部訊息送給呼叫端；有明確狀態碼的錯誤
+    // （body 解析錯誤、storage 的「請再試一次」）本身就是給使用者看的訊息
+    const message = Number.isInteger(err.status) ? err.message : '伺服器發生錯誤，請稍後再試';
+    res.status(status).json({ error: message });
   });
 
   // 啟動時就載入，不要等第一個請求進來。🆕 [SQLite] 第一次啟動會把舊的 splitbill.json

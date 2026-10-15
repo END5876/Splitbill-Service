@@ -30,7 +30,7 @@ module.exports = function createHistoryRouter(ctx) {
   }
   function byShareToken(req, res, needWrite) {
     const found = requireGuestLink(req, res, needWrite ? '此分享連結為唯讀，無法還原' : null);
-    return found && { trip: found.trip, actor: actorOf(req, found.link), viewerId: null };
+    return found && { trip: found.trip, actor: actorOf(req, found.link), viewerId: null, guest: true };
   }
 
   function parseVersion(raw) {
@@ -66,7 +66,7 @@ module.exports = function createHistoryRouter(ctx) {
       const v = parseVersion(req.params.version);
       const snap = v && storage.getTripRevision(r.trip.id, v);
       if (!snap) return res.status(404).json({ error: '這個版本已經不在保留範圍內' });
-      res.json({ trip: snap, updatedAt: v });
+      res.json({ trip: r.guest ? storage.toGuestTrip(snap) : snap, updatedAt: v });
     });
 
     router.post(`${base}/revisions/:version/restore`, (req, res) => {
@@ -87,10 +87,13 @@ module.exports = function createHistoryRouter(ctx) {
         .map((m) => ({ id: m.id, name: m.name }));
       const members = mergeIncomingMembers(trip.members, [...snapMembers, ...keepLinked], { canLink: false });
 
-      // 憑證、建立者、綁定的伺服器、基準幣別、封存狀態都沿用目前的
+      // 憑證、建立者、綁定的伺服器、封存狀態都沿用目前的。
+      // 基準幣別跟著那個版本：帳目的 amountInBase 是用當時的基準幣算的，只還原帳目、
+      // 留著現在的基準幣，金額會整個算錯。
       const restored = storage.repairTrip({
         ...trip,
         name: snap.name,
+        baseCurrency: snap.baseCurrency || trip.baseCurrency,
         rates: snap.rates,
         expenses: snap.expenses,
         deposits: snap.deposits,
@@ -101,7 +104,7 @@ module.exports = function createHistoryRouter(ctx) {
       const writerId = req.body && typeof req.body.writerId === 'string' ? req.body.writerId.slice(0, 64) : null;
       storage.touchTrip(restored, { writerId, actor: r.actor, reason: { type: 'restore-revision', from: v } });
       storage.persist();
-      res.json({ trip: storage.toPublicTrip(restored) });
+      res.json({ trip: r.guest ? storage.toGuestTrip(restored) : storage.toPublicTrip(restored) });
     });
   }
 

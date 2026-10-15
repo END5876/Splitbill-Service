@@ -19,7 +19,7 @@ module.exports = function createSharedTripRouter(ctx) {
   router.get('/shared-trip/:token', (req, res) => {
     const found = requireGuestLink(req, res);
     if (!found) return;
-    res.json({ trip: storage.toPublicTrip(found.trip), permission: found.link.guest });
+    res.json({ trip: storage.toGuestTrip(found.trip), permission: found.link.guest });
   });
 
   // ---- PUT /api/shared-trip/:token：依分享連結 token 寫入行程資料（需要 write 權限）----
@@ -34,11 +34,13 @@ module.exports = function createSharedTripRouter(ctx) {
     if (typeof expected === 'number' && typeof found.trip.updatedAt === 'number' && expected !== found.trip.updatedAt) {
       return res.status(409).json({
         error: '這個行程已經被其他人更新過，請合併最新版本後再儲存一次。',
-        currentTrip: storage.toPublicTrip(found.trip),
+        currentTrip: storage.toGuestTrip(found.trip),
       });
     }
 
     const incoming = (req.body && typeof req.body === 'object') ? { ...req.body } : {};
+    const tooMany = storage.tooManyEntries(incoming);
+    if (tooMany) return res.status(400).json({ error: tooMany });
     const writerId = typeof incoming.writerId === 'string' ? incoming.writerId.slice(0, 64) : null;
     delete incoming.expectedUpdatedAt;
     delete incoming.writerId;
@@ -52,14 +54,15 @@ module.exports = function createSharedTripRouter(ctx) {
     incoming.createdAt = existing.createdAt;
     if (existing.ownerId) incoming.ownerId = existing.ownerId;
     else delete incoming.ownerId;
-    incoming.members = mergeIncomingMembers(existing.members, incoming.members, { canLink: false });
+    // 訪客不能移除已連結 Discord 的成員（那等於把人踢出行程），漏掉的會被補回去
+    incoming.members = mergeIncomingMembers(existing.members, incoming.members, { canLink: false, canRemoveLinked: () => false });
     const repaired = storage.repairTrip({ ...incoming, id: existing.id });
     storage.setTrip(repaired);
     // 🆕 [多人協作 / 即時同步] 同上，改用 touchTrip() 才會觸發 SSE 廣播，
     // 並一併帶上 writerId 讓寫入者本人可以被正確辨識出來。
     storage.touchTrip(repaired, { writerId, actor: actorOf(req, found.link) });
     storage.persist();
-    res.json({ trip: storage.toPublicTrip(repaired), permission: found.link.guest });
+    res.json({ trip: storage.toGuestTrip(repaired), permission: found.link.guest });
   });
 
   return router;

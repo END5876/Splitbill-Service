@@ -1,12 +1,15 @@
 'use strict';
 const express = require('express');
 const crypto = require('crypto');
+const session = require('../lib/session');
 
-// SSE 換票與事件串流端點。底層的訂閱表/廣播機制在 webui/lib/sse.js。
+// SSE 換票與事件串流端點。底層的訂閱表/廣播機制在 lib/sse.js。
+// 🔒 每條連線都帶著一個「現在還能不能讀」的檢查（canRead），lib/sse.js 每次送資料前與
+// 每次心跳都會重新呼叫：連結被撤銷／過期、成員被移除、已登出時，連線會被關掉。
 module.exports = function createSseRouter(ctx) {
   const {
-    storage, requireTripAccess, requireGuestLink,
-    sseTickets, pruneSseTickets, SSE_TICKET_TTL_MS, openTripSseStream,
+    storage, requireTripAccess, requireGuestLink, hasTripAccess,
+    sseTickets, pruneSseTickets, issueSseTicket, SSE_TICKET_TTL_MS, openTripSseStream,
   } = ctx;
   const router = express.Router();
 
@@ -17,12 +20,11 @@ module.exports = function createSseRouter(ctx) {
   // ════════════════════════════════════════════════════════════════
   router.post('/sse-ticket', (req, res) => {
     if (!req.principal) return res.status(401).json({ error: '請先登入', needLogin: true });
-    pruneSseTickets();
     const ticket = crypto.randomBytes(24).toString('hex');
-    sseTickets.set(ticket, {
-      principal: req.principal, // 換票當下的身分；開串流時用同一個身分判斷權限
-      expiresAt: Date.now() + SSE_TICKET_TTL_MS,
-    });
+    // 換票當下的身分；開串流時用同一個身分判斷權限
+    if (!issueSseTicket(ticket, req.principal)) {
+      return res.status(503).json({ error: '伺服器忙碌中，請稍後再試' });
+    }
     res.json({ ticket, expiresInMs: SSE_TICKET_TTL_MS });
   });
 
@@ -48,14 +50,31 @@ module.exports = function createSseRouter(ctx) {
 
     if (!requireTripAccess(authCtx, res, trip, 'read')) return;
 
-    openTripSseStream(res, trip.id);
+    const tripId = trip.id;
+    const principal = authCtx.principal;
+    openTripSseStream(res, tripId, {
+      audience: 'member',
+      canRead: () => {
+        if (principal && principal.sid && session.isSessionRevoked(principal.sid)) return false;
+        const current = storage.peekTrip(tripId);
+        return !!current && hasTripAccess({ principal }, current, 'read');
+      },
+    });
   });
 
   // ---- GET /api/shared-trip/:token/events：SSE，分享連結版本 ----
   router.get('/shared-trip/:token/events', (req, res) => {
     const found = requireGuestLink(req, res);
     if (!found) return;
-    openTripSseStream(res, found.trip.id);
+    const token = req.params.token;
+    const tripId = found.trip.id;
+    openTripSseStream(res, tripId, {
+      audience: 'guest',
+      canRead: () => {
+        const f = storage.peekTripByLinkToken(token);
+        return !!f && f.trip.id === tripId && !storage.isLinkExpired(f.link) && f.link.guest !== 'none';
+      },
+    });
   });
 
   return router;

@@ -67,6 +67,12 @@ async function connectTripEventStream(){
       handleIncomingTripDeleted();
     });
 
+    // 🔒 已經沒有讀取權限了（連結被撤銷／過期、被移出行程、已登出）：伺服器送完這個
+    // 事件就關閉連線，這裡同樣不要自動重連。
+    es.addEventListener('access-revoked', () => {
+      handleTripAccessRevoked();
+    });
+
     // 🆕 [多人協作] 帳單辨識認領進度：有人更新了認領狀態（勾選/取消勾選、
     // 修改品項等）就會收到這個事件；如果自己也正在同一份協作裡，直接套用
     // 最新狀態；如果自己還沒加入，只更新「有人正在辨識中」的提示。
@@ -166,6 +172,23 @@ function handleIncomingTripDeleted(){
   renderAll();
   showMainTab('settings'); showSettingsSub('account');
   toast(`「${deletedName}」已經在別處被刪除了。請從「我的行程」開啟其他行程，或建立新的。`, 'error', { duration: 10000 });
+  refreshTripList({ silent: true }).catch(()=>{});
+}
+
+function handleTripAccessRevoked(){
+  disconnectTripEventStream();
+  if (shareMode){
+    showLinkError('這個連結已經被撤銷、過期，或不再開放訪客使用，請跟建立連結的人索取新的連結。');
+    return;
+  }
+  const name = trip.name;
+  currentTripId = null;
+  clearOwnerConnectionState();
+  trip = defaultTrip();
+  lastSyncedTripJSON = null;
+  renderAll();
+  showMainTab('settings'); showSettingsSub('account');
+  toast(`你已經沒有「${name}」的存取權（可能被移出行程或解除了 Discord 連結）。`, 'error', { duration: 10000 });
   refreshTripList({ silent: true }).catch(()=>{});
 }
 

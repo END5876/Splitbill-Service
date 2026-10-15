@@ -99,7 +99,7 @@ module.exports = function createOAuthRouter() {
   // 一樣要求 x-requested-with，理由同 lib/auth.js 的 CSRF 說明。
   router.post('/logout', (req, res) => {
     if (req.get('x-requested-with') !== 'splitbill') return res.status(403).json({ error: '缺少 CSRF 標頭' });
-    session.clearSession(res);
+    session.revokeSession(req, res);
     res.json({ ok: true });
   });
 

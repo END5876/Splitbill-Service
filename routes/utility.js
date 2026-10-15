@@ -1,10 +1,13 @@
 'use strict';
 const express = require('express');
 const { createRateLimiter } = require('../lib/rateLimit');
+const { isCurrencyCode } = require('../lib/validate');
 
 // 帳單辨識會消耗共用的 Gemini 額度；任何 Discord 帳號都能登入網頁，因此每位呼叫者
 // （登入者／分享連結）每小時最多 30 次。Bot 有自己的限流（Mousebot billScan.js），不在此限。
 const receiptLimiter = createRateLimiter({ limit: 30, windowMs: 60 * 60 * 1000 });
+// 即時匯率：有伺服器端快取，正常使用一次開頁只查幾個幣別；限流是為了不讓這個端點被拿來狂打外部 API
+const fxLimiter = createRateLimiter({ limit: 120, windowMs: 10 * 60 * 1000 });
 const MAX_RECEIPT_IMAGE_BYTES = 4 * 1024 * 1024; // 收到的 JPEG 檔案大小上限（base64 解碼後；前端已先縮圖壓縮）
 
 // 不綁定特定行程的共用工具端點：即時匯率查詢、帳單照片辨識。
@@ -36,20 +39,30 @@ module.exports = function createUtilityRouter(ctx) {
   // 因此開放給任何一把尚未過期的分享連結使用（唯讀或可編輯皆可）——唯讀訪客
   // 雖然不能存檔，但檢視金額換算後的正確結果一樣需要即時匯率。
   router.get(['/fx-rate', '/shared-trip/:token/fx-rate'], async (req, res) => {
-    if (!utilityCaller(req, res, null)) return;
+    const who = utilityCaller(req, res, null);
+    if (!who) return;
+    if (who !== 'service' && !fxLimiter.take(who).ok) {
+      return res.status(429).json({ error: '查詢匯率太頻繁了，請稍後再試' });
+    }
     const from = String(req.query.from || '').trim().toUpperCase();
     const to = String(req.query.to || '').trim().toUpperCase();
     if (!from || !to) return res.status(400).json({ error: '缺少 from 或 to 參數' });
+    // 幣別格式跟行程資料一致（lib/validate.js），格式不對的不必打外部 API
+    if (!isCurrencyCode(from) || !isCurrencyCode(to)) return res.status(400).json({ error: '幣別格式錯誤' });
     if (from === to) return res.json({ rate: 1, asOf: null, source: 'same-currency' });
     try {
       const { rates, asOf } = await getFxRatesFor(from);
-      const rate = rates[to];
+      const rate = Object.prototype.hasOwnProperty.call(rates, to) ? rates[to] : undefined;
       if (typeof rate !== 'number') {
         return res.status(404).json({ error: `即時匯率服務裡找不到 ${from} 兌 ${to} 的匯率` });
       }
       res.json({ rate, asOf, source: 'open.er-api.com' });
     } catch (err) {
-      res.status(502).json({ error: '查詢即時匯率失敗：' + err.message });
+      if (err && err.message === 'unsupported-code') {
+        return res.status(404).json({ error: `即時匯率服務不支援 ${from}` });
+      }
+      // 外部服務的錯誤細節只寫進 log（lib/fxRates.js），不回傳給呼叫端
+      res.status(502).json({ error: '查詢即時匯率失敗，請稍後再試或改用手動設定的匯率' });
     }
   });
 
@@ -83,7 +96,8 @@ module.exports = function createUtilityRouter(ctx) {
       const sanitized = await recognizeReceipt(image, mediaType, who.startsWith('s:') ? 'share-link' : who);
       res.json(sanitized);
     } catch (err) {
-      res.status(500).json({ error: '帳單辨識失敗：' + err.message });
+      console.error(`[splitbill-receipt] 帳單辨識失敗（${who.startsWith('s:') ? 'share-link' : who}）：`, err && err.message);
+      res.status(502).json({ error: '帳單辨識失敗，請稍後再試，或改用手動輸入' });
     }
   });
 

@@ -7,7 +7,10 @@ const { mergeIncomingMembers } = require('../lib/members');
 // 舊網址 /api/trip/:guildId/:tripId 由 lib/legacyPaths.js 改寫到這裡。
 
 module.exports = function createTripsRouter(ctx) {
-  const { storage, requireTripAccess, requireService, canLinkMembers, actorOf } = ctx;
+  const {
+    storage, requireTripAccess, requireService, canLinkMembers, actorOf,
+    tripAccessLevel, principalUserId, LEVEL_RANK,
+  } = ctx;
   const router = express.Router();
 
   function loadTripOr404(req, res) {
@@ -68,6 +71,8 @@ module.exports = function createTripsRouter(ctx) {
     }
 
     const incoming = (req.body && typeof req.body === 'object') ? { ...req.body } : {};
+    const tooMany = storage.tooManyEntries(incoming);
+    if (tooMany) return res.status(400).json({ error: tooMany });
     const writerId = typeof incoming.writerId === 'string' ? incoming.writerId.slice(0, 64) : null;
     delete incoming.expectedUpdatedAt;
     delete incoming.writerId;
@@ -91,10 +96,16 @@ module.exports = function createTripsRouter(ctx) {
       incoming.guildId = null; // 下面依舊網址的 guildId 決定要不要綁定
       if (typeof incoming.ownerId !== 'string' || !incoming.ownerId.trim()) delete incoming.ownerId;
     }
+    // 已連結的成員：建立者／管理端可以移除任何人，其他成員只能移除自己（見 lib/members.js）
+    const level = existing ? tripAccessLevel(req, existing) : 'admin';
+    const uid = principalUserId(req.principal);
     incoming.members = mergeIncomingMembers(
       existing ? existing.members : [],
       incoming.members,
-      { canLink: canLinkMembers(req) }
+      {
+        canLink: canLinkMembers(req),
+        canRemoveLinked: (m) => LEVEL_RANK[level] >= LEVEL_RANK.owner || (!!uid && m.discordId === uid),
+      }
     );
 
     const repaired = storage.repairTrip({ ...incoming, id: tripId });

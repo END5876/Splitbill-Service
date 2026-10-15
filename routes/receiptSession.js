@@ -67,6 +67,7 @@ module.exports = function createReceiptSessionRouter(ctx) {
       }
       const writerId = typeof body.writerId === 'string' ? body.writerId.slice(0, 64) : null;
       const entry = setReceiptSession(trip.id, state, writerId);
+      if (!entry) return res.status(503).json({ error: '目前進行中的帳單辨識協作太多，請稍後再試' });
       broadcastReceiptSession(trip.id, entry);
       res.json({ ok: true, updatedAt: entry.updatedAt, needImage: !entry.state.imageDataUrl });
     });

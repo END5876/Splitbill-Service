@@ -110,6 +110,7 @@ module.exports = function createLinksRouter(ctx) {
     Object.assign(link, access);
     if (typeof body.label === 'string') link.label = body.label.trim().slice(0, 50);
     storage.persist();
+    storage.tripEvents.emit('trip-access-changed', trip.id); // 已開著的 SSE 連線依新設定重新檢查
     res.json(link);
   });
 
@@ -123,6 +124,7 @@ module.exports = function createLinksRouter(ctx) {
     trip.links = trip.links.filter((l) => l.token !== req.params.token);
     if (trip.links.length === before) return res.status(404).json({ error: '找不到這條連結，可能已經被撤銷過了' });
     storage.persist();
+    storage.tripEvents.emit('trip-access-changed', trip.id); // 用這條連結開著的 SSE 連線立刻中斷
     res.json({ ok: true });
   });
 

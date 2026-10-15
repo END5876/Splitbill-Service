@@ -8,7 +8,7 @@ const { createRateLimiter } = require('../lib/rateLimit');
 
 const TRIP_LIMIT_PER_OWNER = Number(process.env.SPLITBILL_TRIP_LIMIT_PER_USER) || 100;
 const createLimiter = createRateLimiter({ limit: 10, windowMs: 10 * 60 * 1000 });
-const CURRENCY_RE = /^[A-Z]{2,6}$/;
+const { isCurrencyCode } = require('../lib/validate');
 
 function cleanName(v, max) {
   return typeof v === 'string' ? v.trim().slice(0, max) : '';
@@ -72,8 +72,9 @@ module.exports = function createMeRouter(ctx) {
 
     const name = cleanName(body.name, 60);
     if (!name) return res.status(400).json({ error: '請輸入行程名稱' });
-    const baseCurrency = cleanName(body.baseCurrency || 'TWD', 6).toUpperCase();
-    if (!CURRENCY_RE.test(baseCurrency)) return res.status(400).json({ error: '基準幣別格式錯誤（2～6 個英文字母）' });
+    // 幣別規則跟行程資料一致（lib/validate.js）：2～10 個大寫英數字、第一個是字母
+    const baseCurrency = cleanName(body.baseCurrency || 'TWD', 10).toUpperCase();
+    if (!isCurrencyCode(baseCurrency)) return res.status(400).json({ error: '基準幣別格式錯誤（2～10 個英文字母或數字，第一個必須是字母）' });
 
     let guildId = null;
     if (p.kind === 'service') {
@@ -83,19 +84,19 @@ module.exports = function createMeRouter(ctx) {
       return res.status(400).json({ error: '網頁建立的行程請之後再用綁定碼綁定到 Discord 伺服器' });
     }
 
-    if (p.kind === 'user') {
-      const r = createLimiter.take(uid);
-      if (!r.ok) return res.status(429).json({ error: '建立行程太頻繁了，請稍後再試' });
-      const owned = storage.countTripsOwnedBy(uid);
-      if (owned >= TRIP_LIMIT_PER_OWNER) {
-        return res.status(400).json({ error: `每人最多建立 ${TRIP_LIMIT_PER_OWNER} 個行程，請先刪除不需要的行程` });
-      }
+    // 網頁登入者與 Bot 代為建立（x-actor-id）套用同一套限制：任何 Discord 使用者都能在
+    // 伺服器面板按「建立行程」，不能因為走 Bot 就沒有上限
+    const r = createLimiter.take(uid);
+    if (!r.ok) return res.status(429).json({ error: '建立行程太頻繁了，請稍後再試' });
+    const owned = storage.countTripsOwnedBy(uid);
+    if (owned >= TRIP_LIMIT_PER_OWNER) {
+      return res.status(400).json({ error: `每人最多建立 ${TRIP_LIMIT_PER_OWNER} 個行程，請先刪除不需要的行程` });
     }
 
     const rates = { [baseCurrency]: 1 };
     if (body.rates && typeof body.rates === 'object') {
       for (const [cur, rate] of Object.entries(body.rates)) {
-        if (CURRENCY_RE.test(cur) && cur !== baseCurrency && typeof rate === 'number' && rate > 0 && Number.isFinite(rate)) {
+        if (isCurrencyCode(cur) && cur !== baseCurrency && typeof rate === 'number' && rate > 0 && Number.isFinite(rate)) {
           rates[cur] = rate;
         }
       }

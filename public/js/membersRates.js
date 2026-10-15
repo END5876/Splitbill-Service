@@ -18,6 +18,16 @@ function renameMember(id, value){
 async function removeMember(id){
   const idx = trip.members.findIndex(x=>x.id===id);
   if (idx === -1) return;
+  // 🔒 已連結 Discord 的成員只有建立者能移除（本人可以移除自己）；伺服器也會擋，
+  // 這裡先擋下來，免得畫面上刪掉、存檔後又被伺服器補回來
+  const target = trip.members[idx];
+  if ((target.discordId || target.linked) && (currentTripId || shareMode)){
+    const isSelf = !!(currentUser && target.discordId === currentUser.id);
+    if (shareMode || (!isSelf && !canManageTrip())){
+      toast(`「${target.name}」已經連結 Discord 帳號，只有行程建立者可以移除`, 'error');
+      return;
+    }
+  }
   // 🆕 已連結 Discord 的成員被刪除後，他就失去這個行程的存取權；先確認一次
   if (trip.members[idx].discordId && currentTripId){
     const isMe = currentUser && trip.members[idx].discordId === currentUser.id;

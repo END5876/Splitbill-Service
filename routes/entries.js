@@ -84,6 +84,9 @@ module.exports = function createEntriesRouter(ctx) {
         const list = trip[kind];
         const index = list.findIndex((x) => x.id === entryId);
         const existing = index === -1 ? null : list[index];
+        if (!existing && list.length >= storage.MAX_ENTRIES) {
+          return res.status(400).json({ error: `這個行程的資料已達上限（最多 ${storage.MAX_ENTRIES} 筆）` });
+        }
         // 編輯時沒帶日期就沿用原本的（不然會被當成「現在」，日期悄悄變掉）
         const withDate = existing && raw.createdAt === undefined ? { ...raw, createdAt: existing.createdAt } : raw;
         const entry = { ...spec.repair({ ...withDate, id: entryId }, trip, existing), id: entryId };
