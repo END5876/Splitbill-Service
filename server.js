@@ -115,7 +115,15 @@ function startWebApi(options = {}) {
   // 健康檢查：不經金鑰驗證，讓平台的 health probe 可以直接探測。
   // 外部服務（匯率、Gemini）壞掉不影響 ok——它們都有退路，服務本身仍然可用；
   // 只在 upstream 欄位標示 degraded，方便從監控看出來。
-  app.get('/healthz', (req, res) => res.json({ ok: true, upstream: upstream.snapshot() }));
+  // 🆕 [資料保護] 資料層有問題時回 503（ok:false）：資料庫讀不到，或正式環境的資料目錄沒有
+  // 掛 Volume（資料會在下次部署時消失）。剩餘空間、最後一次備份只回報，不影響 ok，
+  // 讓外部監控自己訂門檻。不回傳錯誤內容與路徑。
+  app.get('/healthz', (req, res) => {
+    const data = storage.health();
+    const volumeRequired = process.env.NODE_ENV === 'production' && process.env.SPLITBILL_REQUIRE_VOLUME !== '0';
+    const ok = data.db === 'ok' && !(volumeRequired && data.volume === 'not-mounted');
+    res.status(ok ? 200 : 503).json({ ok, ...data, upstream: upstream.snapshot() });
+  });
 
   // 提供前端靜態頁面（public/index.html），同源存取可避免 CORS 問題
   // index.html 裡的 css/js 網址會加上內容雜湊（?v=xxxx），每次部署只要檔案有改，

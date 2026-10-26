@@ -12,12 +12,15 @@ Mousebot 分帳系統的獨立服務：**網頁記帳介面（`public/`）＋ RE
   網頁與分享連結的 PUT 一律無法改動它（`lib/members.js`）。
 - 舊版（v1，行程掛在伺服器底下）資料會在匯入 SQLite 時一併轉換。
   舊成員的 `id` 本身就是 Discord ID，遷移只補上 `discordId = id`，帳目不需改寫。
+  （schema v2 會再把這些 id 換成 `mem_xxxx`、一併改寫帳目、歷史版本與操作紀錄裡的引用，Discord ID 不再出現在成員 id 裡；見下方「schema 版本與回滾」。）
 
 ## 資料儲存（SQLite）
 - 資料存在 `$SPLITBILL_DATA_DIR/splitbill.db`，使用 Node 內建的 `node:sqlite`（需要 Node ≥ 22.13，不必安裝原生模組）。
 - **從舊版升級**：第一次啟動時若找到 `splitbill.json`，會在一個交易裡整份匯入，成功後改名成
   `splitbill.json.imported-<時間戳>`（之後不會再讀它，確認無誤後可以刪掉）。
 - **讀不懂就不啟動**：`splitbill.json` 或資料庫損毀時服務直接啟動失敗，不會以空資料上線。
+- **找不到資料就不啟動**：`NODE_ENV=production` 時，資料目錄裡既沒有已初始化的資料庫、也沒有 `splitbill.json`
+  （通常是 Volume 沒掛上或路徑設錯）會拒絕啟動，不會默默建立空帳本。真的是第一次部署時，設定 `SPLITBILL_ALLOW_EMPTY_INIT=1` 啟動一次即可。
 - **每日備份**：`backups/splitbill-YYYY-MM-DD.db`（UTC 日期），啟動時與之後每小時檢查一次，保留最近 7 份。
   還原方式：停掉服務，把備份檔複製成 `splitbill.db`（並刪掉同名的 `-wal`／`-shm` 檔）再啟動。
 - **歷史版本**：每次行程內容變動（`updatedAt` 改變）會在 `trip_revisions` 留一份不含憑證的快照，每個行程保留最近 50 份，網頁可以整份「回到此版本」。
@@ -30,6 +33,21 @@ Mousebot 分帳系統的獨立服務：**網頁記帳介面（`public/`）＋ RE
   發現對方寫過，拒絕這次寫入（回 503、請使用者重試）並重新載入，不會悄悄蓋掉對方的資料；
   但重疊期間各自的 SSE 推播看不到對方的更新。正式環境請設定成「先停舊的再起新的」，或確保同時只有一個實例。
 - 用 sqlite3 查資料：`sqlite3 splitbill.db "select id, guild_id, owner_id, updated_at from trips"`。
+
+### schema 版本與回滾
+- `meta.schema_version` 是資料形狀的版本（`lib/db.js` 的 `SCHEMA_VERSION`）。啟動時：
+  - 資料庫比程式舊：先備份成 `backups/splitbill-pre-v<N>-<時間>.db`，再依 `lib/migrations.js` 依序遷移（每一步一個交易）。
+  - **資料庫比程式新：拒絕啟動**。舊程式不認得新資料的形狀，硬跑可能在第一次存檔時改壞資料；
+    autodeploy 遇到新版不健康時會換回 `:prev`，這道檢查讓那個 `:prev` 不會碰資料庫，而是啟動失敗等人處理。
+- 從資料庫載入的行程會保留這個版本不認得的欄位（較新版本寫的），整包 PUT 與還原時也會把它們接回去，
+  所以「欄位變多、但 schema 版本沒變」的改版可以安全回滾一版。
+- **回滾邊界**：不能直接回滾到下列 commit 之前的映像（要回去的話，請用那次升級前的備份還原）：
+
+  | 版本／commit | 變更 | 回滾到更早的映像會怎樣 |
+  |---|---|---|
+  | `85f4585`（2026-10-10） | JSON → SQLite | 舊映像只認得 `splitbill.json`（已改名成 `.imported-*`），會以空帳本啟動；之後回到新版時，回滾期間的寫入會被忽略 |
+  | 分享連結轉換（2026-10-12） | `shareLinks`／`invite` → `links` | 所有分享與邀請連結失效 |
+  | schema v2（這一版） | 舊版成員 id（Discord ID）→ `mem_xxxx` | 沒有守門的舊映像仍可讀寫（`mem_` 只是普通的 id），但回不到 v1 的 id；這一版之後的映像遇到 v3 以上的資料會拒絕啟動 |
 
 ## 權限
 | 身分 | 怎麼辨認 | 能做什麼 |
@@ -67,10 +85,18 @@ Mousebot 分帳系統的獨立服務：**網頁記帳介面（`public/`）＋ RE
    | `SPLITBILL_REVISIONS_KEEP` | 選填。每個行程保留幾個歷史版本，預設 50；`0` 關閉 |
    | `SPLITBILL_ACTIVITY_KEEP` | 選填。每個行程保留幾筆操作紀錄，預設 500；`0` 關閉 |
    | `SPLITBILL_SQLITE_JOURNAL` | 選填。預設 `WAL`；Volume 若是不支援共享記憶體的網路檔案系統，改成 `DELETE` |
-3. 健康檢查路徑：`/healthz`。回應裡的 `upstream` 是外部服務最近的狀態（`fx`＝匯率、`gemini`＝帳單辨識）：
-   `ok`／`degraded`（最近一次失敗）／`unknown`（啟動後還沒用過）。外部服務壞掉不影響 `ok: true`，網頁都有退路。
+   | `SPLITBILL_ALLOW_EMPTY_INIT` | 只在第一次部署時設成 `1`：允許在空的資料目錄建立新資料庫（見上方「找不到資料就不啟動」） |
+   | `SPLITBILL_REQUIRE_VOLUME` | 選填。預設正式環境的資料目錄沒有掛 Volume 時 `/healthz` 回 503；設成 `0` 關閉這項檢查 |
+3. 健康檢查路徑：`/healthz`。
+   - `ok`：資料庫讀不到（`db: "error"`），或正式環境的資料目錄沒有掛 Volume（`volume: "not-mounted"`）時是 `false`，並回 **503**。
+   - `freeMB`（資料目錄的剩餘空間）、`backup.lastSuccessAt`／`backup.lastFailureAt`／`backup.ok`（最近一次每日備份的結果）只回報、不影響 `ok`，門檻交給外部監控。
+   - `upstream` 是外部服務最近的狀態（`fx`＝匯率、`gemini`＝帳單辨識）：
+     `ok`／`degraded`（最近一次失敗）／`unknown`（啟動後還沒用過）。外部服務壞掉不影響 `ok`，網頁都有退路。
+   - 回應不含錯誤內容或檔案路徑。
 4. Bot 端：`SPLITBILL_SERVICE_URL=http://<本服務名稱>.internal:3000`、`SPLITBILL_SERVICE_KEY=<同一把金鑰>`。
-5. **升級順序：先部署本服務，再更新 Mousebot。** 舊網址 `/api/trip/:guildId/:tripId` 仍可用，
+5. 容器以 `node` 帳號（uid 1000）執行：`docker-entrypoint.sh` 先以 root 把資料目錄裡不屬於 node 的檔案改過去，再降權啟動，
+   所以從舊的 root 映像升級不需要手動 chown，回滾到舊映像也照樣能讀寫。
+6. **升級順序：先部署本服務，再更新 Mousebot。** 舊網址 `/api/trip/:guildId/:tripId` 仍可用，
    過渡期間舊版 Mousebot 照常運作；新版 Mousebot 需要本服務的新端點。
 
 ## API 摘要

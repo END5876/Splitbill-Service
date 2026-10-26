@@ -17,9 +17,14 @@ module.exports = function createSseRouter(ctx) {
   // 🆕 [即時同步] POST /api/sse-ticket：用 header 帶的金鑰（Bot／維運腳本）換取一張短效、一次性的
   // 票券，再拿這張票券去開啟下面的 SSE 連線。分享連結不需要呼叫這個
   // 端點——它的 SSE 連線直接用網址上的 token 當憑證即可。
+  // 🔒 只開放給金鑰：網頁登入者直接用 cookie 開 SSE，不需要票券。票券表是全站共用的
+  // （上限 MAX_SSE_TICKETS），開放給任何 Discord 帳號的話，一個人就能把它換光。
   // ════════════════════════════════════════════════════════════════
   router.post('/sse-ticket', (req, res) => {
     if (!req.principal) return res.status(401).json({ error: '請先登入', needLogin: true });
+    if (req.principal.kind !== 'service') {
+      return res.status(403).json({ error: '網頁請直接用登入的 cookie 開啟即時同步，不需要票券' });
+    }
     const ticket = crypto.randomBytes(24).toString('hex');
     // 換票當下的身分；開串流時用同一個身分判斷權限
     if (!issueSseTicket(ticket, req.principal)) {

@@ -14,15 +14,32 @@ function defaultTrip(){
   };
 }
 
+// 🔒 [縱深防禦] 跟伺服器 lib/validate.js 相同的格式。id、幣別、匯率會直接插進 HTML
+// （data-id、<option value>、按鈕參數），平常靠伺服器的 repairTrip 保證格式；這裡再檢查
+// 一次，之後就算有沒經過伺服器修復的資料（匯入檔案、離線合併）也插不進 HTML。
+const SAFE_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
+const CURRENCY_RE = /^[A-Z][A-Z0-9]{1,9}$/;
+function safeId(v, prefix){ return typeof v === 'string' && SAFE_ID_RE.test(v) ? v : genId(prefix); }
+// 成員引用：格式不對就當作沒有（不能憑空換成新的 id，那會指向不存在的成員）
+function memberRef(v){ return typeof v === 'string' && SAFE_ID_RE.test(v) ? v : null; }
+function currencyOr(v, fallback){ return typeof v === 'string' && CURRENCY_RE.test(v) ? v : fallback; }
+function finiteNum(v, fallback){ return typeof v === 'number' && Number.isFinite(v) ? v : fallback; }
+
 function repairTrip(raw){
   const def = defaultTrip();
   const t = Object.assign({}, def, raw||{});
-  t.rates = Object.assign({}, def.rates, (raw&&raw.rates)||{});
-  if (!t.rates[t.baseCurrency]) t.rates[t.baseCurrency] = 1;
+  t.id = safeId(t.id, 'trip');
+  t.baseCurrency = currencyOr(t.baseCurrency, def.baseCurrency);
+  const rawRates = Object.assign({}, def.rates, (raw&&raw.rates)||{});
+  t.rates = {};
+  for (const [code, rate] of Object.entries(rawRates)) {
+    if (CURRENCY_RE.test(code) && finiteNum(rate, 0) > 0) t.rates[code] = rate;
+  }
+  t.rates[t.baseCurrency] = 1;
   // 🆕 [行程獨立化] discordId：伺服器管理的 Discord 連結狀態，前端只讀取顯示，
   // 送回伺服器時就算被改掉也會被忽略（見 service 的 lib/members.js）。
   t.members = Array.isArray(t.members) ? t.members.map(m=>{
-    const mem = {id:m.id||genId('mem'), name:m.name||m.id||'未知成員'};
+    const mem = {id:safeId(m.id, 'mem'), name:m.name||m.id||'未知成員'};
     if (m.discordId) mem.discordId = m.discordId;
     // 分享連結訪客拿到的行程不含 Discord ID，只有 linked: true（見 service 的 storage.toGuestTrip）
     else if (m.linked === true) mem.linked = true;
@@ -42,14 +59,18 @@ function repairTrip(raw){
 }
 function repairExpense(e){
   e = e || {};
+  const amount = finiteNum(e.amount, 0);
+  const shares = (list) => (Array.isArray(list) ? list : [])
+    .filter(p => p && memberRef(p.userId))
+    .map(p => ({userId:p.userId, amount: finiteNum(p.amount ?? p.share, 0)}));
   return {
-    id: e.id || genId('exp'),
+    id: safeId(e.id, 'exp'),
     description: e.description || '（無說明）',
-    amount: typeof e.amount === 'number' ? e.amount : 0,
-    currency: e.currency || 'TWD',
-    amountInBase: typeof e.amountInBase === 'number' ? e.amountInBase : (typeof e.amount==='number'?e.amount:0),
-    payers: Array.isArray(e.payers) ? e.payers.map(p=>({userId:p.userId, amount: typeof p.amount==='number'?p.amount:0})) : [],
-    participants: Array.isArray(e.participants) ? e.participants.map(s=>({userId:s.userId, amount: typeof (s.amount??s.share)==='number'?(s.amount??s.share):0})) : [],
+    amount,
+    currency: currencyOr(e.currency, 'TWD'),
+    amountInBase: finiteNum(e.amountInBase, amount),
+    payers: shares(e.payers),
+    participants: shares(e.participants),
     createdAt: typeof e.createdAt === 'number' ? e.createdAt : Date.now(),
     createdBy: e.createdBy || 'web-ui',
   };
@@ -57,12 +78,12 @@ function repairExpense(e){
 function repairDeposit(d){
   d = d || {};
   return {
-    id: d.id || genId('dep'),
-    collectorId: d.collectorId || null,
-    payerId: d.payerId || null,
-    amount: typeof d.amount === 'number' ? d.amount : 0,
-    currency: d.currency || 'TWD',
-    amountInBase: typeof d.amountInBase === 'number' ? d.amountInBase : (typeof d.amount==='number'?d.amount:0),
+    id: safeId(d.id, 'dep'),
+    collectorId: memberRef(d.collectorId),
+    payerId: memberRef(d.payerId),
+    amount: finiteNum(d.amount, 0),
+    currency: currencyOr(d.currency, 'TWD'),
+    amountInBase: finiteNum(d.amountInBase, finiteNum(d.amount, 0)),
     note: d.note || '',
     createdAt: typeof d.createdAt === 'number' ? d.createdAt : Date.now(),
   };

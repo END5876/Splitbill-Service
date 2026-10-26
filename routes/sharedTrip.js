@@ -57,6 +57,9 @@ module.exports = function createSharedTripRouter(ctx) {
     // 訪客不能移除已連結 Discord 的成員（那等於把人踢出行程），漏掉的會被補回去
     incoming.members = mergeIncomingMembers(existing.members, incoming.members, { canLink: false, canRemoveLinked: () => false });
     const repaired = storage.repairTrip({ ...incoming, id: existing.id });
+    // 🔒 訪客拿到的支出 createdBy 是遮蔽過的（見 storage.toGuestTrip），存回時沿用伺服器上的值
+    storage.restoreGuestCreatedBy(existing, repaired);
+    storage.preserveUnknownFields(existing, repaired);
     storage.setTrip(repaired);
     // 🆕 [多人協作 / 即時同步] 同上，改用 touchTrip() 才會觸發 SSE 廣播，
     // 並一併帶上 writerId 讓寫入者本人可以被正確辨識出來。

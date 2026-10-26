@@ -109,6 +109,8 @@ module.exports = function createTripsRouter(ctx) {
     );
 
     const repaired = storage.repairTrip({ ...incoming, id: tripId });
+    // 較新版本的程式寫下、這個版本不認得的欄位接回去（見 storage.preserveUnknownFields）
+    storage.preserveUnknownFields(existing, repaired);
     storage.setTrip(repaired);
     if (!existing && req.legacyGuildId) storage.attachTripToGuild(repaired, req.legacyGuildId);
 

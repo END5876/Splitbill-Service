@@ -47,7 +47,9 @@ module.exports = function createHistoryRouter(ctx) {
       // 多拿一筆，用來判斷還有沒有更舊的
       const rows = storage.listTripActivity(r.trip.id, before, limit + 1);
       const revisions = new Set(storage.listTripRevisions(r.trip.id).map((x) => x.updatedAt));
-      const items = rows.slice(0, limit).map((a) => {
+      const items = rows.slice(0, limit).map((row) => {
+        // 🔒 訪客看到的支出 before／after 也不帶記帳者的 Discord ID（見 storage.toGuestActivity）
+        const a = r.guest ? storage.toGuestActivity(row) : row;
         // 不把 Discord ID 送出去，只告訴前端「是不是我」
         const { userId, ...actor } = a.actor || {};
         return {
@@ -99,7 +101,8 @@ module.exports = function createHistoryRouter(ctx) {
         deposits: snap.deposits,
         members,
         id: trip.id,
-      });
+      }, { keepUnknown: true }); // 快照與目前的行程都是伺服器自己存的，不認得的欄位照樣保留
+      storage.preserveUnknownFields(trip, restored);
       storage.setTrip(restored);
       const writerId = req.body && typeof req.body.writerId === 'string' ? req.body.writerId.slice(0, 64) : null;
       storage.touchTrip(restored, { writerId, actor: r.actor, reason: { type: 'restore-revision', from: v } });

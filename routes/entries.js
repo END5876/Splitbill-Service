@@ -1,6 +1,7 @@
 'use strict';
 const express = require('express');
 const { isSafeId, validateExpenseEntry, validateDepositEntry, str } = require('../lib/validate');
+const { isSnowflake } = require('../lib/snowflake');
 
 // ════════════════════════════════════════════════════════════════
 // 單筆支出／轉帳的寫入端點。
@@ -37,16 +38,16 @@ module.exports = function createEntriesRouter(ctx) {
   }
   function tripByShareToken(req, res) {
     const found = requireGuestLink(req, res, '此分享連結為唯讀，無法儲存變更');
-    return found && { trip: found.trip, actor: actorOf(req, found.link) };
+    return found && { trip: found.trip, actor: actorOf(req, found.link), guest: true };
   }
 
   const KINDS = {
     expenses: {
       validate: validateExpenseEntry,
-      repair: (e, trip, existing) => ({
+      repair: (e, trip, existing, guest, restore) => ({
         ...storage.repairExpense(e, undefined, trip.baseCurrency),
-        // 建立者沿用第一次寫入時的值，之後編輯不會改掉
-        createdBy: existing ? existing.createdBy : (str(e.createdBy, 64) || 'web-ui'),
+        // 建立者沿用第一次寫入時的值，之後編輯不會改掉；🔒 訪客新增的不能自稱是某個 Discord 使用者
+        createdBy: existing ? existing.createdBy : newCreatedBy(e, guest, trip, restore),
       }),
     },
     deposits: {
@@ -54,6 +55,14 @@ module.exports = function createEntriesRouter(ctx) {
       repair: (d, trip) => storage.repairDeposit(d, undefined, trip.baseCurrency),
     },
   };
+
+  function newCreatedBy(e, guest, trip, restore) {
+    const v = str(e.createdBy, 64) || 'web-ui';
+    if (!guest || !(isSnowflake(v) || v === 'discord')) return v;
+    // 訪客還原刪掉的支出：createdBy 是遮蔽過的 'discord'，從伺服器的操作紀錄找回原本的記帳者
+    if (v === 'discord' && restore) return storage.findRemovedExpenseCreator(trip.id, e.id) || 'web-ui';
+    return 'web-ui';
+  }
 
   function writerIdOf(req) {
     const w = req.body && req.body.writerId;
@@ -74,7 +83,7 @@ module.exports = function createEntriesRouter(ctx) {
       router.put(`${base}/${kind}/:entryId`, (req, res) => {
         const resolved = resolveTrip(req, res);
         if (!resolved) return;
-        const { trip, actor } = resolved;
+        const { trip, actor, guest } = resolved;
         const entryId = req.params.entryId;
         if (!isSafeId(entryId)) return res.status(400).json({ error: '資料 ID 格式錯誤' });
         const raw = req.body && req.body.entry;
@@ -89,11 +98,14 @@ module.exports = function createEntriesRouter(ctx) {
         }
         // 編輯時沒帶日期就沿用原本的（不然會被當成「現在」，日期悄悄變掉）
         const withDate = existing && raw.createdAt === undefined ? { ...raw, createdAt: existing.createdAt } : raw;
-        const entry = { ...spec.repair({ ...withDate, id: entryId }, trip, existing), id: entryId };
+        const entry = { ...spec.repair({ ...withDate, id: entryId }, trip, existing, guest, req.body.restore === true), id: entryId };
+        // 較新版本的程式寫下、這個版本不認得的欄位接回去（見 storage.preserveUnknownFields）
+        storage.preserveUnknownEntryFields(kind, existing, entry);
         if (index === -1) list.push(entry);
         else list[index] = entry;
 
-        res.json({ entry, ...commit(trip, req, actor) });
+        const shown = guest && kind === 'expenses' ? storage.toGuestExpense(entry) : entry;
+        res.json({ entry: shown, ...commit(trip, req, actor) });
       });
 
       router.delete(`${base}/${kind}/:entryId`, (req, res) => {
