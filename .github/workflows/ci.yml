@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           # package.json 要求 >=22.13（node:sqlite）；和 Dockerfile 的 node:22-slim 同一個大版本
           node-version: 22
