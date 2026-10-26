@@ -51,12 +51,13 @@ module.exports = function createUtilityRouter(ctx) {
     if (!isCurrencyCode(from) || !isCurrencyCode(to)) return res.status(400).json({ error: '幣別格式錯誤' });
     if (from === to) return res.json({ rate: 1, asOf: null, source: 'same-currency' });
     try {
-      const { rates, asOf } = await getFxRatesFor(from);
+      const { rates, asOf, stale } = await getFxRatesFor(from);
       const rate = Object.prototype.hasOwnProperty.call(rates, to) ? rates[to] : undefined;
       if (typeof rate !== 'number') {
         return res.status(404).json({ error: `即時匯率服務裡找不到 ${from} 兌 ${to} 的匯率` });
       }
-      res.json({ rate, asOf, source: 'open.er-api.com' });
+      // stale：即時匯率服務暫時連不上，這是 7 天內抓到的舊匯率（asOf 是它的時間），可能過時
+      res.json(stale ? { rate, asOf, source: 'open.er-api.com', stale: true } : { rate, asOf, source: 'open.er-api.com' });
     } catch (err) {
       if (err && err.message === 'unsupported-code') {
         return res.status(404).json({ error: `即時匯率服務不支援 ${from}` });

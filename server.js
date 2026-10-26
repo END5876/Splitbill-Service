@@ -15,6 +15,9 @@
  *   PORT / SPLITBILL_WEB_PORT   監聽埠號，預設 3000
  *   SPLITBILL_DATA_DIR  資料目錄（放 splitbill.db 與 backups/），預設 ./data；請掛 Volume 到這裡
  *   GEMINI_API_KEY      網頁版帳單照片辨識需要（沒設定只會停用該功能）
+ *   GEMINI_RECEIPT_MODEL  帳單辨識用的 Gemini 模型（預設 gemini-3.1-flash-lite）
+ *   SPLITBILL_LOG_REQUESTS=all  每個請求都記一行 log（預設只記 403／409／429／5xx 與慢請求）
+ *   ALERT_WEBHOOK_URL   Discord webhook：每日備份失敗時通知（未設定＝不送）
  */
 
 const path = require('path');
@@ -47,6 +50,7 @@ const createAttachRouter = require('./routes/attach');
 const createEntriesRouter = require('./routes/entries');
 const createHistoryRouter = require('./routes/history');
 const upstream = require('./lib/upstreamStatus');
+const { requestLog, redactPath } = require('./lib/requestLog');
 
 // 🔒 [安全性] Content-Security-Policy：腳本只能來自本站檔案，inline <script> 與
 // onclick="…" 一律不執行（前端改用 js/actions.js 的事件委派）。就算哪天又有資料沒跳脫
@@ -99,6 +103,8 @@ function startWebApi(options = {}) {
 
   const app = express();
   app.disable('x-powered-by');
+  // 請求 id＋403／409／429／5xx 等結果的 log（lib/requestLog.js）
+  app.use(requestLog());
   app.use(securityHeaders);
   // gzip：index.html／js／css／JSON 回應都很適合壓縮（手機網路差很多）。
   // SSE 一定要排除，否則事件會被壓縮緩衝卡住、不會即時送出。
@@ -216,7 +222,8 @@ function startWebApi(options = {}) {
   // eslint-disable-next-line no-unused-vars
   app.use('/api', (err, req, res, next) => {
     const status = Number.isInteger(err.status) && err.status >= 400 && err.status < 600 ? err.status : 500;
-    if (status >= 500) console.error(`[splitbill-web] ${req.method} ${req.originalUrl} 失敗：`, err);
+    // 路徑裡的分享連結 token 不進 log（redactPath）；帶上請求 id，和 [splitbill-http] 那一行對得起來
+    if (status >= 500) console.error(`[splitbill-web] ${req.id} ${req.method} ${redactPath(req.originalUrl)} 失敗：`, err);
     if (res.headersSent) return res.end();
     // 🔒 非預期的例外（資料庫錯誤之類）不把內部訊息送給呼叫端；有明確狀態碼的錯誤
     // （body 解析錯誤、storage 的「請再試一次」）本身就是給使用者看的訊息

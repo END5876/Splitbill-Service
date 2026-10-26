@@ -87,16 +87,22 @@ Mousebot 分帳系統的獨立服務：**網頁記帳介面（`public/`）＋ RE
    | `SPLITBILL_SQLITE_JOURNAL` | 選填。預設 `WAL`；Volume 若是不支援共享記憶體的網路檔案系統，改成 `DELETE` |
    | `SPLITBILL_ALLOW_EMPTY_INIT` | 只在第一次部署時設成 `1`：允許在空的資料目錄建立新資料庫（見上方「找不到資料就不啟動」） |
    | `SPLITBILL_REQUIRE_VOLUME` | 選填。預設正式環境的資料目錄沒有掛 Volume 時 `/healthz` 回 503；設成 `0` 關閉這項檢查 |
+   | `GEMINI_RECEIPT_MODEL` | 選填。帳單辨識用的 Gemini 模型，預設 `gemini-3.1-flash-lite`（Google 下架或改名模型時改這裡就好） |
+   | `ALERT_WEBHOOK_URL` | 選填。Discord webhook：每日備份失敗、寫入資料庫失敗時通知（同一件事有冷卻時間，不會洗版） |
+   | `SPLITBILL_LOG_REQUESTS` | 選填。設 `all` 時每個請求都記一行 log；預設只記 403／409／429／5xx 與超過 3 秒的請求 |
 3. 健康檢查路徑：`/healthz`。
    - `ok`：資料庫讀不到（`db: "error"`），或正式環境的資料目錄沒有掛 Volume（`volume: "not-mounted"`）時是 `false`，並回 **503**。
    - `freeMB`（資料目錄的剩餘空間）、`backup.lastSuccessAt`／`backup.lastFailureAt`／`backup.ok`（最近一次每日備份的結果）只回報、不影響 `ok`，門檻交給外部監控。
    - `upstream` 是外部服務最近的狀態（`fx`＝匯率、`gemini`＝帳單辨識）：
      `ok`／`degraded`（最近一次失敗）／`unknown`（啟動後還沒用過）。外部服務壞掉不影響 `ok`，網頁都有退路。
    - 回應不含錯誤內容或檔案路徑。
-4. Bot 端：`SPLITBILL_SERVICE_URL=http://<本服務名稱>.internal:3000`、`SPLITBILL_SERVICE_KEY=<同一把金鑰>`。
-5. 容器以 `node` 帳號（uid 1000）執行：`docker-entrypoint.sh` 先以 root 把資料目錄裡不屬於 node 的檔案改過去，再降權啟動，
+   - 匯率服務掛掉時，`/api/fx-rate` 會沿用 7 天內抓到的舊匯率並帶 `stale: true`（`asOf` 是那份匯率的時間），超過 7 天才回錯誤。
+4. 請求 log：每個回應都有 `X-Request-Id`；403、409（多人同時編輯的版本衝突）、429、5xx 與慢請求會記一行
+   `[splitbill-http] <id> <方法> <路徑> <狀態> <毫秒>ms <呼叫者>`。分享連結 token 一律記成 `:token`，不記 query string。
+5. Bot 端：`SPLITBILL_SERVICE_URL=http://<本服務名稱>.internal:3000`、`SPLITBILL_SERVICE_KEY=<同一把金鑰>`。
+6. 容器以 `node` 帳號（uid 1000）執行：`docker-entrypoint.sh` 先以 root 把資料目錄裡不屬於 node 的檔案改過去，再降權啟動，
    所以從舊的 root 映像升級不需要手動 chown，回滾到舊映像也照樣能讀寫。
-6. **升級順序：先部署本服務，再更新 Mousebot。** 舊網址 `/api/trip/:guildId/:tripId` 仍可用，
+7. **升級順序：先部署本服務，再更新 Mousebot。** 舊網址 `/api/trip/:guildId/:tripId` 仍可用，
    過渡期間舊版 Mousebot 照常運作；新版 Mousebot 需要本服務的新端點。
 
 ## API 摘要

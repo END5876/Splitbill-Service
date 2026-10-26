@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          # package.json 要求 >=22.13（node:sqlite）；和 Dockerfile 的 node:22-slim 同一個大版本
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      # 正式環境會裝到的套件（--omit=dev）有 high 以上的漏洞就讓 CI 失敗
+      - run: npm audit --omit=dev --audit-level=high
+
+  # 建置正式環境用的映像並冒煙測試：VPS 上的 autodeploy 也是用同一個 Dockerfile 建置
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t splitbill-service:ci .
+      - name: Smoke test
+        run: |
+          # 空的資料目錄：正式環境預設拒絕建立空帳本，CI 明確允許；沒有掛 Volume 的檢查也關掉
+          docker run -d --name sb -p 3000:3000 \
+            -e SPLITBILL_ALLOW_EMPTY_INIT=1 -e SPLITBILL_REQUIRE_VOLUME=0 -e SPLITBILL_API_KEY=ci-key \
+            splitbill-service:ci
+          for i in $(seq 1 20); do curl -fs localhost:3000/healthz && break; sleep 1; done
+          echo
+          curl -fs localhost:3000/healthz | grep -q '"db":"ok"'
+          # 網頁與金鑰驗證
+          curl -fs -o /dev/null localhost:3000/
+          test "$(curl -s -o /dev/null -w '%{http_code}' localhost:3000/api/guild/123456789012345678)" = 403
+          curl -fs -H 'x-api-key: ci-key' localhost:3000/api/guild/123456789012345678 >/dev/null
+          # 服務以 node（非 root）身分執行，資料庫檔案也屬於 node
+          test "$(docker exec sb sh -c 'stat -c %U /proc/1')" = node
+          test "$(docker exec sb stat -c %U /app/data/splitbill.db)" = node
+          docker logs sb
+          docker rm -f sb

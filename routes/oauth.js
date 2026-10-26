@@ -14,7 +14,8 @@ const { isSnowflake } = require('../lib/snowflake');
 //   SESSION_SECRET      至少 32 字元的隨機字串，用來簽 cookie
 //   DISCORD_API_BASE / DISCORD_AUTHORIZE_URL    （測試用）覆寫 Discord 端點
 
-const API_BASE = (process.env.DISCORD_API_BASE || 'https://discord.com/api').replace(/\/+$/, '');
+// 指定 API 版本：不帶版本的 /api 會落到 Discord 的預設版本，哪天預設版本調整就可能壞掉
+const API_BASE = (process.env.DISCORD_API_BASE || 'https://discord.com/api/v10').replace(/\/+$/, '');
 const AUTHORIZE_URL = process.env.DISCORD_AUTHORIZE_URL || 'https://discord.com/oauth2/authorize';
 const DISCORD_FETCH_TIMEOUT_MS = 10000; // Discord 卡住時讓使用者看到錯誤，而不是一直轉圈
 
