@@ -40,7 +40,7 @@ const UI_ACTIONS = new Set([
   'saveDepositAndSync', 'saveExpenseAndSync', 'saveLinkEdit', 'saveMyNickname',
   'selfShareParticipants', 'setLinkComposerDays', 'setLinkComposerJoin', 'setLinkComposerLabel',
   'setLinkEditGuest', 'setLinkEditJoin', 'setLinkEditLabel', 'setShowAllTrips', 'showMainTab',
-  'showSettingsSub', 'startFirstDeposit', 'startFirstExpense', 'toggleDepositExpand',
+  'showSettingsSub', 'startFirstDeposit', 'startFirstExpense', 'switchAccount', 'toggleDepositExpand',
   'toggleDepositFilterMember', 'toggleExpenseExpand', 'toggleExpenseFilterMember', 'toggleFormCard',
   'toggleLinkEditor', 'toggleMemberDetail', 'toggleTheme', 'unlinkMember', 'updateRate',
 ]);

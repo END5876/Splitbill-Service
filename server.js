@@ -11,7 +11,8 @@
  *   SPLITBILL_API_KEY   Bot（與維運）用的共用金鑰，以 x-api-key 帶上；沒設定時 Bot 無法連線
  *   DISCORD_CLIENT_ID / DISCORD_CLIENT_SECRET / PUBLIC_BASE_URL / SESSION_SECRET
  *                       網頁的 Discord 登入（見 routes/oauth.js）；沒設定時網頁只能用分享連結
- *   OWNER_USER_ID       Bot 擁有者的 Discord ID（逗號分隔），對所有行程有建立者權限
+ *   OWNER_USER_ID       Bot 擁有者的 Discord ID（逗號分隔），對所有行程有建立者權限；與 Mousebot、音樂庫設成一樣
+ *   TRUST_PROXY         Express 的 trust proxy，預設 'loopback, linklocal, uniquelocal'（只信任私有網段的反向代理）
  *   PORT / SPLITBILL_WEB_PORT   監聽埠號，預設 3000
  *   SPLITBILL_DATA_DIR  資料目錄（放 splitbill.db 與 backups/），預設 ./data；請掛 Volume 到這裡
  *   GEMINI_API_KEY      網頁版帳單照片辨識需要（沒設定只會停用該功能）
@@ -103,6 +104,10 @@ function startWebApi(options = {}) {
 
   const app = express();
   app.disable('x-powered-by');
+  // 反向代理後面：讓 req.ip 取到代理看到的來源（Discord 登入的失敗限流用，見 lib/clientIp.js）。
+  // 🔒 只信任從本機／私有網段連進來的代理（同一個 Docker 網路上的 Caddy），與音樂庫相同；
+  // 服務的埠號直接對外時，攻擊者自己帶的 X-Forwarded-For 不會被採信。
+  app.set('trust proxy', process.env.TRUST_PROXY || 'loopback, linklocal, uniquelocal');
   // 請求 id＋403／409／429／5xx 等結果的 log（lib/requestLog.js）
   app.use(requestLog());
   app.use(securityHeaders);

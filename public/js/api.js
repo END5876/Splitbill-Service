@@ -95,6 +95,26 @@ async function logout(){
   clearOwnerConnectionState();
   location.reload();
 }
+// 換一個 Discord 帳號：先登出，再帶 switch=1 去 Discord。登出不會登出 Discord 本身，
+// 一般登入授權過就直接導回來；switch=1 一定顯示同意畫面，上面有「不是你？」可以換帳號（與音樂庫相同）
+async function switchAccount(){
+  try{
+    await fetch('/auth/logout', { method: 'POST', headers: { 'x-requested-with': 'splitbill' } });
+  }catch(e){}
+  clearOwnerConnectionState();
+  location.href = `/auth/discord/login?switch=1&next=${encodeURIComponent('/')}`;
+}
+// Discord 登入導回來的結果（?login=cancelled／failed）：顯示提示，並從網址拿掉
+function showLoginResultFromUrl(){
+  let u;
+  try{ u = new URL(location.href); }catch(e){ return; }
+  const result = u.searchParams.get('login');
+  if (!result) return;
+  u.searchParams.delete('login');
+  history.replaceState(history.state, '', u.pathname + u.search + u.hash);
+  if (result === 'cancelled') toast('已取消 Discord 登入', 'info');
+  else toast('Discord 登入失敗，請稍後再試一次', 'error');
+}
 
 /* ===================== 我的行程 ===================== */
 // Bot 擁有者可以切換「列出所有行程」（GET /api/my/trips?all=1）；記在這台裝置上。

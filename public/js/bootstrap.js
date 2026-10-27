@@ -88,5 +88,6 @@ async function openTripAsMember(tripId){
 }
 
 (async function init(){
+  showLoginResultFromUrl();
   await applyEntry(await resolveEntry());
 })();

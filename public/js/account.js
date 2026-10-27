@@ -24,6 +24,7 @@ function renderAccountArea(){
           <div class="account-name">${escapeHtml(currentUser.name || 'Discord 使用者')}</div>
           <div class="hint" style="margin:0;">已用 Discord 登入</div>
         </div>
+        <button class="btn btn-ghost btn-sm" type="button" data-click="switchAccount">換帳號</button>
         <button class="btn btn-ghost btn-sm" type="button" data-click="logout">登出</button>
       </div>
       ${myNicknameHtml()}`;

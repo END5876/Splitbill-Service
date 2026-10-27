@@ -80,10 +80,11 @@ Mousebot 分帳系統的獨立服務：**網頁記帳介面（`public/`）＋ RE
    | 變數 | 說明 |
    |---|---|
    | `SPLITBILL_API_KEY` | Bot 連線用的共用金鑰（`x-api-key`）。沒設定時 Bot 無法連線 |
-   | `DISCORD_CLIENT_ID` / `DISCORD_CLIENT_SECRET` | Discord Developer Portal → OAuth2（可以直接用 Mousebot 那個 Application） |
+   | `DISCORD_CLIENT_ID` / `DISCORD_CLIENT_SECRET` | Discord Developer Portal → OAuth2（可以直接用 Mousebot 那個 Application；跟音樂庫用同一個的話，在一邊授權過之後另一邊按登入就不會再出現同意畫面） |
    | `PUBLIC_BASE_URL` | 網頁對外網址，例如 `https://splitbill.app`。Discord 後台 OAuth2 → Redirects 要加上 `<PUBLIC_BASE_URL>/auth/discord/callback` |
    | `SESSION_SECRET` | 至少 32 字元的隨機字串（簽登入 cookie）；換掉會讓所有人被登出 |
-   | `OWNER_USER_ID` | 選填。Bot 擁有者的 Discord ID（逗號分隔），對所有行程有建立者權限 |
+   | `OWNER_USER_ID` | 選填。Bot 擁有者的 Discord ID（逗號分隔），對所有行程有建立者權限。Mousebot、音樂庫（管理員）也讀同一個變數，三邊設成一樣 |
+   | `TRUST_PROXY` | 選填。Express 的 trust proxy，預設 `loopback, linklocal, uniquelocal`（只信任私有網段的反向代理，例如同一個 Docker 網路上的 Caddy）。登入限流靠它取得真實 IP |
    | `SPLITBILL_TRIP_LIMIT_PER_USER` | 選填。每人最多建立幾個行程，預設 100 |
    | `GEMINI_API_KEY` | 選填。網頁版帳單照片辨識（登入者每小時 30 次） |
    | `PORT` / `SPLITBILL_DATA_DIR` | 預設 3000 / Dockerfile 的 `/app/data` |
@@ -112,7 +113,7 @@ Mousebot 分帳系統的獨立服務：**網頁記帳介面（`public/`）＋ RE
    過渡期間舊版 Mousebot 照常運作；新版 Mousebot 需要本服務的新端點。
 
 ## API 摘要
-- 身分：`GET /api/me`、`GET /auth/discord/login?next=`、`POST /auth/logout`
+- 身分：`GET /api/me`、`GET /auth/discord/login?next=`（`&switch=1`＝換帳號）、`POST /auth/logout`
 - 行程：`GET /api/my/trips`、`POST /api/trips`、`GET|PUT|DELETE /api/trip/:tripId`、`GET /api/trip/:tripId/events`（SSE）
 - 行程連結：`GET|POST /api/trip/:tripId/links`、`PATCH|DELETE /api/trip/:tripId/links/:token`（建立者）、
   `GET /api/trip/:tripId/invite`（成員取得預設邀請連結）、`GET /api/link/:token`（解析）、`POST /api/link/:token/claim`（認領）
@@ -126,6 +127,20 @@ Mousebot 分帳系統的獨立服務：**網頁記帳介面（`public/`）＋ RE
 - 綁定：`POST /api/trip/:tripId/bind-code`、`POST /api/attach`（Bot）、`POST /api/trip/:tripId/detach`
 - Bot 專用：`GET /api/guild/:guildId`、`PATCH /api/guild/:guildId/active-trip`
 - cookie 登入的寫入請求必須帶 `x-requested-with: splitbill`（CSRF）
+
+## Discord 登入
+規則與音樂庫（music-library-service）一致，兩邊用同一個 Discord 應用程式：
+- 只要 `identify` 權限（Discord ID、名稱、頭像）；Discord 的 access token 用完就丟，不保存。
+- 登入後由 HttpOnly、`SameSite=Strict` 的 `sb_session` Cookie 維持 30 天（OAuth state 的 Cookie 是 `SameSite=Lax`、只限 `/auth/discord`）。
+  callback 不直接 302，而是回一個同站頁面再跳轉，Strict 的 Cookie 才一定帶得上。
+- 瀏覽器標示為跨站（`Sec-Fetch-Site: cross-site`）的請求一律不認登入 Cookie；登出也拒絕跨站請求。
+- `next` 只接受站內路徑（`//`、`/\`、控制字元都不行），否則回到 `/`。
+- **換帳號**：帳號區塊的「換帳號」會先登出，再帶 `switch=1` 去 Discord，一定顯示同意畫面（上面有「不是你？」）。
+  一般的登出不會登出 Discord，再按登入會用同一個帳號直接回來。
+- **登入限流**：只計「向 Discord 換 token 失敗」的次數（正常登入不計），每個來源 10 分鐘內 10 次、全站 100 次，
+  超過就暫停新的登入（已登入的裝置不受影響；全站達上限時送 `ALERT_WEBHOOK_URL` 告警）。避免有人亂灌 callback，
+  讓伺服器的 IP 被 Discord 限流（音樂庫用同一個應用程式，也會一起登不進去）。每個帳號 1 小時內最多登入 60 次。
+- 登出會把這個 session 記進資料庫的撤銷清單（只登出這一台裝置），重新部署後仍然有效。
 
 ## 安全性
 - **資料格式**：成員／支出／轉帳的 id 只能是 `[A-Za-z0-9_-]`（1～64 字元），幣別是 2～10 個大寫英數（`lib/validate.js`）。
