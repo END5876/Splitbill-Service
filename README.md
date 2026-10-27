@@ -69,8 +69,14 @@ Mousebot 分帳系統的獨立服務：**網頁記帳介面（`public/`）＋ RE
 舊資料的 `shareLinks`（→ `join: false`）與 `invite`（→ `guest: 'none', join: true`）在載入時自動轉換，token 不變。
 
 ## 部署
-1. 部署成與 Mousebot **同一個 Project** 底下的獨立服務，掛 Volume 到 `/app/data`（`SPLITBILL_DATA_DIR`）。
-2. 環境變數：
+1. 以 Docker 部署成獨立的容器，和 Mousebot 接在**同一個 Docker 網路**上，資料目錄掛到 `/app/data`（`SPLITBILL_DATA_DIR`）：
+   ```bash
+   docker build -t splitbill-service .
+   docker run -d --name splitbill-service --restart unless-stopped --network <與 Bot 共用的網路> \
+     --env-file .env -v /path/to/splitbill-data:/app/data splitbill-service
+   ```
+   網頁需要經由反向代理（例如 Caddy）綁一個 HTTPS 公開網域。
+2. 環境變數（複製 `.env.example` 成 `.env` 後填入）：
    | 變數 | 說明 |
    |---|---|
    | `SPLITBILL_API_KEY` | Bot 連線用的共用金鑰（`x-api-key`）。沒設定時 Bot 無法連線 |
@@ -99,7 +105,7 @@ Mousebot 分帳系統的獨立服務：**網頁記帳介面（`public/`）＋ RE
    - 匯率服務掛掉時，`/api/fx-rate` 會沿用 7 天內抓到的舊匯率並帶 `stale: true`（`asOf` 是那份匯率的時間），超過 7 天才回錯誤。
 4. 請求 log：每個回應都有 `X-Request-Id`；403、409（多人同時編輯的版本衝突）、429、5xx 與慢請求會記一行
    `[splitbill-http] <id> <方法> <路徑> <狀態> <毫秒>ms <呼叫者>`。分享連結 token 一律記成 `:token`，不記 query string。
-5. Bot 端：`SPLITBILL_SERVICE_URL=http://<本服務名稱>.internal:3000`、`SPLITBILL_SERVICE_KEY=<同一把金鑰>`。
+5. Bot 端：`SPLITBILL_SERVICE_URL=http://splitbill-service:3000`（同一個 Docker 網路用服務名稱）、`SPLITBILL_SERVICE_KEY=<同一把金鑰>`。
 6. 容器以 `node` 帳號（uid 1000）執行：`docker-entrypoint.sh` 先以 root 把資料目錄裡不屬於 node 的檔案改過去，再降權啟動，
    所以從舊的 root 映像升級不需要手動 chown，回滾到舊映像也照樣能讀寫。
 7. **升級順序：先部署本服務，再更新 Mousebot。** 舊網址 `/api/trip/:guildId/:tripId` 仍可用，
@@ -133,6 +139,11 @@ Mousebot 分帳系統的獨立服務：**網頁記帳介面（`public/`）＋ RE
 ## 本機執行與測試
 ```
 npm install
-SPLITBILL_API_KEY=dev node server.js
+cp .env.example .env              # 至少填 SPLITBILL_API_KEY；要測 Discord 登入再填 Discord 那幾項
+node --env-file=.env server.js    # 服務不會自動讀 .env
 npm test
 ```
+
+## License
+
+[ISC](LICENSE)

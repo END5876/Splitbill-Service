@@ -2,6 +2,7 @@
   "name": "splitbill-service",
   "version": "1.0.0",
   "private": true,
+  "license": "ISC",
   "description": "Mousebot 分帳服務：網頁記帳介面 + REST API + 分帳資料（獨立部署）",
   "main": "server.js",
   "scripts": {
