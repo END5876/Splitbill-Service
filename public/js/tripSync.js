@@ -36,6 +36,7 @@ let cloudSaveTimer = null;
 let cloudSavePending = false; // 已排程、但防抖計時還沒到（頁首同步狀態也算「儲存中」）
 let cloudSaveRunning = false;
 let cloudSaveQueued = false;
+let cloudSaveRunPromise = null; // 正在跑的那次自動儲存，換行程前要等它結束
 function scheduleCloudSave(delay){
   if (!currentTripId && !shareMode) return;
   if (shareMode && shareMode.permission !== 'write') return;
@@ -45,17 +46,21 @@ function scheduleCloudSave(delay){
   renderSyncStatus();
 }
 // 切換行程前呼叫：還在防抖等待中的自動儲存立刻送出，避免換掉 trip 之後改動遺失。
+// 已經送出、還在等回應的那次也要等完（含它結束後補存的那次），不然回應回來時 trip 已經換人了。
 async function flushCloudSave(){
-  if (!cloudSavePending) return;
-  clearTimeout(cloudSaveTimer);
-  await runCloudSave();
+  while (cloudSavePending || cloudSaveRunning){
+    if (cloudSaveRunning){ await cloudSaveRunPromise; continue; }
+    clearTimeout(cloudSaveTimer);
+    await runCloudSave();
+  }
 }
 async function runCloudSave(){
   cloudSavePending = false;
   if (cloudSaveRunning){ cloudSaveQueued = true; return; }
   cloudSaveRunning = true;
-  try{ await saveTripToApi(); }
+  try{ await (cloudSaveRunPromise = saveTripToApi()); }
   finally{
+    cloudSaveRunPromise = null;
     cloudSaveRunning = false;
     if (cloudSaveQueued){ cloudSaveQueued = false; scheduleCloudSave(0); }
   }
@@ -124,6 +129,9 @@ async function saveTripToApiImpl(){
   // 原子化版本檢查擋下（409），本地合併後重試一次通常就會成功；重試上限
   // 只是避免理論上的無限迴圈（例如短時間內一直有新的人持續搶著存檔）。
   const MAX_SAVE_RETRY = 3;
+  // 等回應的期間使用者可能已經換到別的行程：之後拿到的回應都屬於舊行程，不能套到現在的 trip 上
+  const tripIdAtStart = currentTripId;
+  const tripSwitched = () => currentTripId !== tripIdAtStart;
 
   for (let attempt = 0; attempt < MAX_SAVE_RETRY; attempt++){
     // 版本比對：儲存前先看看伺服器上的版本跟我們最後一次同步的是否一致，
@@ -141,6 +149,7 @@ async function saveTripToApiImpl(){
       const checkRes = await fetch(tripApiUrl(), { headers: apiHeaders() });
       if (checkRes.ok){
         const serverTrip = await checkRes.json();
+        if (tripSwitched()) return true;
         if (!lastSyncedTripJSON) {
           // 首次儲存（從未載入過），直接確認
           const proceed = await confirmModal(`確定要用目前畫面上的內容覆蓋雲端行程「${serverTrip.name}」嗎？`, { confirmText:'儲存' });
@@ -177,18 +186,22 @@ async function saveTripToApiImpl(){
       // 🆕 [併發保護] 把本地目前認定的版本號一併送給伺服器；伺服器會在真正
       // 寫入前原子化比對這個版本號是否仍然等於它「當下」的版本，不一致就
       // 回傳 409，讓下面的重試邏輯接手，而不是悶不吭聲地整包覆蓋。
+      if (tripSwitched()) return true;
+      const sentJSON = JSON.stringify(trip); // 送出的那份，回應回來時拿來判斷這段期間本地又改了什麼
       const payload = Object.assign({}, trip, { expectedUpdatedAt: trip.updatedAt || null, writerId: CLIENT_INSTANCE_ID });
       const res = await fetch(tripApiUrl(), {
         method: 'PUT',
         headers: Object.assign({ 'Content-Type': 'application/json' }, apiHeaders()),
         body: JSON.stringify(payload)
       });
+      if (tripSwitched()) return true;
 
       if (res.status === 409){
         // 真的被別人搶先一步存檔了（上面的預先檢查沒能攔到這個極短的競爭
         // 視窗）：拿伺服器回傳的「當下最新版本」合併，合併成功就重試一次；
         // 合併不了（真衝突）就不再重試，請使用者重新整理頁面。
         const body = await res.json().catch(()=>({}));
+        if (tripSwitched()) return true;
         const serverTrip = body.currentTrip;
         const merged = serverTrip ? mergeWithServer(serverTrip) : null;
 
@@ -212,8 +225,8 @@ async function saveTripToApiImpl(){
         throw new Error(body.error || ('HTTP ' + res.status));
       }
       const savedData = await res.json();
-      trip = repairTrip(savedData); // 用伺服器回傳的版本（含最新 updatedAt）更新本地
-      lastSyncedTripJSON = JSON.stringify(trip);
+      if (tripSwitched()) return true;
+      applySavedTrip(savedData, sentJSON); // 用伺服器回傳的版本（含最新 updatedAt）更新本地
       toast('已儲存', 'success');
       saveOwnerConnectionState();
       renderAll();
@@ -299,6 +312,18 @@ function tryMergeTrips(localTrip, serverTrip, baseTrip){
     return null; // 合併過程出錯，回傳 null 讓呼叫端改走衝突提示
   }
 }
+// 整包存檔成功後套用伺服器回應。PUT 進行中本地又有新改動（名稱繼續打字、又記了一筆…）時，
+// 以「送出的那份」當 base 三方合併把新改動留下來；直接整包蓋掉會讓這些改動消失，
+// 之後的存檔甚至會把伺服器上剛存好的那筆刪掉。
+function applySavedTrip(savedRaw, sentJSON){
+  const server = repairTrip(savedRaw);
+  let merged = null;
+  if (JSON.stringify(trip) !== sentJSON){
+    try{ merged = tryMergeTrips(trip, server, JSON.parse(sentJSON)); }catch(e){ merged = null; }
+  }
+  trip = merged || server;
+  lastSyncedTripJSON = JSON.stringify(server);
+}
 // 跟伺服器版本做三方合併；成功時 base 換成伺服器版本，之後的比較都以它為準。
 function mergeWithServer(serverTrip){
   const server = repairTrip(serverTrip);
@@ -377,8 +402,10 @@ async function syncEntry(kind, id, entry, opts){
 // 重新抓一次完整行程，跟本地合併（本地還沒存的修改不會被蓋掉）
 async function refreshTripFromServer(){
   const url = shareMode ? `/api/shared-trip/${encodeURIComponent(shareMode.token)}` : tripApiUrl();
+  const tripIdAtStart = currentTripId, shareAtStart = shareMode;
   const res = await fetch(url, { headers: apiHeaders() });
   const body = await apiJson(res);
+  if (currentTripId !== tripIdAtStart || shareMode !== shareAtStart) return; // 等回應時已經換到別的行程，這份不能合併進來
   const merged = mergeWithServer(shareMode ? body.trip : body);
   if (merged) trip = merged;
 }
@@ -401,6 +428,7 @@ async function saveSharedTripToApi(){
 
   for (let attempt = 0; attempt < MAX_SAVE_RETRY; attempt++){
     try{
+      const sentJSON = JSON.stringify(trip); // 送出的那份，回應回來時拿來判斷這段期間本地又改了什麼
       const payload = Object.assign({}, trip, { expectedUpdatedAt: trip.updatedAt || null, writerId: CLIENT_INSTANCE_ID });
       const res = await fetch(`/api/shared-trip/${encodeURIComponent(shareMode.token)}`, {
         method: 'PUT',
@@ -433,8 +461,7 @@ async function saveSharedTripToApi(){
         throw new Error(body.error || ('HTTP ' + res.status));
       }
       const data = await res.json();
-      trip = repairTrip(data.trip);
-      lastSyncedTripJSON = JSON.stringify(trip);
+      applySavedTrip(data.trip, sentJSON);
       toast('已儲存', 'success');
       renderAll();
       return true;

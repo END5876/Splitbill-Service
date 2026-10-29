@@ -206,8 +206,7 @@ async function historyRestoreChange(updatedAt, idx){
   if (!m) return;
   const kind = m[1] === 'expense' ? 'expenses' : 'deposits';
   const noun = m[1] === 'expense' ? '支出' : '轉帳';
-  const list = trip[kind];
-  const current = list.find(x => x.id === c.id);
+  const current = trip[kind].find(x => x.id === c.id);
   // 寫回去的內容：刪掉的／改過的 → 當時的 before；新增的 → 刪掉（null）
   const target = m[2] === 'add' ? null : c.before;
 
@@ -229,6 +228,8 @@ async function historyRestoreChange(updatedAt, idx){
   const ok = await confirmModal(message, { title: '還原', confirmText: m[2] === 'add' ? '刪除' : '還原', danger: m[2] === 'add' });
   if (!ok) return;
 
+  // 確認視窗開著時 trip 可能被 SSE／存檔換掉，要在確認後才拿目前的清單
+  const list = trip[kind];
   // 先套用到本地再同步；失敗的話把本地改回來，不留下一筆伺服器不接受的資料
   const backup = list.slice();
   const idxNow = list.findIndex(x => x.id === c.id);

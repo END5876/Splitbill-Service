@@ -142,7 +142,9 @@ async function deleteDeposit(id){
 
   if (!confirmed) return;
 
-  trip.deposits.splice(idx, 1);
+  // 確認視窗開著時 trip 可能被 SSE／存檔換掉或重新排序，要用 id 重新找位置
+  const idxNow = trip.deposits.findIndex(d => d.id === id);
+  if (idxNow !== -1) trip.deposits.splice(idxNow, 1);
 
   if (editingDepositId === id) {
     resetDepositForm();

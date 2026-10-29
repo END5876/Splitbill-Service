@@ -16,7 +16,7 @@ function renameMember(id, value){
   if (m){ m.name = value; scheduleCloudSave(); }
 }
 async function removeMember(id){
-  const idx = trip.members.findIndex(x=>x.id===id);
+  let idx = trip.members.findIndex(x=>x.id===id);
   if (idx === -1) return;
   // 🔒 已連結 Discord 的成員只有建立者能移除（本人可以移除自己）；伺服器也會擋，
   // 這裡先擋下來，免得畫面上刪掉、存檔後又被伺服器補回來
@@ -38,6 +38,9 @@ async function removeMember(id){
       { confirmText:'刪除', danger:true }
     );
     if (!ok) return;
+    // 確認視窗開著時 trip 可能被 SSE／存檔換掉，要用 id 重新找位置
+    idx = trip.members.findIndex(x=>x.id===id);
+    if (idx === -1) return;
   }
   const used = trip.expenses.some(e=>e.payers.some(p=>p.userId===id)||e.participants.some(s=>s.userId===id))
             || trip.deposits.some(d=>d.payerId===id||d.collectorId===id);

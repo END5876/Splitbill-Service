@@ -518,7 +518,8 @@ function computeReceiptSplit(items, attendeeIds){
       sharedTotal = round2(sharedTotal + item.price);
     } else {
       const shares = equalSplit(item.price, item.assignedTo);
-      shares.forEach(s=>{ if (perPerson[s.userId] !== undefined) perPerson[s.userId] = round2(perPerson[s.userId] + s.amount); });
+      // 認領人沒勾出席也要算進去（例如只吃自己那份、沒分共同分擔的人），否則他的品項金額會憑空消失、總和對不上
+      shares.forEach(s=>{ perPerson[s.userId] = round2((perPerson[s.userId] || 0) + s.amount); });
     }
   }
   if (attendeeIds.length && sharedTotal !== 0){
@@ -533,7 +534,7 @@ function buildReceiptSummaryHtml(){
   const grandTotal = round2(items.reduce((s,i)=>s+i.price,0));
   const unclaimedCount = items.filter(i => i.assignedTo !== 'shared' && (!Array.isArray(i.assignedTo) || i.assignedTo.length===0)).length;
   const perPerson = computeReceiptSplit(items, receiptState.attendeeIds);
-  const rows = receiptState.attendeeIds.map(id=>`
+  const rows = Object.keys(perPerson).map(id=>`
     <div class="receipt-summary-row"><span>${escapeHtml(memberName(id))}</span><span>${fmtMoney(perPerson[id]||0, trip.baseCurrency)}</span></div>
   `).join('');
   return `<div class="receipt-summary" id="receiptSummaryBox">
@@ -597,7 +598,8 @@ function renderReceiptWorkArea(){
     ? `<p class="hint" style="color:var(--debt);">偵測到帳單可能是 <b>${detectedCur}</b>，但行程裡還沒有這個幣別的匯率，請先到「設定 → 行程」的匯率新增，否則下面無法選擇它。</p>`
     : (detectedCur ? `<p class="hint">已自動選擇偵測到的幣別 ${detectedCur}，辨識錯了可以在下面自行改選。</p>` : '');
 
-  const payerOptions = trip.members.map(m=>`<option value="${m.id}" ${receiptState.payerId===m.id?'selected':''}>${escapeHtml(m.name)}</option>`).join('');
+  // 還沒選付款人時顯示「請選擇」，不要讓畫面看起來像已經選了第一位成員
+  const payerOptions = `<option value="" ${receiptState.payerId?'':'selected'}>請選擇</option>` + trip.members.map(m=>`<option value="${m.id}" ${receiptState.payerId===m.id?'selected':''}>${escapeHtml(m.name)}</option>`).join('');
 
   area.innerHTML = `
     <div class="receipt-preview-row">
@@ -696,8 +698,17 @@ async function finalizeReceiptExpense(){
 
   const grandTotal = round2(items.reduce((s,i)=>s+i.price,0));
   if (!(grandTotal>0)){ toast('總金額需要大於 0', 'error'); return; }
-  const perPerson = computeReceiptSplit(items, receiptState.attendeeIds);
-  const participants = receiptState.attendeeIds.map(id => ({ userId:id, amount: perPerson[id]||0 }));
+  // 掃描後才被刪掉的成員已經不在行程裡（畫面上也看不到他的按鈕），出席者直接略過；
+  // 認領人則擋下來請使用者重新認領，不然伺服器會拒收
+  const attendeeIds = receiptState.attendeeIds.filter(id => trip.members.some(m => m.id === id));
+  if (!attendeeIds.length){ toast('請至少勾選一位出席者', 'error'); return; }
+  const perPerson = computeReceiptSplit(items, attendeeIds);
+  if (Object.keys(perPerson).some(id => !trip.members.some(m => m.id === id))){
+    toast('有品項是由已被刪除的成員認領的，請把該項目改成「共同分擔」再點一次清空後重新認領', 'error');
+    return;
+  }
+  // 出席者＋沒出席但有認領品項的人，都要列為分攤成員，總和才會等於總金額
+  const participants = Object.keys(perPerson).map(id => ({ userId:id, amount: perPerson[id]||0 }));
 
   const newExpense = {
     id: genId('exp'),

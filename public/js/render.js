@@ -342,16 +342,9 @@ function renderAll(){
   renderExpenseList();
 
   // deposit form selects
+  // 編輯中的轉帳只在 editDeposit 載入一次存檔值；這裡沿用畫面上目前的選擇，
+  // 不再每次重繪都蓋回存檔值（否則使用者改到一半的付款人／幣別會被還原）
   renderDepositSelects();
-  if (editingDepositId){
-    const dep = trip.deposits.find(d=>d.id===editingDepositId);
-    if (dep){
-      document.getElementById('depPayer').value = dep.payerId;
-      document.getElementById('depCollector').value = dep.collectorId;
-      syncDepositPartyOptions();
-      document.getElementById('depCurrency').innerHTML = currencyOptions(dep.currency);
-    }
-  }
   renderDepositList();
 
   // overview

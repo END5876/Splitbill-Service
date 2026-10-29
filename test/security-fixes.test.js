@@ -286,3 +286,47 @@ test('還原到更換基準幣別之前的版本時，基準幣別一起還原',
   assert.equal(r.status, 200);
   assert.equal(r.body.trip.baseCurrency, 'TWD');
 });
+
+// ── SSE 結束後的心跳 ──
+
+test('SSE 連線被關掉後（對方卡住沒讀、還沒觸發 close），心跳不會再寫入已結束的串流', () => {
+  const { mock } = require('node:test');
+  const { EventEmitter } = require('node:events');
+  const { createSseHub, attachTripEventBroadcast } = require('../lib/sse');
+  const fakeRes = () => {
+    const res = new EventEmitter();
+    Object.assign(res, { writableEnded: false, destroyed: false, writeAfterEnd: 0 });
+    res.writeHead = () => {};
+    res.write = () => { if (res.writableEnded) res.writeAfterEnd++; return true; };
+    res.end = () => { res.writableEnded = true; }; // 不送 'close'：模擬 socket 塞住、資料還沒送完
+    return res;
+  };
+  mock.timers.enable({ apis: ['setInterval'] });
+  try {
+    const hub = createSseHub();
+    const trips = new Map([['kaDel', {}], ['kaRev', {}]]);
+    const storage = { tripEvents: new EventEmitter(), peekTrip: (id) => trips.get(id) || null };
+    attachTripEventBroadcast(storage, hub);
+
+    // 行程被刪除
+    const del = fakeRes();
+    hub.openTripSseStream(del, 'kaDel', { canRead: () => !!storage.peekTrip('kaDel') });
+    trips.delete('kaDel');
+    storage.tripEvents.emit('trip-deleted', 'kaDel');
+    // 權限被撤銷
+    let allowed = true;
+    const rev = fakeRes();
+    hub.openTripSseStream(rev, 'kaRev', { canRead: () => allowed });
+    allowed = false;
+    storage.tripEvents.emit('trip-access-changed', 'kaRev');
+
+    mock.timers.tick(25000 * 3);
+    assert.equal(del.writeAfterEnd, 0);
+    assert.equal(rev.writeAfterEnd, 0);
+    assert.equal(del.sbKeepAlive, null);
+    assert.equal(rev.sbKeepAlive, null);
+    assert.ok(del.listenerCount('error') > 0, '要有 error listener，漏網的寫入錯誤不能變成 uncaughtException');
+  } finally {
+    mock.timers.reset();
+  }
+});

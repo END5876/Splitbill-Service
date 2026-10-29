@@ -159,7 +159,9 @@ async function deleteExpense(id){
 
   if (!confirmed) return;
 
-  trip.expenses.splice(idx, 1);
+  // 確認視窗開著時 trip 可能被 SSE／存檔換掉或重新排序，要用 id 重新找位置
+  const idxNow = trip.expenses.findIndex(e => e.id === id);
+  if (idxNow !== -1) trip.expenses.splice(idxNow, 1);
 
   if (editingExpenseId === id) {
     resetExpenseForm();

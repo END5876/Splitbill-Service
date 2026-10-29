@@ -15,6 +15,8 @@
 ===================================================================== */
 let tripEventSource = null;
 let tripEventReconnectTimer = null;
+// 斷線期間伺服器推播的更新不會補送，重新連上後要自己抓一次最新版本
+let tripEventNeedsResync = false;
 
 // 🆕 [即時同步] 這個分頁自己的識別碼，存檔時會附帶送給伺服器，SSE 推播回來
 // 時原封不動夾帶在裡面。用這個「明確標記」而不是比較 updatedAt 時間先後，
@@ -48,6 +50,13 @@ async function connectTripEventStream(){
 
     const es = new EventSource(url);
     tripEventSource = es;
+
+    // 伺服器每次建立新連線都會先送 connected；是斷線重連的話補抓一次斷線期間漏掉的更新
+    es.addEventListener('connected', () => {
+      if (!tripEventNeedsResync) return;
+      tripEventNeedsResync = false;
+      resyncTripAfterReconnect();
+    });
 
     es.addEventListener('trip-updated', (evt) => {
       try{
@@ -83,8 +92,14 @@ async function connectTripEventStream(){
         if (typeof receiptSessionJoined !== 'undefined' && receiptSessionJoined){
           // 照片沒變時伺服器不會夾帶（省流量），沿用手上這張
           const prevImage = receiptState && receiptState.imageDataUrl;
+          // 說明／付款人／幣別只存在本地表單（receiptSetField 不會推播），
+          // 套用別人的狀態時要保留自己填的，否則會被對方的空值蓋回預設
+          const prevLocal = receiptState;
           receiptState = payload.state;
           if (receiptState && receiptState.imageDataUrl === undefined && prevImage) receiptState.imageDataUrl = prevImage;
+          if (receiptState && prevLocal){
+            for (const field of ['description', 'payerId', 'currency']) receiptState[field] = prevLocal[field];
+          }
           receiptSessionImageOnServer = (receiptState && receiptState.imageDataUrl) || null;
           renderReceiptWorkArea();
         } else if (typeof receiptSessionAnnounceUpdate === 'function') {
@@ -123,12 +138,22 @@ async function connectTripEventStream(){
       // 不讓瀏覽器用同一個（已失效的一次性票券）網址自動重試。
       es.close();
       if (tripEventSource === es) tripEventSource = null;
+      tripEventNeedsResync = true;
       clearTimeout(tripEventReconnectTimer);
       tripEventReconnectTimer = setTimeout(connectTripEventStream, 3000);
     };
   }catch(e){
     // 即時同步屬於錦上添花的功能，換票或建立連線失敗都不應該擋住其他既有功能運作
   }
+}
+
+// 重連後補同步：refreshTripFromServer 走三方合併，本地還沒存的修改不會被蓋掉
+async function resyncTripAfterReconnect(){
+  try{
+    await refreshTripFromServer();
+    renderAll();
+  }catch(e){ /* 補抓失敗就算了，下一次推播或自己存檔時還會再合併 */ }
+  if (typeof checkReceiptSessionAvailability === 'function') checkReceiptSessionAvailability();
 }
 
 function handleIncomingTripUpdate(rawPushedTrip){
