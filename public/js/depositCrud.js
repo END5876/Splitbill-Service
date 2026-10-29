@@ -90,6 +90,15 @@ function saveDeposit(){
   let saved;
   if (editingDepositId){
     saved = trip.deposits.find(d=>d.id===editingDepositId);
+    if (!saved){
+      // 編輯期間這筆被別人刪掉了（SSE 合併已移除）：退出編輯模式但保留表單內容，
+      // 使用者想保留的話可以直接再按一次「儲存」重新新增
+      editingDepositId = null;
+      document.getElementById('depositFormTitle').textContent = '新增一筆轉帳／預收款';
+      setFormCardEditing('depositFormCard', 'btnSaveDepositSync', 'btnResetDeposit', false);
+      toast('這筆轉帳紀錄已經被其他人刪除，無法更新。表單內容已保留，要保留的話請再按一次「儲存」重新新增', 'error', { duration: 7000 });
+      return false;
+    }
     Object.assign(saved, { payerId, collectorId, amount, currency, amountInBase, note, createdAt: applyDateToTimestamp(dateStr, saved.createdAt) });
     toast('已更新轉帳紀錄', 'success');
   } else {

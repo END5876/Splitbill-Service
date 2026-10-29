@@ -103,6 +103,19 @@ test('DELETE：沒帶 x-actor-id（擁有者金鑰）維持原行為', async () 
   assert.equal((await del('o5')).status, 200);
 });
 
+test('PUT：Bot 代使用者（x-actor-id）可以更新既有行程，但不能把剛刪掉的行程建回來', async () => {
+  const asAlice = { ...OWNER, 'x-actor-id': ALICE };
+  await put('o6', trip({ ownerId: ALICE }));
+  const cur = (await get('o6')).body;
+  const putDirect = (body) => fetch(`${BASE}/api/trip/o6`, { method: 'PUT', headers: asAlice, body: JSON.stringify(body) }).then(j);
+  assert.equal((await putDirect({ ...cur, name: '改名' })).status, 200);
+  const stale = (await get('o6')).body;
+  assert.equal((await del('o6', ALICE)).status, 200);
+  const r = await putDirect({ ...stale, name: '舊資料' });
+  assert.equal(r.status, 404);
+  assert.equal((await get('o6')).status, 404, '刪掉的行程不能被 Bot 的舊資料建回來');
+});
+
 test('DELETE：分享連結（含可編輯）仍然不能刪', async () => {
   // 分享 token 不能當成 x-api-key 用：金鑰不對一律 401
   const r = await fetch(`${BASE}/api/trip/g/o1`, { method: 'DELETE', headers: { 'x-api-key': RW, 'x-actor-id': ALICE } }).then(j);

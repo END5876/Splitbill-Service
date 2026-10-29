@@ -65,6 +65,9 @@ module.exports = function createTripsRouter(ctx) {
       }
     } else {
       if (!requireService(req, res)) return;
+      // Bot 代使用者操作（x-actor-id）的 PUT 只會更新既有行程：行程不在＝剛被刪掉，
+      // 不能用 Bot 手上的舊資料把它建回來（建立行程走 POST /api/trips）
+      if (req.principal.actorId) return res.status(404).json({ error: '找不到這個行程' });
       if (!/^[A-Za-z0-9_-]{1,64}$/.test(tripId)) {
         return res.status(400).json({ error: '行程 ID 格式錯誤' });
       }

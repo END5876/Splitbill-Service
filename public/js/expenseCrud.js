@@ -77,6 +77,15 @@ function saveExpense(){
   let saved;
   if (editingExpenseId){
     saved = trip.expenses.find(e=>e.id===editingExpenseId);
+    if (!saved){
+      // 編輯期間這筆被別人刪掉了（SSE 合併已移除）：退出編輯模式但保留表單內容，
+      // 使用者想保留的話可以直接再按一次「儲存」重新新增
+      editingExpenseId = null;
+      document.getElementById('expenseFormTitle').textContent = '新增一筆支出';
+      setFormCardEditing('expenseFormCard', 'btnSaveExpenseSync', 'btnResetExpense', false);
+      toast('這筆支出已經被其他人刪除，無法更新。表單內容已保留，要保留的話請再按一次「儲存」重新新增', 'error', { duration: 7000 });
+      return false;
+    }
     Object.assign(saved, { description, amount, currency, amountInBase, payers, participants, createdAt: applyDateToTimestamp(dateStr, saved.createdAt) });
     toast('已更新支出', 'success');
   } else {

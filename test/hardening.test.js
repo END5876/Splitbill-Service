@@ -1,5 +1,5 @@
 'use strict';
-// 回歸測試：schema 版本守門與遷移（v2：舊版成員 id）、保留不認得的欄位（回滾防護）、
+// 回歸測試：schema 版本守門與遷移（v2：舊版成員 id；v3：只剩操作紀錄裡的舊版成員 id）、保留不認得的欄位（回滾防護）、
 // 正式環境拒絕以空帳本啟動、/healthz 的資料層狀態、訪客看不到記帳者的 Discord ID、
 // SSE 換票只開放給金鑰。
 // 執行：npm test（資料都放在暫存目錄，不會動到正式資料）
@@ -165,9 +165,87 @@ describe('schema 版本', () => {
       storage.close();
 
       const db = openRaw(dir);
-      assert.equal(db.prepare("SELECT value FROM meta WHERE key = 'schema_version'").get().value, '2');
+      assert.equal(db.prepare("SELECT value FROM meta WHERE key = 'schema_version'").get().value, '3');
       db.close();
       assert.ok(fs.readdirSync(path.join(dir, 'backups')).some((f) => /^splitbill-pre-v2-\d+\.db$/.test(f)), '遷移前要先備份');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test('v2 → v3：只剩操作紀錄裡的舊版成員 id 也換掉；行程裡還在用的、操作者不動；重跑不再改', () => {
+    const dir = tmpDir();
+    const GONE = '600000000000000006';
+    try {
+      const s1 = freshStorage(dir);
+      s1.loadAll();
+      s1.close();
+      const db = openRaw(dir);
+      // v2 之後的行程：成員都是 mem_，但 NEW 是 v2 之後才寫進來的 snowflake id（行程裡還在用）
+      const NEW = '700000000000000007';
+      const trip = {
+        id: 'old', name: '舊行程', baseCurrency: 'TWD', rates: { TWD: 1 }, guildId: null, ownerId: ALICE,
+        members: [{ id: 'mem_aaaaaaaa', name: 'A', discordId: ALICE }, { id: NEW, name: 'N' }],
+        expenses: [], deposits: [], links: [], archived: false, createdAt: 1, updatedAt: 9000,
+      };
+      db.prepare('INSERT INTO trips (id, guild_id, owner_id, updated_at, created_at, data) VALUES (?, ?, ?, ?, ?, ?)')
+        .run('old', null, ALICE, 9000, 1, JSON.stringify(trip));
+      const removed = {
+        updatedAt: 100, at: 1, actor: { kind: 'user', name: 'A', userId: GONE },
+        changes: [
+          { type: 'member.remove', id: GONE, label: 'G' },
+          { type: 'expense.remove', id: 'e9', label: 'x', before: { id: 'e9', payers: [{ userId: GONE, amount: 1 }], participants: [{ userId: NEW, amount: 1 }], createdBy: GONE } },
+          { type: 'deposit.edit', id: 'd9', before: { id: 'd9', payerId: GONE, collectorId: 'mem_aaaaaaaa' }, after: { id: 'd9', payerId: 'mem_aaaaaaaa', collectorId: 'mem_aaaaaaaa' }, fields: [{ field: 'payerId', label: '付款人', from: 'G', to: 'A' }] },
+        ],
+      };
+      db.prepare('INSERT INTO trip_activity (trip_id, updated_at, at, data) VALUES (?, ?, ?, ?)')
+        .run('old', 100, 1, JSON.stringify(removed));
+      db.prepare("UPDATE meta SET value = '2' WHERE key = 'schema_version'").run();
+      db.close();
+
+      const storage = freshStorage(dir);
+      const loaded = storage.getTrip('old');
+      assert.equal(loaded.updatedAt, 9000, '行程本身沒變，版本號不動');
+      assert.equal(loaded.members[1].id, NEW);
+      const [act] = storage.listTripActivity('old');
+      const mapped = act.changes[0].id;
+      assert.match(mapped, /^mem_[0-9a-f]{8}$/);
+      assert.equal(act.changes[1].before.payers[0].userId, mapped, '同一位成員在每筆紀錄裡換成同一個 id');
+      assert.equal(act.changes[1].before.participants[0].userId, NEW, '行程裡還在用的不換，紀錄才對得上行程');
+      assert.equal(act.changes[1].before.createdBy, GONE, 'createdBy 是記帳者，不是成員引用');
+      assert.equal(act.changes[1].id, 'e9');
+      assert.equal(act.changes[2].before.payerId, mapped);
+      assert.equal(act.actor.userId, GONE, '操作者是 Discord 使用者，不能被換掉');
+      storage.close();
+
+      const raw = openRaw(dir);
+      assert.equal(raw.prepare("SELECT value FROM meta WHERE key = 'schema_version'").get().value, '3');
+      const before = raw.prepare('SELECT data FROM trip_activity WHERE trip_id = ?').get('old').data;
+      require('../lib/migrations').MIGRATIONS[3](raw);
+      assert.equal(raw.prepare('SELECT data FROM trip_activity WHERE trip_id = ?').get('old').data, before, '重跑不會再改');
+      raw.close();
+      assert.ok(fs.readdirSync(path.join(dir, 'backups')).some((f) => /^splitbill-pre-v3-\d+\.db$/.test(f)), '遷移前要先備份');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('操作紀錄分頁', () => {
+  test('listTripActivity 可以拿到 101 筆：路由 limit=100 多拿一筆才判斷得出 hasMore', () => {
+    const dir = tmpDir();
+    try {
+      const storage = freshStorage(dir);
+      storage.loadAll();
+      const trip = storage.repairTrip({ id: 'many', name: 't0', members: [{ id: 'm1', name: 'A' }] });
+      storage.setTrip(trip);
+      for (let i = 1; i <= 102; i++) {
+        trip.name = `t${i}`;
+        storage.touchTrip(trip);
+        storage.persist();
+      }
+      assert.equal(storage.listTripActivity('many', undefined, 101).length, 101);
+      storage.close();
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
@@ -328,6 +406,17 @@ describe('HTTP', () => {
         body: JSON.stringify({ name: 'g', members: [{ id: 'm1', name: 'A' }], expenses: [{ id: 'e1', description: 'x', amount: 1, currency: 'TWD', amountInBase: 1, payers: [{ userId: 'm1', amount: 1 }], participants: [{ userId: 'm1', amount: 1 }], createdBy: ALICE }] }),
       }));
       assert.equal(put.status, 200);
+
+      // 沒登入只帶隨便的 ?ticket=：不論行程存不存在都是 401（不能拿來探測行程 ID）；有效的票券照常開 SSE
+      for (const p of ['/api/trip/gt/events?ticket=x', '/api/trip/nope/events?ticket=x', '/api/trip/gt/revisions/events?ticket=x', '/api/trip/gt/events?ticket=']) {
+        assert.equal((await fetch(`${s.base}${p}`)).status, 401, p);
+      }
+      const ac = new AbortController();
+      const stream = await fetch(`${s.base}/api/trip/gt/events?ticket=${svc.body.ticket}`, { signal: ac.signal });
+      assert.equal(stream.status, 200);
+      assert.match(stream.headers.get('content-type') || '', /text\/event-stream/);
+      ac.abort();
+
       const link = await j(await fetch(`${s.base}/api/trip/gt/links`, { method: 'POST', headers: OWNER, body: JSON.stringify({ guest: 'write' }) }));
       const token = link.body.link ? link.body.link.token : link.body.token;
       assert.ok(token, JSON.stringify(link.body));

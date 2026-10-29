@@ -35,12 +35,10 @@ module.exports = function createSseRouter(ctx) {
 
   // ---- GET /api/trip/:tripId/events：SSE，這個行程被任何人改動時即時推播 ----
   router.get('/trip/:tripId/events', (req, res) => {
-    const trip = storage.getTrip(req.params.tripId);
-    if (!trip) return res.status(404).json({ error: '找不到這個行程' });
-
     // 🆕 [Discord 登入] 用 cookie 登入的網頁不需要換票：瀏覽器的 EventSource
     // 對同源網址會自動帶上 cookie，req.principal 已經由 lib/auth.js 辨認好。
     // 用 header 帶金鑰的呼叫端（EventSource 帶不了 header）才需要票券。
+    // 🔒 先驗票券再查行程：無效票券不論行程存不存在都回 401，不洩漏行程 ID
     let authCtx = req;
     const ticketId = typeof req.query.ticket === 'string' ? req.query.ticket : '';
     if (ticketId) {
@@ -52,6 +50,9 @@ module.exports = function createSseRouter(ctx) {
       sseTickets.delete(ticketId); // 單次使用，用過即棄
       authCtx = ticket;
     }
+
+    const trip = storage.getTrip(req.params.tripId);
+    if (!trip) return res.status(404).json({ error: '找不到這個行程' });
 
     if (!requireTripAccess(authCtx, res, trip, 'read')) return;
 

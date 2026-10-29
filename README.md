@@ -47,7 +47,8 @@ Mousebot 分帳系統的獨立服務：**網頁記帳介面（`public/`）＋ RE
   |---|---|---|
   | `85f4585`（2026-10-10） | JSON → SQLite | 舊映像只認得 `splitbill.json`（已改名成 `.imported-*`），會以空帳本啟動；之後回到新版時，回滾期間的寫入會被忽略 |
   | 分享連結轉換（2026-10-12） | `shareLinks`／`invite` → `links` | 所有分享與邀請連結失效 |
-  | schema v2（這一版） | 舊版成員 id（Discord ID）→ `mem_xxxx` | 沒有守門的舊映像仍可讀寫（`mem_` 只是普通的 id），但回不到 v1 的 id；這一版之後的映像遇到 v3 以上的資料會拒絕啟動 |
+  | schema v2 | 舊版成員 id（Discord ID）→ `mem_xxxx` | 沒有守門的舊映像仍可讀寫（`mem_` 只是普通的 id），但回不到 v1 的 id；v2 的映像遇到 v3 以上的資料會拒絕啟動 |
+  | schema v3（這一版） | 只剩操作紀錄裡的舊版成員 id（Discord ID）→ `mem_xxxx` | v2 的映像遇到 v3 資料會拒絕啟動（較新版本的程式），要回去請用 `backups/splitbill-pre-v3-*.db` 還原 |
 
 ## 權限
 | 身分 | 怎麼辨認 | 能做什麼 |

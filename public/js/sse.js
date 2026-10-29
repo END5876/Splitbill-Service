@@ -17,6 +17,8 @@ let tripEventSource = null;
 let tripEventReconnectTimer = null;
 // 斷線期間伺服器推播的更新不會補送，重新連上後要自己抓一次最新版本
 let tripEventNeedsResync = false;
+// 連續連不上的次數：用來拉長重連間隔，並在連不上時查一下行程是不是已經刪除／沒權限了
+let tripEventFailures = 0;
 
 // 🆕 [即時同步] 這個分頁自己的識別碼，存檔時會附帶送給伺服器，SSE 推播回來
 // 時原封不動夾帶在裡面。用這個「明確標記」而不是比較 updatedAt 時間先後，
@@ -36,8 +38,9 @@ function disconnectTripEventStream(){
   }
 }
 
-async function connectTripEventStream(){
+async function connectTripEventStream(opts){
   disconnectTripEventStream();
+  if (!opts || !opts.retry) tripEventFailures = 0; // 換行程／重新開啟時從頭計算，不沿用上一個行程的退避
   try{
     let url;
     if (shareMode){
@@ -53,6 +56,7 @@ async function connectTripEventStream(){
 
     // 伺服器每次建立新連線都會先送 connected；是斷線重連的話補抓一次斷線期間漏掉的更新
     es.addEventListener('connected', () => {
+      tripEventFailures = 0;
       if (!tripEventNeedsResync) return;
       tripEventNeedsResync = false;
       resyncTripAfterReconnect();
@@ -140,11 +144,42 @@ async function connectTripEventStream(){
       if (tripEventSource === es) tripEventSource = null;
       tripEventNeedsResync = true;
       clearTimeout(tripEventReconnectTimer);
-      tripEventReconnectTimer = setTimeout(connectTripEventStream, 3000);
+      tripEventReconnectTimer = null;
+      // 連不上時（404／403／429 等）EventSource 看不到狀態碼，固定 3 秒重試會永遠打下去：
+      // 改成指數退避（3 秒起跳、最長 60 秒），連續失敗時另外查一次行程本身的狀態
+      tripEventFailures++;
+      const delay = Math.min(3000 * 2 ** (tripEventFailures - 1), 60000);
+      const scheduleRetry = () => {
+        tripEventReconnectTimer = setTimeout(() => connectTripEventStream({ retry: true }), delay);
+      };
+      // 第一次失敗多半只是網路閃斷或伺服器重啟，直接重連；連續失敗才查狀態
+      if (tripEventFailures < 2){ scheduleRetry(); return; }
+      probeTripAfterStreamFailure().then(stop => { if (!stop) scheduleRetry(); });
     };
   }catch(e){
     // 即時同步屬於錦上添花的功能，換票或建立連線失敗都不應該擋住其他既有功能運作
   }
+}
+
+// SSE 連續連不上時查一次行程本身：已刪除或沒有權限了就交給對應的處理函式，不再重連。
+// 回傳 true 代表不要再排重連（已經處理掉，或等回應時已經換行程／重新連線了）。
+async function probeTripAfterStreamFailure(){
+  if (!shareMode && !currentTripId) return true;
+  const url = shareMode ? `/api/shared-trip/${encodeURIComponent(shareMode.token)}` : tripApiUrl();
+  const tripIdAtStart = currentTripId, shareAtStart = shareMode;
+  let status;
+  try{
+    status = (await fetch(url, { headers: apiHeaders() })).status;
+  }catch(e){ return false; } // 網路本身不通：照常退避重連
+  if (currentTripId !== tripIdAtStart || shareMode !== shareAtStart || tripEventSource || tripEventReconnectTimer) return true;
+  if (shareMode){
+    // 分享連結：404＝連結被撤銷或行程已刪除，403＝連結過期或不再開放訪客
+    if (status === 404 || status === 403){ handleTripAccessRevoked(); return true; }
+    return false;
+  }
+  if (status === 404){ handleIncomingTripDeleted(); return true; }
+  if (status === 403){ handleTripAccessRevoked(); return true; }
+  return false; // 401（登入過期）、429、5xx 等：繼續退避重連
 }
 
 // 重連後補同步：refreshTripFromServer 走三方合併，本地還沒存的修改不會被蓋掉

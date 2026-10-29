@@ -178,9 +178,13 @@ function startWebApi(options = {}) {
 
   // ---- 🔒 /api/trip/... 一律需要身分：沒登入的請求在查行程之前就回 401，
   // 不會因為「行程存不存在」回 404／401 不同而洩漏行程 ID。用票券開 SSE 的例外。 ----
+  // 票券要是現在還有效的那張才放行：隨便帶個 ?ticket=x 不能繞過，否則又變回 404／401 的探測管道
+  const sseHub = createSseHub();
   app.use('/api/trip', (req, res, next) => {
     if (req.principal) return next();
-    if (req.method === 'GET' && /\/events\/?$/.test(req.path) && typeof req.query.ticket === 'string') return next();
+    const ticket = req.method === 'GET' && /\/events\/?$/.test(req.path) && typeof req.query.ticket === 'string'
+      ? sseHub.sseTickets.get(req.query.ticket) : null;
+    if (ticket && ticket.expiresAt >= Date.now()) return next();
     res.status(401).json({ error: '請先登入', needLogin: true });
   });
 
@@ -189,7 +193,6 @@ function startWebApi(options = {}) {
 
   // ---- 🆕 [即時同步] 掛上 SSE 廣播：任何一條寫入路徑呼叫 storage.touchTrip()
   // 時，都會自動推播給該行程目前所有開著的 SSE 連線（見 lib/sse.js）。
-  const sseHub = createSseHub();
   attachTripEventBroadcast(storage, sseHub);
 
   // ---- 組裝共用的 ctx，各個 router 依需要挑選使用 ----
