@@ -12,7 +12,7 @@ Mousebot 分帳系統的獨立服務：**網頁記帳介面（`public/`）＋ RE
   網頁與分享連結的 PUT 一律無法改動它（`lib/members.js`）。
 - 舊版（v1，行程掛在伺服器底下）資料會在匯入 SQLite 時一併轉換。
   舊成員的 `id` 本身就是 Discord ID，遷移只補上 `discordId = id`，帳目不需改寫。
-  （schema v2 會再把這些 id 換成 `mem_xxxx`、一併改寫帳目、歷史版本與操作紀錄裡的引用，Discord ID 不再出現在成員 id 裡；見下方「schema 版本與回滾」。）
+  （schema v2 把這些 id 換成 `mem_xxxx`、一併改寫帳目與歷史版本裡的引用；v3 再補改寫操作紀錄裡殘留的引用，Discord ID 不再出現在成員 id 裡；目前 schema 版本是 3，見下方「schema 版本與回滾」。）
 
 ## 資料儲存（SQLite）
 - 資料存在 `$SPLITBILL_DATA_DIR/splitbill.db`，使用 Node 內建的 `node:sqlite`（需要 Node ≥ 22.13，不必安裝原生模組）。
@@ -120,7 +120,8 @@ Mousebot 分帳系統的獨立服務：**網頁記帳介面（`public/`）＋ RE
 - 連結訪客：`GET|PUT /api/shared-trip/:token`，以及同路徑下的 `events`、`fx-rate`、`parse-receipt`、`receipt-session`、`expenses/:id`、`deposits/:id`
 - 成員：`POST /api/trip/:tripId/members/:memberId/unlink`
 - 綁定：`POST /api/trip/:tripId/bind-code`、`POST /api/attach`（Bot）、`POST /api/trip/:tripId/detach`
-- Bot 專用：`GET /api/guild/:guildId`、`PATCH /api/guild/:guildId/active-trip`
+- Bot 專用：`GET /api/guilds`（依伺服器分組列出所有行程，未綁定的在 `_`）、`GET /api/guild/:guildId`、`PATCH /api/guild/:guildId/active-trip`、
+  `POST /api/sse-ticket`（用金鑰換一次性 SSE 票券；網頁登入者直接用 cookie，不需要）
 - cookie 登入的寫入請求必須帶 `x-requested-with: splitbill`（CSRF）
 
 ## Discord 登入
