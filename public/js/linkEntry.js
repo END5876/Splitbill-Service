@@ -55,7 +55,7 @@ function discardLegacyApiKeyHash(){
   const hashParams = new URLSearchParams((location.hash || '').replace(/^#/, ''));
   if (!hashParams.has('apiKey')) return;
   history.replaceState(null, '', location.pathname + location.search);
-  toast('管理員金鑰書籤已停用，請改用 Discord 登入（Bot 擁有者登入後可以列出所有行程）', 'error', { duration: 8000 });
+  toast('管理員金鑰書籤已經停用，請改用登入（Bot 擁有者登入後可以列出所有行程）', 'error', { duration: 8000 });
 }
 
 /* ===================== 全頁畫面的共用工具 ===================== */
@@ -112,9 +112,9 @@ function showNoAccessScreen(){
         <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
         <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
       </svg>
-      <h1>無權限存取</h1>
+      <h1>需要行程連結</h1>
       <div class="no-access-divider"></div>
-      <p>請向行程主人索取分享連結，<br>才能檢視此頁面。</p>
+      <p>請跟行程的建立者要一組連結，<br>點開就能看到行程。</p>
     </div>
   `;
   el.classList.add('visible');

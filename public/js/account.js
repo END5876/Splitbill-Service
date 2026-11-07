@@ -118,7 +118,7 @@ function saveMyNickname(){
   const input = document.getElementById('myNicknameInput');
   if (!me || !input) return;
   const name = input.value.trim().slice(0, 60);
-  if (!name){ toast('暱稱不能是空的', 'error'); input.value = me.name; return; }
+  if (!name){ toast('請輸入暱稱', 'error'); input.value = me.name; return; }
   input.blur();
   if (name === me.name) return;
   me.name = name;
@@ -149,9 +149,9 @@ async function unlinkMember(memberId){
   const isMe = isMyMember(m);
   const ok = await confirmModal(
     isMe
-      ? `確定要解除你跟「${m.name}」的連結嗎？解除後你會失去這個行程的存取權（除非你是建立者），帳目都會保留。`
-      : `確定要解除「${m.name}」與 ${m.lineId ? 'LINE' : 'Discord'} 帳號的連結嗎？他會失去這個行程的存取權，帳目都會保留，之後可以用邀請連結重新認領。`,
-    { confirmText:'解除連結', danger:true }
+      ? '解除後，你就看不到這個行程了（除非你是建立者）。帳目都會保留。'
+      : `解除後，他就看不到這個行程了。帳目都會保留，之後可以用邀請連結重新認領。`,
+    { title: `解除「${m.name}」的帳號連結？`, confirmText:'解除連結', cancelText:'取消', danger:true }
   );
   if (!ok) return;
   try{
@@ -240,7 +240,7 @@ async function copyBindCommand(){
   }
 }
 async function detachFromDiscord(){
-  const ok = await confirmModal('確定要解除綁定嗎？Discord 面板將看不到這個行程（網頁與帳目不受影響）。', { confirmText:'解除綁定', danger:true });
+  const ok = await confirmModal('解除後，Discord 的 /splitbill 面板就看不到這個行程了。網頁和帳目不受影響，之後可以重新綁定。', { title:'解除 Discord 伺服器綁定？', confirmText:'解除綁定', cancelText:'取消', danger:true });
   if (!ok) return;
   try{
     const body = await apiJson(await fetch(tripApiUrl('/detach'), { method: 'POST', headers: apiHeaders() }));

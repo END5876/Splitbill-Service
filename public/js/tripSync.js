@@ -152,7 +152,7 @@ async function saveTripToApiImpl(){
         if (tripSwitched()) return true;
         if (!lastSyncedTripJSON) {
           // 首次儲存（從未載入過），直接確認
-          const proceed = await confirmModal(`確定要用目前畫面上的內容覆蓋雲端行程「${serverTrip.name}」嗎？`, { confirmText:'儲存' });
+          const proceed = await confirmModal(`雲端上「${serverTrip.name}」的內容會被目前畫面上的內容取代。`, { title:'用目前的內容覆蓋行程？', confirmText:'覆蓋並儲存', cancelText:'取消' });
           if (!proceed) return;
         } else if (serverTrip.updatedAt && trip.updatedAt && serverTrip.updatedAt !== trip.updatedAt) {
           // 伺服器版本比本地版本新，嘗試智慧合併
@@ -164,7 +164,7 @@ async function saveTripToApiImpl(){
             toast('已自動合併其他人的更新', 'info');
           } else {
             // 合併失敗（有衝突）：詢問使用者
-            const proceed = await confirmModal('這個行程已經被其他人更新過，而且跟你目前的內容有衝突，無法自動合併。確定要用你目前這份覆蓋掉嗎？', { danger:true, confirmText:'仍要覆蓋', title:'偵測到資料衝突' });
+            const proceed = await confirmModal('其他人剛改過這個行程，跟你的修改有衝突，無法自動合併。覆蓋的話，其他人剛才的修改會不見。', { danger:true, confirmText:'用我的版本覆蓋', cancelText:'取消', title:'要覆蓋其他人的修改嗎？' });
             if (!proceed) return;
           }
         } else if (lastSyncedTripJSON && JSON.stringify(serverTrip) !== lastSyncedTripJSON && !serverTrip.updatedAt) {
@@ -175,7 +175,7 @@ async function saveTripToApiImpl(){
             renderAll();
             toast('已自動合併其他人的更新', 'info');
           } else {
-            const proceed = await confirmModal('這份行程資料似乎已經被更新過（可能是別人剛存過，或你在別的分頁存過），確定要用你目前這份覆蓋掉嗎？', { danger:true, confirmText:'仍要覆蓋', title:'偵測到資料衝突' });
+            const proceed = await confirmModal('這個行程好像剛被更新過（可能是別人，或你在別的分頁存過）。覆蓋的話，那些更新會不見。', { danger:true, confirmText:'用我的版本覆蓋', cancelText:'取消', title:'要覆蓋最新的修改嗎？' });
             if (!proceed) return;
           }
         }
@@ -206,14 +206,14 @@ async function saveTripToApiImpl(){
         const merged = serverTrip ? mergeWithServer(serverTrip) : null;
 
         if (!merged){
-          toast('儲存失敗：資料版本衝突且無法自動合併，請重新整理頁面後再試一次。', 'error');
+          toast('其他人剛改過同一筆資料，無法自動合併。請重新整理頁面後再改一次', 'error');
           return;
         }
 
         trip = merged;
         renderAll();
         if (attempt < MAX_SAVE_RETRY - 1){
-          toast('儲存時發現有人剛好搶先一步更新，已自動合併並重新儲存…', 'info');
+          toast('有人剛好也在修改，已自動合併並重新儲存…', 'info');
           continue; // 用合併後的版本再跑一次迴圈重新存一次
         }
         toast('已自動合併其他人的更新，但重試次數已用完，請再按一次「儲存」把合併後的結果存回去。', 'error');
@@ -416,7 +416,7 @@ async function refreshTripFromServer(){
 // 給使用者更直接的提示）。
 async function saveSharedTripToApi(){
   if (shareMode.permission !== 'write'){
-    toast('這個分享連結是唯讀的，無法儲存變更。', 'error');
+    toast('這個連結只能看帳，不能修改', 'error');
     return;
   }
 
@@ -442,14 +442,14 @@ async function saveSharedTripToApi(){
         const merged = serverTrip ? mergeWithServer(serverTrip) : null;
 
         if (!merged){
-          toast('儲存失敗：資料版本衝突且無法自動合併，請重新整理頁面後再試一次。', 'error');
+          toast('其他人剛改過同一筆資料，無法自動合併。請重新整理頁面後再改一次', 'error');
           return;
         }
 
         trip = merged;
         renderAll();
         if (attempt < MAX_SAVE_RETRY - 1){
-          toast('儲存時發現有人剛好搶先一步更新，已自動合併並重新儲存…', 'info');
+          toast('有人剛好也在修改，已自動合併並重新儲存…', 'info');
           continue;
         }
         toast('已自動合併其他人的更新，但重試次數已用完，請再按一次「儲存」把合併後的結果存回去。', 'error');

@@ -23,7 +23,7 @@ async function resolveTripFromRaw(parsed){
           const t = tripsBag.trips[id];
           return { value: id, title: t.name || '未命名行程', sub: `${(t.members||[]).length} 位成員・${(t.expenses||[]).length} 筆支出` };
         });
-        const pick = await pickModal('偵測到多個行程，選一個要匯入的：', items);
+        const pick = await pickModal('檔案裡有多個行程，要匯入哪一個？', items);
         return pick ? tripsBag.trips[pick] : null;
       }
     }
@@ -59,10 +59,10 @@ async function importJsonAsNewTrip(){
   const raw = document.getElementById('jsonInput').value.trim();
   if (!raw){ toast('請選擇 JSON 檔案，或把內容貼上', 'error'); return; }
   let parsed;
-  try { parsed = JSON.parse(raw); } catch(err){ toast('JSON 格式錯誤：'+err.message, 'error'); return; }
+  try { parsed = JSON.parse(raw); } catch(err){ toast('讀不懂這份內容，請確認是從拆帳本下載的 JSON 檔', 'error'); return; }
 
   const candidate = await resolveTripFromRaw(parsed);
-  if (!candidate){ toast('找不到可辨識的行程資料', 'error'); return; }
+  if (!candidate){ toast('這份檔案裡沒有行程資料，請確認是從拆帳本下載的 JSON 檔', 'error'); return; }
   const created = await createCloudTripFrom(repairTrip(candidate));
   if (created){
     document.getElementById('jsonInput').value = '';

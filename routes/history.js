@@ -68,7 +68,7 @@ module.exports = function createHistoryRouter(ctx) {
       if (!r) return;
       const v = parseVersion(req.params.version);
       const snap = v && storage.getTripRevision(r.trip.id, v);
-      if (!snap) return res.status(404).json({ error: '這個版本已經不在保留範圍內' });
+      if (!snap) return res.status(404).json({ error: '這個版本太舊，已經沒有保存了' });
       res.json({ trip: r.guest ? storage.toGuestTrip(snap) : snap, updatedAt: v });
     });
 
@@ -79,7 +79,7 @@ module.exports = function createHistoryRouter(ctx) {
       const v = parseVersion(req.params.version);
       if (v && v === trip.updatedAt) return res.status(400).json({ error: '這已經是目前的版本了' });
       const snap = v && storage.getTripRevision(trip.id, v);
-      if (!snap) return res.status(404).json({ error: '這個版本已經不在保留範圍內' });
+      if (!snap) return res.status(404).json({ error: '這個版本太舊，已經沒有保存了' });
 
       // 成員：以那個版本的名單為準，但「目前已連結 Discord 的成員」一律保留——
       // 還原帳目不應該順便把人踢出行程（他們會因此失去存取權）。Discord 連結

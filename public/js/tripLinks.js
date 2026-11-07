@@ -331,7 +331,7 @@ async function saveLinkEdit(){
 async function revokeTripLink(token){
   const l = (tripLinksState.links || []).find(x => x.token === token);
   const name = l ? (l.label || linkDefaultName(l)) : '這條連結';
-  const ok = await confirmModal(`確定要撤銷「${name}」嗎？拿著這個網址的人會立刻無法再用它開啟或加入行程（已經加入的成員不受影響）。`, { danger:true, confirmText:'確定撤銷' });
+  const ok = await confirmModal('拿到這個網址的人會立刻無法再用它開啟或加入行程。已經加入的成員不受影響。', { title:`撤銷「${name}」？`, danger:true, confirmText:'撤銷連結', cancelText:'取消' });
   if (!ok) return;
   try{
     await apiJson(await fetch(tripApiUrl(`/links/${encodeURIComponent(token)}`), { method: 'DELETE', headers: apiHeaders() }));

@@ -91,7 +91,7 @@ module.exports = function createMeRouter(ctx) {
     if (!name) return res.status(400).json({ error: '請輸入行程名稱' });
     // 幣別規則跟行程資料一致（lib/validate.js）：2～10 個大寫英數字、第一個是字母
     const baseCurrency = cleanName(body.baseCurrency || 'TWD', 10).toUpperCase();
-    if (!isCurrencyCode(baseCurrency)) return res.status(400).json({ error: '基準幣別格式錯誤（2～10 個英文字母或數字，第一個必須是字母）' });
+    if (!isCurrencyCode(baseCurrency)) return res.status(400).json({ error: '基準幣別要是 2～10 個英文字母或數字，開頭是字母，例如 TWD' });
 
     let guildId = null;
     if (p.kind === 'service') {

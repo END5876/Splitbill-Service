@@ -130,7 +130,7 @@ async function joinReceiptSession(){
     if (!res.ok){ toast('加入失敗，請稍後再試一次', 'error'); return; }
     const body = await res.json();
     if (!body || !body.active){
-      toast('這個認領進度剛好已經結束了', 'error');
+      toast('這次認領已經結束了', 'info');
       remoteReceiptSessionInfo = null;
       renderReceiptSessionBanner();
       return;
@@ -206,8 +206,8 @@ async function maybeOfferReceiptDraftRestore(){
 
   receiptDraftPromptShown = true;
   const restore = await confirmModal(
-    `偵測到上次離開時，有一筆帳單辨識的認領還沒完成（${itemCount} 個項目）。要復原繼續認領嗎？`,
-    { title: '復原上次的認領進度？', confirmText: '復原', cancelText: '不用了，重新開始' }
+    `上次有一張帳單還沒認領完（${itemCount} 個項目）。`,
+    { title: '接著上次的認領？', confirmText: '繼續認領', cancelText: '重新開始' }
   );
 
   if (restore){
@@ -411,14 +411,14 @@ function receiptResetUpload(){
 // 避免手滑誤觸中斷別人正在做的事。
 async function abandonReceiptSession(){
   const ok = await confirmModal(
-    '確定要結束這次認領嗎？不會建立任何支出，正在一起認領的其他人也會被中斷，需要的話得重新掃描。',
-    { title: '結束（放棄）這次認領？', confirmText: '結束並放棄', cancelText: '取消', danger: true }
+    '不會建立任何支出，正在一起認領的人也會被中斷。之後要記這張帳單，需要重新上傳照片。',
+    { title: '放棄這次認領？', confirmText: '放棄認領', cancelText: '取消', danger: true }
   );
   if (!ok) return;
   const wasJoined = receiptSessionJoined;
   receiptResetUpload();
   if (wasJoined) await clearReceiptSessionOnServer('abandoned');
-  toast('已結束這次認領，沒有建立任何支出', 'info');
+  toast('已放棄這次認領，沒有建立任何支出', 'info');
 }
 
 function receiptToggleAttendee(memberId){
@@ -608,7 +608,7 @@ function renderReceiptWorkArea(){
         <p class="hint" style="margin-top:0;">共 ${receiptState.items.length} 個項目。點選品項下方的人名即可認領（可多選＝一起分攤這項），服務費與訂金已自動歸入「共同分擔」。辨識錯誤都可以直接修改，或用下方「新增項目」補上漏掉的品項。${receiptState.items.some(it => it.nameTranslated) ? `<br>🌐 偵測到帳單為<b>${escapeHtml(receiptState.detectedLanguage)}</b>，品項下方已附上繁體中文翻譯供核對。` : ''}</p>
         <div class="btn-row">
           <button type="button" class="btn btn-ghost btn-sm" data-click="receiptResetUpload">🔄 重新上傳照片</button>
-          ${receiptSessionJoined ? '<button type="button" class="btn btn-danger btn-sm" data-click="abandonReceiptSession">🛑 結束認領（放棄）</button>' : ''}
+          ${receiptSessionJoined ? '<button type="button" class="btn btn-danger btn-sm" data-click="abandonReceiptSession">🛑 放棄認領</button>' : ''}
         </div>
       </div>
     </div>
@@ -668,7 +668,7 @@ async function finalizeReceiptExpense(){
       if (checkRes.ok){
         const body = await checkRes.json();
         if (!body || !body.active){
-          toast('這筆帳單剛好已經被其他人建立完成了，這裡就不用再送一次囉', 'error');
+          toast('其他人已經建立了這筆支出，不用再送一次', 'info');
           receiptResetUpload();
           renderAll();
           return;
@@ -680,9 +680,9 @@ async function finalizeReceiptExpense(){
   // 手動新增後忘記填寫、金額還是 0 又沒填名稱的空白列，視為放棄該列，直接忽略不擋結算
   receiptState.items = receiptState.items.filter(i => i.name.trim() || i.price !== 0);
   const items = receiptState.items;
-  if (!items.length){ toast('沒有任何品項可以結算', 'error'); return; }
+  if (!items.length){ toast('還沒有任何品項，請先新增品項', 'error'); return; }
   const unclaimed = items.filter(i => i.assignedTo !== 'shared' && (!Array.isArray(i.assignedTo) || i.assignedTo.length===0));
-  if (unclaimed.length){ toast(`還有 ${unclaimed.length} 個項目尚未認領，請先認領完再結算`, 'error'); return; }
+  if (unclaimed.length){ toast(`還有 ${unclaimed.length} 個項目沒有人認領，請先認領完再建立支出`, 'error'); return; }
   if (!receiptState.attendeeIds.length){ toast('請至少勾選一位出席者', 'error'); return; }
 
   const payerId = document.getElementById('receiptPayer').value;
@@ -694,7 +694,7 @@ async function finalizeReceiptExpense(){
     const live = await fetchLiveRate(currency, trip.baseCurrency);
     if (live){ rate = live.rate; trip.rates[currency] = live.rate; }
   }
-  if (!(rate>0)){ toast(`幣別 ${currency} 尚無匯率設定，且目前無法取得即時匯率`, 'error'); return; }
+  if (!(rate>0)){ toast(`查不到 ${currency} 的匯率，請到「設定 → 行程」手動新增匯率`, 'error'); return; }
 
   const grandTotal = round2(items.reduce((s,i)=>s+i.price,0));
   if (!(grandTotal>0)){ toast('總金額需要大於 0', 'error'); return; }
@@ -704,7 +704,7 @@ async function finalizeReceiptExpense(){
   if (!attendeeIds.length){ toast('請至少勾選一位出席者', 'error'); return; }
   const perPerson = computeReceiptSplit(items, attendeeIds);
   if (Object.keys(perPerson).some(id => !trip.members.some(m => m.id === id))){
-    toast('有品項是由已被刪除的成員認領的，請把該項目改成「共同分擔」再點一次清空後重新認領', 'error');
+    toast('有品項是被已刪除的成員認領的，請重新選擇這些品項的認領人', 'error');
     return;
   }
   // 出席者＋沒出席但有認領品項的人，都要列為分攤成員，總和才會等於總金額
@@ -803,7 +803,7 @@ async function handleReceiptDrop(fileList){
 
   const file = files[0];
   if (!file.type.startsWith('image/')){
-    await alertModal('這不是圖片格式，無法上傳。請改拖曳照片或截圖格式的帳單檔案。', { title: '無法上傳' });
+    await alertModal('請拖曳帳單的照片或截圖。', { title: '只能上傳圖片' });
     return;
   }
 
@@ -812,7 +812,7 @@ async function handleReceiptDrop(fileList){
   // 沒有進行中的認領時，才單獨跳出「確定要用這張照片辨識」的確認。
   if (receiptState && Array.isArray(receiptState.items) && receiptState.items.length){
     const proceed = await confirmModal(
-      `目前有一筆帳單辨識的認領還沒完成（${receiptState.items.length} 個項目），要放棄並改用這張新照片嗎？`,
+      `目前這張帳單還沒認領完（${receiptState.items.length} 個項目）。改用新照片的話，目前的認領進度會被放棄。`,
       { title: '放棄目前的認領？', confirmText: '放棄並使用新照片', cancelText: '取消', danger: true }
     );
     if (!proceed) return;
@@ -821,7 +821,7 @@ async function handleReceiptDrop(fileList){
     if (wasJoined) await clearReceiptSessionOnServer('abandoned');
   } else {
     const proceed = await confirmModal(
-      '偵測到你拖曳了一張圖片，要用它自動辨識帳單內容並建立支出嗎？',
+      '辨識完會列出帳單品項，大家認領完就能建立支出。',
       { title: '用這張照片辨識帳單？', confirmText: '開始辨識' }
     );
     if (!proceed) return;

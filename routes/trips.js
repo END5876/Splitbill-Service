@@ -60,7 +60,7 @@ module.exports = function createTripsRouter(ctx) {
       const expected = req.body && req.body.expectedUpdatedAt;
       if (typeof expected === 'number' && typeof existing.updatedAt === 'number' && expected !== existing.updatedAt) {
         return res.status(409).json({
-          error: '這個行程已經被其他人更新過，請合併最新版本後再儲存一次。',
+          error: '其他人剛更新了這個行程，請重新整理後再儲存一次',
           currentTrip: storage.toPublicTrip(existing),
         });
       }

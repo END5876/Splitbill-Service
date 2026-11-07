@@ -120,7 +120,7 @@ async function markTransferPaid(fromId, toId){
   const base = trip.baseCurrency;
   const ok = await confirmModal(
     `確認「${memberName(fromId)}」已經轉 ${fmtMoney(amount, base)} ${base} 給「${memberName(toId)}」了嗎？會新增一筆轉帳紀錄，結算結果也會跟著更新。`,
-    { title: '標記為已付款', confirmText: '已付款' }
+    { title: '標記為已付款？', confirmText: '標記已付款', cancelText: '取消' }
   );
   if (!ok) return;
   const dep = {

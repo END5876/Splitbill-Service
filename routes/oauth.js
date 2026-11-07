@@ -320,7 +320,7 @@ module.exports = function createOAuthRouter(deps = {}) {
     }
     if (!saved || savedProv !== prov || typeof saved.state !== 'string' || typeof state !== 'string'
       || !safeEqual(state, saved.state) || typeof code !== 'string') {
-      return sendPage(res, 400, '登入流程已過期或無效', `<p>請回到網頁重新登入一次。</p>${backLink}`);
+      return sendPage(res, 400, '這次登入已經逾時', `<p>請回到拆帳本重新登入一次。</p>${backLink}`);
     }
 
     const now = Date.now();

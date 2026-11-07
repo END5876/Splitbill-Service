@@ -55,11 +55,11 @@ function saveExpense(){
   const customBase = parseFloat(customBaseRaw);
   let amountInBase;
   if (currency !== trip.baseCurrency && customBaseRaw !== ''){
-    if (!(customBase > 0)){ toast('換算後真實金額需為大於 0 的數字', 'error'); return false; }
+    if (!(customBase > 0)){ toast('換算後真實金額要大於 0', 'error'); return false; }
     amountInBase = round2(customBase);
   } else {
     const rate = resolveExpenseRate(currency);
-    if (!(rate>0)){ toast(`幣別 ${currency} 尚無匯率設定，且目前無法取得即時匯率`, 'error'); return false; }
+    if (!(rate>0)){ toast(`查不到 ${currency} 的匯率，請到「設定 → 行程」手動新增匯率`, 'error'); return false; }
     amountInBase = round2(amount*rate);
   }
 
@@ -70,9 +70,9 @@ function saveExpense(){
   if (!participants.length){ toast('請至少勾選一位分攤成員', 'error'); return false; }
 
   const payerSum = round2(payers.reduce((s,p)=>s+p.amount,0));
-  if (round2(Math.abs(payerSum-amount)) > 0.01){ toast(`代墊金額總和 (${payerSum}) 與總金額 (${amount}) 不相符`, 'error'); return false; }
+  if (round2(Math.abs(payerSum-amount)) > 0.01){ toast(`代墊金額加起來是 ${payerSum}，跟總金額 ${amount} 不一樣，請調整後再儲存`, 'error'); return false; }
   const partSum = round2(participants.reduce((s,p)=>s+p.amount,0));
-  if (round2(Math.abs(partSum-amount)) > 0.01){ toast(`分攤金額總和 (${partSum}) 與總金額 (${amount}) 不相符`, 'error'); return false; }
+  if (round2(Math.abs(partSum-amount)) > 0.01){ toast(`分攤金額加起來是 ${partSum}，跟總金額 ${amount} 不一樣，請調整後再儲存`, 'error'); return false; }
 
   let saved;
   if (editingExpenseId){
@@ -83,7 +83,7 @@ function saveExpense(){
       editingExpenseId = null;
       document.getElementById('expenseFormTitle').textContent = '新增一筆支出';
       setFormCardEditing('expenseFormCard', 'btnSaveExpenseSync', 'btnResetExpense', false);
-      toast('這筆支出已經被其他人刪除，無法更新。表單內容已保留，要保留的話請再按一次「儲存」重新新增', 'error', { duration: 7000 });
+      toast('這筆支出已經被其他人刪除。表單內容還在，按「儲存」可以重新新增', 'error', { duration: 7000 });
       return false;
     }
     Object.assign(saved, { description, amount, currency, amountInBase, payers, participants, createdAt: applyDateToTimestamp(dateStr, saved.createdAt) });
@@ -157,10 +157,10 @@ async function deleteExpense(id){
 
   const expense = trip.expenses[idx];
   const confirmed = await confirmModal(
-    `確定要刪除支出「${expense.description || '未命名支出'}」嗎？刪除後會立即生效，且無法復原。`,
+    `「${expense.description || '未命名支出'}」會被刪除，其他成員也會立刻看到。需要的話可以到「設定 → 紀錄」還原。`,
     {
-      title: '確認刪除支出',
-      confirmText: '確認刪除',
+      title: '刪除這筆支出？',
+      confirmText: '刪除支出',
       cancelText: '取消',
       danger: true,
     }

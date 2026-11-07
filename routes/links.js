@@ -201,7 +201,7 @@ module.exports = function createLinksRouter(ctx) {
     } else {
       const name = typeof body.newMemberName === 'string' ? body.newMemberName.trim().slice(0, 60) : '';
       if (!name) return res.status(400).json({ error: '請選擇你是哪一位，或輸入新成員的名字' });
-      if (trip.members.length >= 100) return res.status(400).json({ error: '這個行程的成員已達上限' });
+      if (trip.members.length >= 100) return res.status(400).json({ error: '這個行程的成員已經滿了（最多 100 人）' });
       member = setMemberAccount({ id: storage.genId('mem'), name }, uid);
       trip.members.push(member);
     }

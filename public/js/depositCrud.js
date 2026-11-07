@@ -79,11 +79,11 @@ function saveDeposit(){
   const customBase = parseFloat(customBaseRaw);
   let amountInBase;
   if (currency !== trip.baseCurrency && customBaseRaw !== ''){
-    if (!(customBase > 0)){ toast('換算後真實金額需為大於 0 的數字', 'error'); return false; }
+    if (!(customBase > 0)){ toast('換算後真實金額要大於 0', 'error'); return false; }
     amountInBase = round2(customBase);
   } else {
     const rate = resolveDepositRate(currency);
-    if (!(rate>0)){ toast(`幣別 ${currency} 尚無匯率設定，且目前無法取得即時匯率`, 'error'); return false; }
+    if (!(rate>0)){ toast(`查不到 ${currency} 的匯率，請到「設定 → 行程」手動新增匯率`, 'error'); return false; }
     amountInBase = round2(amount*rate);
   }
 
@@ -96,7 +96,7 @@ function saveDeposit(){
       editingDepositId = null;
       document.getElementById('depositFormTitle').textContent = '新增一筆轉帳／預收款';
       setFormCardEditing('depositFormCard', 'btnSaveDepositSync', 'btnResetDeposit', false);
-      toast('這筆轉帳紀錄已經被其他人刪除，無法更新。表單內容已保留，要保留的話請再按一次「儲存」重新新增', 'error', { duration: 7000 });
+      toast('這筆轉帳已經被其他人刪除。表單內容還在，按「儲存」可以重新新增', 'error', { duration: 7000 });
       return false;
     }
     Object.assign(saved, { payerId, collectorId, amount, currency, amountInBase, note, createdAt: applyDateToTimestamp(dateStr, saved.createdAt) });
@@ -140,10 +140,10 @@ async function deleteDeposit(id){
 
   const deposit = trip.deposits[idx];
   const confirmed = await confirmModal(
-    `確定要刪除「${memberName(deposit.payerId)} → ${memberName(deposit.collectorId)}」的轉帳紀錄嗎？確認後將立即儲存到 Bot。`,
+    `「${memberName(deposit.payerId)} → ${memberName(deposit.collectorId)}」這筆轉帳會被刪除，其他成員也會立刻看到。需要的話可以到「設定 → 紀錄」還原。`,
     {
-      title: '確認刪除轉帳紀錄',
-      confirmText: '確認刪除',
+      title: '刪除這筆轉帳？',
+      confirmText: '刪除轉帳',
       cancelText: '取消',
       danger: true,
     }

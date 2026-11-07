@@ -33,9 +33,9 @@ async function removeMember(id){
     const isMe = isMyMember(trip.members[idx]);
     const ok = await confirmModal(
       isMe
-        ? `「${trip.members[idx].name}」是你自己。刪除後你會失去這個行程的存取權（除非你是建立者）。確定要刪除嗎？`
-        : `「${trip.members[idx].name}」已經連結帳號，刪除後他就無法再存取這個行程。確定要刪除嗎？`,
-      { confirmText:'刪除', danger:true }
+        ? '這是你自己。刪除後，你就看不到這個行程了（除非你是建立者）。'
+        : '他已經連結帳號，刪除後他就看不到這個行程了。',
+      { title: `刪除成員「${trip.members[idx].name}」？`, confirmText:'刪除成員', cancelText:'取消', danger:true }
     );
     if (!ok) return;
     // 確認視窗開著時 trip 可能被 SSE／存檔換掉，要用 id 重新找位置
@@ -62,7 +62,7 @@ function addRate(){
   if (!code){ toast('請輸入幣別代碼', 'error'); return; }
   // 跟伺服器的格式一致（lib/validate.js），不合格的代碼存檔時會被伺服器丟掉
   if (!/^[A-Z][A-Z0-9]{1,9}$/.test(code)){ toast('幣別代碼只能是英文字母開頭的 2～10 個英文或數字，例如 JPY', 'error'); return; }
-  if (!(val>0)){ toast('匯率需為大於 0 的數字', 'error'); return; }
+  if (!(val>0)){ toast('匯率要大於 0', 'error'); return; }
   trip.rates[code] = val;
   codeInput.value=''; valInput.value='';
   toast(`已設定 ${code} = ${val}`, 'success');
@@ -76,7 +76,7 @@ function updateRate(code, value){
   if (v>0) scheduleCloudSave();
 }
 function removeRate(code){
-  if (code === trip.baseCurrency){ toast('不能刪除目前的基準幣別', 'error'); return; }
+  if (code === trip.baseCurrency){ toast('這是行程的基準幣別，不能刪除', 'error'); return; }
   const usedValue = trip.rates[code];
   const used = trip.expenses.some(e=>e.currency===code) || trip.deposits.some(d=>d.currency===code);
   delete trip.rates[code];

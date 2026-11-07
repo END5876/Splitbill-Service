@@ -128,10 +128,10 @@ async function connectTripEventStream(opts){
         if (typeof receiptResetUpload === 'function') receiptResetUpload();
         // 🆕 依實際結束原因給出對應的訊息，而不是一句語意含糊的「可能已經…」
         const msg = reason === 'finalized'
-          ? '這次帳單辨識協作已經結束了：已經有人建立成支出，畫面已自動關閉'
+          ? '已經有人把這張帳單建立成支出，認領畫面已關閉'
           : reason === 'abandoned'
-          ? '這次帳單辨識協作已經被結束（放棄），沒有建立任何支出'
-          : '這次帳單辨識協作已經結束了（可能已經建立成支出，或發起人已取消），請重新掃描或確認結果';
+          ? '有人放棄了這次帳單認領，沒有建立任何支出'
+          : '這次帳單認領已經結束了，請到支出明細確認，或重新上傳照片';
         toast(msg, 'info');
       }
       if (typeof receiptSessionAnnounceCleared === 'function') receiptSessionAnnounceCleared();
@@ -210,7 +210,7 @@ function handleIncomingTripUpdate(rawPushedTrip){
   trip = merged;
   renderAll();
   if (lastMergeConflicts) toast(`其他人剛更新了這個行程，其中 ${lastMergeConflicts} 筆跟你還沒儲存的修改衝突，暫時以你的版本為準`, 'error', { duration: 7000 });
-  else toast(hadLocalChanges ? '已自動合併其他人剛剛的更新' : '偵測到其他人更新了這個行程，畫面已同步', 'info');
+  else toast(hadLocalChanges ? '已自動合併其他人剛剛的更新' : '其他人剛更新了這個行程，畫面已同步', 'info');
 }
 
 // 🆕 [即時同步] 行程被刪除時的處理：訪客模式下這個 token 本身也已經
@@ -231,7 +231,7 @@ function handleIncomingTripDeleted(){
   lastSyncedTripJSON = null;
   renderAll();
   showMainTab('settings'); showSettingsSub('account');
-  toast(`「${deletedName}」已經在別處被刪除了。請從「我的行程」開啟其他行程，或建立新的。`, 'error', { duration: 10000 });
+  toast(`「${deletedName}」已經被刪除了，請從「我的行程」開啟其他行程，或建立新的`, 'error', { duration: 10000 });
   refreshTripList({ silent: true }).catch(()=>{});
 }
 
@@ -248,7 +248,7 @@ function handleTripAccessRevoked(){
   lastSyncedTripJSON = null;
   renderAll();
   showMainTab('settings'); showSettingsSub('account');
-  toast(`你已經沒有「${name}」的存取權（可能被移出行程或解除了 Discord 連結）。`, 'error', { duration: 10000 });
+  toast(`你已經看不到「${name}」了，可能被移出行程，或帳號連結被解除`, 'error', { duration: 10000 });
   refreshTripList({ silent: true }).catch(()=>{});
 }
 

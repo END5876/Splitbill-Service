@@ -208,7 +208,7 @@ function checkAllParticipants(){
   const wrap = document.getElementById('participantChips');
   const amount = parseFloat(document.getElementById('expAmount').value);
   const allIds = trip.members.map(m=>m.id);
-  if (!allIds.length){ toast('尚未新增成員', 'error'); return; }
+  if (!allIds.length){ toast('還沒有成員，請先到「設定 → 成員與分享」新增', 'error'); return; }
   allIds.forEach(id=>{
     const chip = wrap.querySelector(`.chip[data-id="${id}"]`);
     if (!chip) return;

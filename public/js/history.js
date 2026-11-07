@@ -222,12 +222,13 @@ async function historyRestoreChange(updatedAt, idx){
       return;
     }
   }
-  const message = m[2] === 'remove' ? `要還原${noun}「${c.label}」嗎？`
-    : m[2] === 'add' ? `要刪除這筆${noun}「${c.label}」嗎？`
+  const message = m[2] === 'remove' ? `「${c.label}」會加回${noun}明細。`
+    : m[2] === 'add' ? `「${c.label}」會被刪除，其他成員也會立刻看到。`
     : (current && JSON.stringify(current) !== JSON.stringify(c.after))
-      ? `這筆${noun}在這次修改之後又被改過。確定要回到這次修改「之前」的內容嗎？之後的修改也會一起被蓋掉。`
-      : `要把${noun}「${c.label}」改回這次修改之前的內容嗎？`;
-  const ok = await confirmModal(message, { title: '還原', confirmText: m[2] === 'add' ? '刪除' : '還原', danger: m[2] === 'add' });
+      ? `「${c.label}」會改回這次修改之前的內容。這筆${noun}之後又被改過，那些修改也會一起被蓋掉。`
+      : `「${c.label}」會改回這次修改之前的內容。`;
+  const title = m[2] === 'remove' ? `還原這筆${noun}？` : m[2] === 'add' ? `刪除這筆${noun}？` : '復原這次修改？';
+  const ok = await confirmModal(message, { title, confirmText: m[2] === 'add' ? `刪除${noun}` : '還原', cancelText: '取消', danger: m[2] === 'add' });
   if (!ok) return;
 
   // 確認視窗開著時 trip 可能被 SSE／存檔換掉，要在確認後才拿目前的清單
@@ -266,8 +267,8 @@ async function historyRestoreRevision(updatedAt){
     `要把整個行程回到 ${when} 的狀態嗎？\n\n` +
     `那時候：支出 ${snap.expenses.length} 筆、轉帳 ${snap.deposits.length} 筆、成員 ${snap.members.length} 人\n` +
     `現在：支出 ${trip.expenses.length} 筆、轉帳 ${trip.deposits.length} 筆、成員 ${trip.members.length} 人\n\n` +
-    `之後所有人做的修改都會被蓋掉（已連結 Discord 的成員會保留）。還原本身也會留下紀錄，需要的話可以再還原回來。`,
-    { title: '回到這個版本', confirmText: '回到這個版本', danger: true }
+    `之後所有人做的修改都會被蓋掉（已連結帳號的成員會保留）。這次還原也會留下紀錄，需要的話可以再還原回來。`,
+    { title: '回到這個版本？', confirmText: '回到這個版本', cancelText: '取消', danger: true }
   );
   if (!ok) return;
   await flushCloudSave(); // 還在等待中的設定修改先存掉，避免還原後又被它蓋回去
