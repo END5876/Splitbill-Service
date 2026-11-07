@@ -1,24 +1,26 @@
 'use strict';
 const express = require('express');
 const { createRateLimiter } = require('../lib/rateLimit');
+const { memberAccountId, setMemberAccount, findMemberByAccount } = require('../lib/accounts');
 
 // ════════════════════════════════════════════════════════════════
 // 🆕 [行程連結] 分享連結與成員邀請連結合併成同一種「行程連結」（trip.links）。
 // 每條連結有兩個獨立的開關：
 //   guest  不登入直接打開時的權限：'none'（不開放）| 'read' | 'write'
-//   join   用 Discord 登入後可以認領成員／以新成員加入
+//   join   登入（Discord 或 LINE）後可以認領成員／以新成員加入
 //
 // 端點：
 //   擁有者    GET/POST /trip/:tripId/links、PATCH/DELETE /trip/:tripId/links/:token
 //   成員      GET /trip/:tripId/invite      取得（必要時建立）預設的邀請連結
 //   任何人    GET /link/:token              解析連結：行程名稱、開放哪些用法、我是不是成員
-//            POST /link/:token/claim       認領成員（需要 Discord 登入、連結允許 join）
+//            POST /link/:token/claim       認領成員（需要登入、連結允許 join）
 // 訪客實際讀寫行程走 /shared-trip/:token/...（見 routes/sharedTrip.js、lib/auth.js 的 requireGuestLink）。
 //
 // 認領規則：
-//   - 這是網頁上「唯一」能替成員寫入 discordId 的路徑——一般 PUT 一律不接受（見 lib/members.js）
+//   - 這是網頁上「唯一」能替成員寫入 discordId／lineId 的路徑——一般 PUT 一律不接受（見 lib/members.js）
+//     寫哪個欄位由登入者的主身分決定（Discord ID → discordId；只用 LINE → lineId，見 lib/accounts.js）
 //   - 只能認領「尚未連結」的成員，已連結的成員永遠不能被別人搶走
-//   - 同一個 Discord 帳號在一個行程裡只能連結一位成員
+//   - 同一個帳號在一個行程裡只能連結一位成員
 //   - 認錯人時，建立者可以解除任何成員的連結；本人也可以解除自己的連結（routes/members.js）
 //
 // 連結的管理權本身不能被分享出去：只有建立者能建立／修改／撤銷連結，否則拿到
@@ -157,23 +159,23 @@ module.exports = function createLinksRouter(ctx) {
     const { trip, link } = found;
     const uid = principalUserId(req.principal);
     const role = uid ? userRoleInTrip(uid, trip) : null;
-    const mine = uid ? trip.members.find((m) => m.discordId === uid) : null;
+    const mine = uid ? findMemberByAccount(trip, uid) : null;
     res.json({
       tripName: trip.name,
       guest: link.guest,
       join: link.join,
-      members: link.join ? trip.members.map((m) => ({ id: m.id, name: m.name, linked: !!m.discordId })) : [],
+      members: link.join ? trip.members.map((m) => ({ id: m.id, name: m.name, linked: !!memberAccountId(m) })) : [],
       viewer: uid ? { userId: uid, role, memberId: mine ? mine.id : null } : null,
       tripId: role ? trip.id : null,
     });
   });
 
-  // ---- POST /api/link/:token/claim：認領成員（需要 Discord 登入） ----
+  // ---- POST /api/link/:token/claim：認領成員（需要登入） ----
   // body: { memberId }        認領一位尚未連結的成員
   //    或 { newMemberName }   以新成員身分加入
   router.post('/link/:token/claim', (req, res) => {
     if (!req.principal || req.principal.kind !== 'user') {
-      return res.status(401).json({ error: '請先用 Discord 登入', needLogin: true });
+      return res.status(401).json({ error: '請先登入', needLogin: true });
     }
     const uid = req.principal.userId;
     const r = claimLimiter.take(uid);
@@ -184,7 +186,7 @@ module.exports = function createLinksRouter(ctx) {
     const { trip, link } = found;
     if (!link.join) return res.status(403).json({ error: '這個連結不能用來加入行程，請跟行程成員索取邀請連結' });
 
-    const already = trip.members.find((m) => m.discordId === uid);
+    const already = findMemberByAccount(trip, uid);
     if (already) {
       return res.status(409).json({ error: `你已經是這個行程的「${already.name}」了`, tripId: trip.id, memberId: already.id });
     }
@@ -194,13 +196,13 @@ module.exports = function createLinksRouter(ctx) {
     if (typeof body.memberId === 'string' && body.memberId) {
       member = trip.members.find((m) => m.id === body.memberId);
       if (!member) return res.status(404).json({ error: '找不到這位成員，可能已經被移除' });
-      if (member.discordId) return res.status(409).json({ error: `「${member.name}」已經被其他 Discord 帳號連結了` });
-      member.discordId = uid;
+      if (memberAccountId(member)) return res.status(409).json({ error: `「${member.name}」已經被其他帳號連結了` });
+      setMemberAccount(member, uid);
     } else {
       const name = typeof body.newMemberName === 'string' ? body.newMemberName.trim().slice(0, 60) : '';
       if (!name) return res.status(400).json({ error: '請選擇你是哪一位，或輸入新成員的名字' });
       if (trip.members.length >= 100) return res.status(400).json({ error: '這個行程的成員已達上限' });
-      member = { id: storage.genId('mem'), name, discordId: uid };
+      member = setMemberAccount({ id: storage.genId('mem'), name }, uid);
       trip.members.push(member);
     }
 

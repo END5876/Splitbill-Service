@@ -1,6 +1,7 @@
 'use strict';
 const express = require('express');
-const session = require('../lib/session');
+const { enabledProviders } = require('./oauth');
+const { providerOf, memberAccountId, setMemberAccount } = require('../lib/accounts');
 const { createRateLimiter } = require('../lib/rateLimit');
 
 // 🆕 [行程獨立化] 以「使用者」為中心的端點：我是誰、我有哪些行程、建立新行程。
@@ -18,14 +19,30 @@ module.exports = function createMeRouter(ctx) {
   const { storage, requireUser, userRoleInTrip, isBotOwner, actorOf } = ctx;
   const router = express.Router();
 
-  // ---- GET /api/me：目前登入的 Discord 使用者（沒登入回 user:null） ----
+  // ---- GET /api/me：目前登入的使用者（沒登入回 user:null） ----
+  // providers：哪些登入方式已經設定好（{ discord, line }）；oauth＝至少有一種（舊前端相容）。
+  // user.id：主身分（帳號綁定後用 LINE 登入也是 Discord ID）；user.provider：這次用哪個平台登入。
+  // user.accounts：{ discord: Discord ID|null, line: boolean }——綁定了哪些平台（設定頁顯示用）。
   // user.admin：OWNER_USER_ID 名單內的 Bot 擁有者，網頁上可以切換「列出所有行程」。
   router.get('/me', (req, res) => {
     const p = req.principal;
-    res.json({
-      oauth: session.isEnabled() && !!process.env.DISCORD_CLIENT_ID,
-      user: p && p.kind === 'user' ? { id: p.userId, name: p.name, avatar: p.avatar, admin: isBotOwner(p.userId) } : null,
-    });
+    const providers = enabledProviders();
+    let user = null;
+    if (p && p.kind === 'user') {
+      const aliases = storage.listAccountAliases(p.userId);
+      user = {
+        id: p.userId,
+        name: p.name,
+        avatar: p.avatar,
+        provider: p.provider || 'discord',
+        accounts: {
+          discord: providerOf(p.userId) === 'discord' ? p.userId : null,
+          line: providerOf(p.userId) === 'line' || aliases.some((a) => providerOf(a.alias) === 'line'),
+        },
+        admin: isBotOwner(p.userId),
+      };
+    }
+    res.json({ oauth: providers.discord || providers.line, providers, user });
   });
 
   // ---- GET /api/my/trips：我擁有或參與的行程（依最近更新排序） ----
@@ -40,7 +57,7 @@ module.exports = function createMeRouter(ctx) {
     } else if (p && p.kind === 'user' && req.query.all === '1' && isBotOwner(p.userId)) {
       const uid = p.userId;
       trips = storage.listTrips().map((t) => {
-        const mine = t.ownerId === uid || t.members.some((m) => m.discordId === uid);
+        const mine = t.ownerId === uid || t.members.some((m) => memberAccountId(m) === uid);
         return { ...storage.toTripSummary(t), role: mine ? userRoleInTrip(uid, t) : 'admin' };
       });
     } else {
@@ -49,7 +66,7 @@ module.exports = function createMeRouter(ctx) {
       trips = storage.listTrips()
         .map((t) => ({ trip: t, role: userRoleInTrip(uid, t) }))
         // OWNER_USER_ID 對所有行程都有 owner 權限，但「我的行程」只列自己真正參與的
-        .filter(({ trip, role }) => role && (trip.ownerId === uid || trip.members.some((m) => m.discordId === uid)))
+        .filter(({ trip, role }) => role && (trip.ownerId === uid || trip.members.some((m) => memberAccountId(m) === uid)))
         .map(({ trip, role }) => ({ ...storage.toTripSummary(trip), role }));
     }
     trips.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
@@ -106,17 +123,17 @@ module.exports = function createMeRouter(ctx) {
     let tripId;
     do { tripId = storage.genId('trip'); } while (storage.getTrip(tripId));
 
-    let members = [{ id: storage.genId('mem'), name: memberName, discordId: uid }];
+    let members = [setMemberAccount({ id: storage.genId('mem'), name: memberName }, uid)];
     let expenses = [];
     let deposits = [];
     const content = p.kind === 'user' && body.content && typeof body.content === 'object' ? body.content : null;
     if (content) {
-      // 🔒 匯入的成員一律先去掉 discordId（網頁不能替人連結），再只把 selfMemberId 連到自己
+      // 🔒 匯入的成員一律先去掉 discordId／lineId（網頁不能替人連結），再只把 selfMemberId 連到自己
       members = storage.repairMembers((Array.isArray(content.members) ? content.members : []).slice(0, 100)
         .map((m) => (m && typeof m === 'object' ? { id: m.id, name: m.name } : m)));
       const self = members.find((m) => m.id === body.selfMemberId);
-      if (self) self.discordId = uid;
-      else members.push({ id: storage.genId('mem'), name: memberName, discordId: uid });
+      if (self) setMemberAccount(self, uid);
+      else members.push(setMemberAccount({ id: storage.genId('mem'), name: memberName }, uid));
       expenses = Array.isArray(content.expenses) ? content.expenses.slice(0, 5000) : [];
       deposits = Array.isArray(content.deposits) ? content.deposits.slice(0, 5000) : [];
     }

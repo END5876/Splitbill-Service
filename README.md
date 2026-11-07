@@ -1,15 +1,20 @@
 # splitbill-service
 
 Mousebot 分帳系統的獨立服務：**網頁記帳介面（`public/`）＋ REST API ＋ SSE 即時同步 ＋ 帳本資料**。
-網頁可以獨立使用（Discord 登入、自己建立行程、邀請朋友），也可以把行程綁定到 Discord 伺服器，
+網頁可以獨立使用（Discord 或 LINE 登入、自己建立行程、邀請朋友），也可以把行程綁定到 Discord 伺服器，
 讓 Mousebot 的 `/splitbill` 面板一起操作（Bot 端：`handlers/splitbill/utils/splitbillClient.js`）。
 
 ## 資料模型
 - 行程是頂層實體，以 `tripId` 為主鍵；`trip.guildId` 是綁定的 Discord 伺服器（`null`＝未綁定，Bot 看不到）。
-- 成員 `{ id, name, discordId? }`：帳目一律引用 `id`；`discordId` 是已連結的 Discord 帳號。
-  未連結的成員在 Discord 只顯示名字、不能操作面板。
-- `discordId` 只能經由受控流程寫入：本人用行程連結認領、Bot 從 Discord 使用者選單加人／連結；
-  網頁與分享連結的 PUT 一律無法改動它（`lib/members.js`）。
+- 成員 `{ id, name, discordId?, lineId? }`：帳目一律引用 `id`；`discordId` 是已連結的 Discord 帳號，
+  `lineId` 是只用 LINE 登入、本人認領的帳號（`line:U…`）。一位成員最多只有其中一個。
+  未連結（或只連結 LINE）的成員在 Discord 只顯示名字、不能操作面板。
+- `discordId`／`lineId` 只能經由受控流程寫入：本人用行程連結認領、Bot 從 Discord 使用者選單加人／連結；
+  網頁與分享連結的 PUT 一律無法改動它們（`lib/members.js`）。
+- 使用者身分：Discord 是 snowflake，LINE 是 `line:` 加 LINE 的 userId（`lib/accounts.js`），兩種格式不會撞號。
+  `ownerId`、操作紀錄的 `actor.userId` 都可能是其中一種。
+- 帳號綁定：`account_links` 表記錄 LINE 帳號（alias）綁到哪個 Discord 帳號（主身分）。行程資料只存主身分，
+  用 LINE 登入時 `readSession()` 會換成主身分。新增這張表不改變既有資料形狀，所以沒有升 schema 版本。
 - 舊版（v1，行程掛在伺服器底下）資料會在匯入 SQLite 時一併轉換。
   舊成員的 `id` 本身就是 Discord ID，遷移只補上 `discordId = id`，帳目不需改寫。
   （schema v2 把這些 id 換成 `mem_xxxx`、一併改寫帳目與歷史版本裡的引用；v3 再補改寫操作紀錄裡殘留的引用，Discord ID 不再出現在成員 id 裡；目前 schema 版本是 3，見下方「schema 版本與回滾」。）
@@ -48,7 +53,7 @@ Mousebot 分帳系統的獨立服務：**網頁記帳介面（`public/`）＋ RE
 | 身分 | 怎麼辨認 | 能做什麼 |
 |---|---|---|
 | 行程建立者 | `ownerId`，或 `OWNER_USER_ID` 名單 | 全部，含刪除行程、管理行程連結、綁定碼、解除綁定、解除任何人的連結。`OWNER_USER_ID` 用 Discord 登入網頁後可以切換「列出所有行程」（`/api/my/trips?all=1`） |
-| 成員 | 有一位成員的 `discordId` 是自己 | 讀寫帳目、取得邀請連結、解除自己的連結 |
+| 成員 | 有一位成員的 `discordId`／`lineId` 是自己（主身分） | 讀寫帳目、取得邀請連結、解除自己的連結 |
 | 連結訪客 | 只走網址路徑 `/api/shared-trip/:token/...`（含 `fx-rate`、`parse-receipt`、`receipt-session`、`events`） | 依連結的 `guest` 唯讀／可編輯 |
 | Bot | `x-api-key: SPLITBILL_API_KEY`＋`x-actor-id` | 依 `x-actor-id` 那位使用者套用上面的規則 |
 | 管理端 | `x-api-key: SPLITBILL_API_KEY`（不帶 `x-actor-id`） | 全部（只給 Bot／維運腳本，網頁不接受金鑰） |
@@ -58,7 +63,7 @@ Mousebot 分帳系統的獨立服務：**網頁記帳介面（`public/`）＋ RE
 ### 行程連結
 分享連結與邀請連結是同一種連結（`trip.links`），網址都是 `/#link=<token>`（舊的 `#share=`、`#invite=` 照樣能用）。每條連結有兩個獨立的設定：
 - `guest`：不登入直接打開時的權限，`none`（不開放）／`read`／`write`
-- `join`：用 Discord 登入後可以認領成員或以新成員加入
+- `join`：登入（Discord 或 LINE）後可以認領成員或以新成員加入
 
 點開連結時：已經是成員就直接開啟行程；連結允許加入就先問要不要登入加入（同時開放訪客的話，也可以選「不登入直接開啟」）；否則以訪客身分開啟。
 舊資料的 `shareLinks`（→ `join: false`）與 `invite`（→ `guest: 'none', join: true`）在載入時自動轉換，token 不變。
@@ -76,7 +81,8 @@ Mousebot 分帳系統的獨立服務：**網頁記帳介面（`public/`）＋ RE
    |---|---|
    | `SPLITBILL_API_KEY` | Bot 連線用的共用金鑰（`x-api-key`）。沒設定時 Bot 無法連線 |
    | `DISCORD_CLIENT_ID` / `DISCORD_CLIENT_SECRET` | Discord Developer Portal → OAuth2（可以直接用 Mousebot 那個 Application；跟音樂庫用同一個的話，在一邊授權過之後另一邊按登入就不會再出現同意畫面） |
-   | `PUBLIC_BASE_URL` | 網頁對外網址，例如 `https://splitbill.app`。Discord 後台 OAuth2 → Redirects 要加上 `<PUBLIC_BASE_URL>/auth/discord/callback` |
+   | `LINE_CHANNEL_ID` / `LINE_CHANNEL_SECRET` | 選填。LINE Developers → LINE Login channel → Basic settings。沒設定時不顯示 LINE 登入與帳號綁定 |
+   | `PUBLIC_BASE_URL` | 網頁對外網址，例如 `https://splitbill.example.com`。Discord 後台 OAuth2 → Redirects 要加上 `<PUBLIC_BASE_URL>/auth/discord/callback`；LINE 後台 LINE Login → Callback URL 要填 `<PUBLIC_BASE_URL>/auth/line/callback` |
    | `SESSION_SECRET` | 至少 32 字元的隨機字串（簽登入 cookie）；換掉會讓所有人被登出 |
    | `OWNER_USER_ID` | 選填。Bot 擁有者的 Discord ID（逗號分隔），對所有行程有建立者權限。Mousebot、音樂庫（管理員）也讀同一個變數，三邊設成一樣 |
    | `TRUST_PROXY` | 選填。Express 的 trust proxy，預設 `loopback, linklocal, uniquelocal`（只信任私有網段的反向代理，例如同一個 Docker 網路上的 Caddy）。登入限流靠它取得真實 IP |
@@ -108,12 +114,14 @@ Mousebot 分帳系統的獨立服務：**網頁記帳介面（`public/`）＋ RE
    過渡期間舊版 Mousebot 照常運作；新版 Mousebot 需要本服務的新端點。
 
 ## API 摘要
-- 身分：`GET /api/me`、`GET /auth/discord/login?next=`（`&switch=1`＝換帳號）、`POST /auth/logout`
+- 身分：`GET /api/me`（`providers`＝哪些登入方式已設定；`user.provider`、`user.accounts`）、
+  `GET /auth/discord/login?next=`、`GET /auth/line/login?next=`（`&switch=1`＝換帳號；`&link=1`＝綁定到目前登入的帳號）、`POST /auth/logout`
+- 帳號綁定：`GET /api/account-link/pending`、`POST /api/account-link/confirm`、`POST /api/account-link/cancel`、`DELETE /api/account-link`
 - 行程：`GET /api/my/trips`、`POST /api/trips`、`GET|PUT|DELETE /api/trip/:tripId`、`GET /api/trip/:tripId/events`（SSE）
 - 行程連結：`GET|POST /api/trip/:tripId/links`、`PATCH|DELETE /api/trip/:tripId/links/:token`（建立者）、
   `GET /api/trip/:tripId/invite`（成員取得預設邀請連結）、`GET /api/link/:token`（解析）、`POST /api/link/:token/claim`（認領）
 - 紀錄：`GET /api/trip/:tripId/activity?before=&limit=`、`GET /api/trip/:tripId/revisions/:updatedAt`、
-  `POST /api/trip/:tripId/revisions/:updatedAt/restore`（整份還原；行程連結、建立者、綁定、基準幣別不變，已連結 Discord 的成員一律保留）。
+  `POST /api/trip/:tripId/revisions/:updatedAt/restore`（整份還原；行程連結、建立者、綁定、基準幣別不變，已連結帳號的成員一律保留）。
   訪客路徑 `/api/shared-trip/:token/…` 也有同一組，唯讀連結只能看
 - 單筆帳目：`PUT|DELETE /api/trip/:tripId/expenses/:id`、`PUT|DELETE /api/trip/:tripId/deposits/:id`
   （body `{ entry, writerId, restore? }`；回傳 `prevUpdatedAt`／`updatedAt`；`restore: true` 只會讓紀錄標示為「還原」）。網頁記帳一律走這裡，整包 PUT 只用在設定與 Bot
@@ -138,6 +146,21 @@ Mousebot 分帳系統的獨立服務：**網頁記帳介面（`public/`）＋ RE
   讓伺服器的 IP 被 Discord 限流（音樂庫用同一個應用程式，也會一起登不進去）。每個帳號 1 小時內最多登入 60 次。
 - 登出會把這個 session 記進資料庫的撤銷清單（只登出這一台裝置），重新部署後仍然有效。
 
+## LINE 登入與帳號綁定
+- 流程、Cookie、`next`、跨站、限流規則都跟 Discord 登入相同（同一份 `routes/oauth.js`；失敗次數兩個平台合計）。
+  只要 `profile` 權限（userId、顯示名稱、頭像），不讀 email；LINE 的 access token 用完就丟。
+- 換帳號：`switch=1` 會帶 `prompt=consent&disable_auto_login=true`，關掉「用 LINE App 已登入的帳號自動登入」。
+- **帳號綁定**（設定 → 帳號，兩種登入都有開才顯示）：已登入時用另一個平台登入一次（`?link=1`），證明兩個帳號都是你的。
+  - 主身分一律是 Discord（Mousebot 只認得 Discord ID）；一個 Discord 帳號只能綁一個 LINE 帳號，反之亦然。
+  - 發起綁定一定要已經登入（`SameSite=Strict` 的登入 Cookie 帶不過跨站請求，別的網站無法誘導綁定）；
+    發起者的 session 與帳號存在簽章的 state 裡，callback 回來時依此判斷要綁到誰。
+  - LINE 帳號名下沒有行程：直接綁好。有行程：先存成「等待確認」（簽章 Cookie `sb_link_pending`，10 分鐘、只限發起的 session），
+    網頁列出受影響的行程讓使用者確認後才合併。
+  - 合併（同一個交易）：建立者改成 Discord 帳號；LINE 連結的成員改成連結 Discord；同一個行程裡 Discord 帳號已經是另一位成員時，
+    LINE 那位改成未連結（帳目記的是成員 ID，不受影響）。操作紀錄標示「帳號綁定」。
+  - 解除綁定：行程留在 Discord 帳號名下，之後用 LINE 登入是一個全新、沒有行程的帳號。
+- 回滾：舊版程式不認得 `account_links` 與 `lineId`，會照樣保留它們；只是舊版下只用 LINE 的成員沒有存取權（建立者權限仍在）。
+
 ## 安全性
 - **資料格式**：成員／支出／轉帳的 id 只能是 `[A-Za-z0-9_-]`（1～64 字元），幣別是 2～10 個大寫英數（`lib/validate.js`）。
   整包 PUT 為了相容舊版 Bot 只做修復：不合格的 id 換新（成員 id 會連帳目裡的引用一起改），數字欄位不是有限數字就當 0。
@@ -150,7 +173,7 @@ Mousebot 分帳系統的獨立服務：**網頁記帳介面（`public/`）＋ RE
 ## 本機執行與測試
 ```
 npm install
-cp .env.example .env              # 至少填 SPLITBILL_API_KEY；要測 Discord 登入再填 Discord 那幾項
+cp .env.example .env              # 至少填 SPLITBILL_API_KEY；要測登入再填 Discord／LINE 那幾項
 node --env-file=.env server.js    # 服務不會自動讀 .env
 npm test
 ```

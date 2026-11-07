@@ -1,6 +1,6 @@
 'use strict';
 // 🆕 [行程獨立化] 帳號與 Discord 連結相關的畫面：
-//   - 帳號區塊（登入／登出）
+//   - 帳號區塊（登入／登出、🆕 Discord ⇄ LINE 帳號綁定）
 //   - 成員名單上的連結狀態與解除連結
 //   - Discord 綁定（產生綁定碼、解除綁定）
 // 所有權限都由 service 判斷；這裡只依身分決定「要不要顯示某個按鈕」。
@@ -17,23 +17,25 @@ function renderAccountArea(){
     const avatar = currentUser.avatar
       ? `<img class="account-avatar" src="${escapeHtml(currentUser.avatar)}" alt="" referrerpolicy="no-referrer">`
       : `<span class="account-avatar account-avatar-fallback">${escapeHtml((currentUser.name || '?').slice(0,1))}</span>`;
+    const via = PROVIDER_LABELS[currentUser.provider] || 'Discord';
     el.innerHTML = `
       <div class="account-row">
         ${avatar}
         <div class="account-meta">
-          <div class="account-name">${escapeHtml(currentUser.name || 'Discord 使用者')}</div>
-          <div class="hint" style="margin:0;">已用 Discord 登入</div>
+          <div class="account-name">${escapeHtml(currentUser.name || `${via} 使用者`)}</div>
+          <div class="hint" style="margin:0;">已用 ${via} 登入</div>
         </div>
         <button class="btn btn-ghost btn-sm" type="button" data-click="switchAccount">換帳號</button>
         <button class="btn btn-ghost btn-sm" type="button" data-click="logout">登出</button>
       </div>
+      ${accountLinkHtml()}
       ${myNicknameHtml()}`;
   } else if (oauthEnabled){
     el.innerHTML = `
-      <p class="hint">用 Discord 帳號登入後，就能建立自己的行程、邀請朋友一起記帳。只會讀取你的 Discord 名稱與頭像。</p>
-      <div class="btn-row"><button class="btn btn-brass" type="button" data-click="loginWithDiscord">用 Discord 登入</button></div>`;
+      <p class="hint">登入後，就能建立自己的行程、邀請朋友一起記帳。只會讀取你的 ${loginProviderNames()} 名稱與頭像。</p>
+      <div class="btn-row">${loginButtonsHtml()}</div>`;
   } else {
-    el.innerHTML = `<p class="hint">這個網站尚未開啟 Discord 登入，只能用朋友傳來的連結開啟行程。</p>`;
+    el.innerHTML = `<p class="hint">這個網站尚未開啟登入，只能用朋友傳來的連結開啟行程。</p>`;
   }
   const tripCard = document.getElementById('myTripsCard');
   if (tripCard) tripCard.style.display = currentUser ? '' : 'none';
@@ -42,6 +44,32 @@ function renderAccountArea(){
     allRow.style.display = currentUser && currentUser.admin ? '' : 'none';
     document.getElementById('showAllTripsToggle').checked = showAllTrips();
   }
+}
+
+/* ===================== 🆕 帳號綁定（Discord ⇄ LINE） ===================== */
+// 兩種登入都有開才顯示。主身分一律是 Discord（Mousebot 只認得 Discord 帳號）。
+function accountLinkHtml(){
+  if (!currentUser || !loginProviders.discord || !loginProviders.line) return '';
+  const acc = currentUser.accounts || {};
+  if (acc.discord && acc.line){
+    return `
+      <div class="account-link">
+        <div class="account-link-status"><span class="link-badge linked">Discord ✓</span><span class="link-badge linked">LINE ✓</span><span class="hint" style="margin:0;">已綁定，用哪一個登入都是同一個帳號</span></div>
+        <button class="btn btn-ghost btn-sm" type="button" data-click="unlinkAccount">解除綁定</button>
+      </div>`;
+  }
+  if (acc.discord){
+    return `
+      <div class="account-link">
+        <p class="hint" style="margin:0;">綁定 LINE 帳號後，在手機上用 LINE 一鍵登入，也會看到同樣的行程。</p>
+        <button class="btn btn-line btn-sm" type="button" ${act('click', 'linkAccount', 'line')}>綁定 LINE 帳號</button>
+      </div>`;
+  }
+  return `
+    <div class="account-link">
+      <p class="hint" style="margin:0;">有 Discord 帳號的話可以綁定：用 Discord 登入也會看到同樣的行程，在 Discord 也能用 Mousebot 的 /splitbill 面板記帳。</p>
+      <button class="btn btn-brass btn-sm" type="button" ${act('click', 'linkAccount', 'discord')}>綁定 Discord 帳號</button>
+    </div>`;
 }
 
 /* ===================== 頁首快速切換行程 ===================== */
@@ -67,10 +95,10 @@ async function openTripSwitcher(){
 }
 
 /* ===================== 我在這個行程的暱稱 ===================== */
-// 已連結 Discord 的成員可以自己改在行程裡顯示的名字（跟成員名單改名走同一條存檔流程）。
+// 已連結帳號的成員可以自己改在行程裡顯示的名字（跟成員名單改名走同一條存檔流程）。
 function myTripMember(){
   if (!currentUser || !currentTripId || shareMode) return null;
-  return trip.members.find(m => m.discordId === currentUser.id) || null;
+  return trip.members.find(isMyMember) || null;
 }
 function myNicknameHtml(){
   const me = myTripMember();
@@ -103,24 +131,26 @@ function saveMyNickname(){
 // 給 render.js 的成員名單用：回傳每位成員右側的連結狀態標籤（只在開啟雲端行程時顯示）。
 function memberLinkBadgeHtml(m){
   if (!currentTripId || shareMode) return '';
-  const isMe = currentUser && m.discordId === currentUser.id;
-  const canUnlink = m.discordId && (canManageTrip() || isMe);
-  const badge = m.discordId
-    ? `<span class="link-badge linked" title="已連結 Discord 帳號">🔗${isMe ? ' 你' : ''}</span>`
-    : `<span class="link-badge" title="尚未連結 Discord：可以用邀請連結讓本人認領">未連結</span>`;
+  const isMe = isMyMember(m);
+  const linked = !!memberAccountId(m);
+  const canUnlink = linked && (canManageTrip() || isMe);
+  const via = m.lineId ? 'LINE' : 'Discord';
+  const badge = linked
+    ? `<span class="link-badge linked" title="已連結 ${via} 帳號">🔗${isMe ? ' 你' : ''}</span>`
+    : `<span class="link-badge" title="尚未連結帳號：可以用邀請連結讓本人認領">未連結</span>`;
   const btn = canUnlink
-    ? `<button class="btn btn-ghost btn-sm member-btn" type="button" ${act('click','unlinkMember',m.id)} title="解除這位成員與 Discord 帳號的連結" aria-label="解除連結">${ICON_UNLINK}<span class="btn-label">解除連結</span></button>`
+    ? `<button class="btn btn-ghost btn-sm member-btn" type="button" ${act('click','unlinkMember',m.id)} title="解除這位成員與 ${via} 帳號的連結" aria-label="解除連結">${ICON_UNLINK}<span class="btn-label">解除連結</span></button>`
     : '';
   return badge + btn;
 }
 async function unlinkMember(memberId){
   const m = trip.members.find(x => x.id === memberId);
   if (!m) return;
-  const isMe = currentUser && m.discordId === currentUser.id;
+  const isMe = isMyMember(m);
   const ok = await confirmModal(
     isMe
       ? `確定要解除你跟「${m.name}」的連結嗎？解除後你會失去這個行程的存取權（除非你是建立者），帳目都會保留。`
-      : `確定要解除「${m.name}」與 Discord 帳號的連結嗎？他會失去這個行程的存取權，帳目都會保留，之後可以用邀請連結重新認領。`,
+      : `確定要解除「${m.name}」與 ${m.lineId ? 'LINE' : 'Discord'} 帳號的連結嗎？他會失去這個行程的存取權，帳目都會保留，之後可以用邀請連結重新認領。`,
     { confirmText:'解除連結', danger:true }
   );
   if (!ok) return;
@@ -128,6 +158,7 @@ async function unlinkMember(memberId){
     await apiJson(await fetch(tripApiUrl(`/members/${encodeURIComponent(memberId)}/unlink`), { method: 'POST', headers: apiHeaders() }));
     // 只更新這一位的連結狀態；完整的新版本會由 SSE 推播過來（跟其他人的改動走同一條合併流程）
     delete m.discordId;
+    delete m.lineId;
     renderAll();
     toast(`已解除「${m.name}」的連結`, 'success');
     if (isMe && !canManageTrip()){
@@ -153,7 +184,7 @@ function renderDiscordPanel(){
   if (trip.guildId){
     el.innerHTML = `
       <div class="discord-status on"><span class="dot"></span>已綁定到 Discord 伺服器 <code class="inline">${escapeHtml(trip.guildId)}</code></div>
-      <p class="hint">在那個伺服器輸入 <code class="inline">/splitbill</code> 就能用 Mousebot 的面板操作這個行程。已連結 Discord 的成員可以操作面板；尚未連結的成員在 Discord 只會顯示名字。</p>
+      <p class="hint">在那個伺服器輸入 <code class="inline">/splitbill</code> 就能用 Mousebot 的面板操作這個行程。已連結 Discord 的成員可以操作面板；尚未連結、或只用 LINE 的成員在 Discord 只會顯示名字。</p>
       ${manage ? `<div class="btn-row"><button class="btn btn-danger btn-sm" type="button" data-click="detachFromDiscord" data-loading="處理中…">解除綁定</button></div>
       <p class="hint">解除綁定後 Discord 面板就看不到這個行程了；網頁、分享連結與帳目都不受影響，之後可以重新綁定（也可以綁到別的伺服器）。</p>` : ''}`;
     return;

@@ -86,10 +86,10 @@ function renderInviteSection(){
     document.getElementById('linkManager').innerHTML = '';
     return;
   }
-  const unlinked = trip.members.filter(m => !m.discordId);
+  const unlinked = trip.members.filter(m => !memberAccountId(m));
   const who = unlinked.length
-    ? `還有 ${unlinked.length} 位成員沒連結 Discord（${unlinked.slice(0, 3).map(m => escapeHtml(m.name)).join('、')}${unlinked.length > 3 ? '…' : ''}）。傳給他們，登入後選「我是哪一位」就能一起記帳，過去的帳目都會保留。`
-    : '傳給朋友，他們用 Discord 登入後就能以新成員身分加入，一起記帳。';
+    ? `還有 ${unlinked.length} 位成員沒連結帳號（${unlinked.slice(0, 3).map(m => escapeHtml(m.name)).join('、')}${unlinked.length > 3 ? '…' : ''}）。傳給他們，登入後選「我是哪一位」就能一起記帳，過去的帳目都會保留。`
+    : '傳給朋友，他們登入後就能以新成員身分加入，一起記帳。';
   el.innerHTML = `
     <div class="tl-hero">
       <div class="tl-hero-ic" aria-hidden="true">🔑</div>
@@ -99,7 +99,7 @@ function renderInviteSection(){
       </div>
       <button class="btn btn-brass tl-hero-btn" type="button" data-click="copyInviteLink" data-loading="產生中…">複製邀請連結</button>
     </div>
-    ${canManageTrip() ? '' : '<p class="hint tl-foot">想讓沒有 Discord 的朋友看帳或一起記帳，可以請行程建立者建立免登入的連結。</p>'}`;
+    ${canManageTrip() ? '' : '<p class="hint tl-foot">想讓不想登入的朋友看帳或一起記帳，可以請行程建立者建立免登入的連結。</p>'}`;
 }
 
 // 下半部：建立者的連結管理。只在狀態改變時重繪（裡面有輸入框）
@@ -114,7 +114,7 @@ function renderLinkManager(){
   let body;
   if (s.links === null && !s.error) body = '<p class="hint">讀取中…</p>';
   else if (s.error) body = `<p class="hint">讀取連結失敗：${escapeHtml(s.error)}　<button type="button" class="link-btn" data-click="loadTripLinks">重試</button></p>`;
-  else if (!links.length && !s.composer) body = '<p class="hint tl-empty">還沒有任何連結。邀請朋友成為成員用上面的「複製邀請連結」；要給沒有 Discord 的人看帳或一起記帳，按「＋ 新增免登入連結」。</p>';
+  else if (!links.length && !s.composer) body = '<p class="hint tl-empty">還沒有任何連結。邀請朋友成為成員用上面的「複製邀請連結」；要給不想登入的人看帳或一起記帳，按「＋ 新增免登入連結」。</p>';
   else body = `<div class="tl-list">${sorted.map(l => linkRowHtml(l, l.token === inviteToken)).join('')}</div>`;
 
   el.innerHTML = `
@@ -167,7 +167,7 @@ function linkSummaryText(guest, join){
   if (guest === 'none' && !join) return '⚠️ 兩項都關掉的話，這條連結就沒有用途了。';
   const parts = [];
   if (guest !== 'none') parts.push(guest === 'write' ? '不登入就能看帳、記帳' : '不登入就能看帳');
-  if (join) parts.push('用 Discord 登入可以加入成為成員');
+  if (join) parts.push('登入後可以加入成為成員');
   return '點開後：' + parts.join('；') + '。';
 }
 
@@ -180,7 +180,7 @@ function linkEditorHtml(l, d, isDefaultInvite){
       </div>
       <label class="check-row tl-field">
         <input type="checkbox" ${d.join ? 'checked' : ''} data-change="setLinkEditJoin" data-args='["$checked"]'>
-        允許用 Discord 登入加入成為成員
+        允許登入後加入成為成員
       </label>
       <div class="field tl-field">
         <label for="linkEditLabel">名稱（選填）</label>
@@ -200,7 +200,7 @@ function linkComposerHtml(c){
   const preset = LINK_PRESETS.find(p => p.id === c.preset);
   return `
     <div class="tl-composer">
-      <div class="tl-label">給不用登入的朋友（沒有 Discord 也能開）：</div>
+      <div class="tl-label">給不用登入的朋友（不用帳號也能開）：</div>
       <div class="tl-presets" role="radiogroup" aria-label="連結用途">
         ${LINK_PRESETS.map(p => `
           <button type="button" role="radio" aria-checked="${p.id === c.preset}" class="tl-preset ${p.id === c.preset ? 'on' : ''}" ${act('click','pickLinkPreset',p.id)}>
@@ -211,7 +211,7 @@ function linkComposerHtml(c){
       </div>
       <label class="check-row tl-field">
         <input type="checkbox" ${c.join ? 'checked' : ''} data-change="setLinkComposerJoin" data-args='["$checked"]'>
-        也允許用 Discord 登入加入成為成員
+        也允許登入後加入成為成員
       </label>
       <div class="tl-field">
         <div class="tl-label">有效期限</div>

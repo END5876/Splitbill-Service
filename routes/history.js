@@ -1,6 +1,7 @@
 'use strict';
 const express = require('express');
 const { mergeIncomingMembers } = require('../lib/members');
+const { memberAccountId } = require('../lib/accounts');
 
 // ════════════════════════════════════════════════════════════════
 // 操作紀錄與歷史版本（資料來源見 lib/activity.js、lib/db.js 的 trip_activity／trip_revisions）。
@@ -85,7 +86,7 @@ module.exports = function createHistoryRouter(ctx) {
       // 只沿用伺服器上現有的，還原不會把已經解除的連結接回去（lib/members.js）。
       const snapMembers = (snap.members || []).map((m) => ({ id: m.id, name: m.name }));
       const keepLinked = trip.members
-        .filter((m) => m.discordId && !snapMembers.some((s) => s.id === m.id))
+        .filter((m) => memberAccountId(m) && !snapMembers.some((s) => s.id === m.id))
         .map((m) => ({ id: m.id, name: m.name }));
       const members = mergeIncomingMembers(trip.members, [...snapMembers, ...keepLinked], { canLink: false });
 

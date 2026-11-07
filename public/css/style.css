@@ -1227,16 +1227,22 @@
   .account-avatar-fallback{display:inline-flex; align-items:center; justify-content:center; background:var(--brass-tint); color:var(--brass); font-weight:700;}
   .account-meta{flex:1; min-width:0;}
   .account-name{font-weight:700; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  /* 🆕 [LINE 登入] LINE 官方綠色按鈕；帳號綁定區塊 */
+  .btn-line{background:#06C755; color:#fff;}
+  .btn-line:hover{background:#05B34C;}
+  .account-link{display:flex; align-items:center; flex-wrap:wrap; gap:8px 12px; margin-top:12px; padding-top:12px; border-top:1px dashed var(--card-line);}
+  .account-link > .hint, .account-link-status{flex:1 1 220px; min-width:0;}
+  .account-link-status{display:flex; align-items:center; flex-wrap:wrap; gap:6px;}
   .my-nickname{margin-top:14px; padding-top:12px; border-top:1px dashed var(--card-line);}
   .my-nickname{margin-bottom:0;}
   .my-nickname .btn-row{flex-wrap:nowrap; margin-top:0;}
   .my-nickname input{flex:1 1 auto; min-width:0;}
 
-  .member-tag .link-badge{
+  .member-tag .link-badge, .account-link .link-badge{
     font-size:11px; padding:2px 8px; border-radius:20px; white-space:nowrap; flex-shrink:0;
     border:1px dashed var(--card-line); color:var(--ink-soft);
   }
-  .member-tag .link-badge.linked{border-style:solid; border-color:var(--brass-soft); color:var(--brass); background:var(--brass-tint);}
+  .member-tag .link-badge.linked, .account-link .link-badge.linked{border-style:solid; border-color:var(--brass-soft); color:var(--brass); background:var(--brass-tint);}
 
   .discord-status{display:flex; align-items:center; flex-wrap:wrap; gap:4px 8px; font-weight:700; margin-bottom:8px; color:var(--ink);}
   .discord-status code{word-break:break-all;}
@@ -1251,7 +1257,8 @@
   .bind-code-cmd{margin:6px 0 2px; word-break:break-all;}
 
   .no-access-brand{font-family:'Noto Serif TC',serif; font-size:13px; letter-spacing:.3em; color:var(--brass); margin-bottom:14px;}
-  .no-access-login{margin:22px auto 0; min-width:180px; justify-content:center;}
+  .no-access-login{margin:22px auto 0; display:flex; flex-direction:column; align-items:center; gap:10px;}
+  .no-access-login .btn{min-width:200px;}
   .no-access-card .no-access-note{font-size:12.5px; margin:14px 0 10px;}
 
   .invite-screen{max-width:440px; margin:12vh auto 0; padding:0 16px 40px;}

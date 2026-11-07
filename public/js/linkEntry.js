@@ -89,7 +89,7 @@ function showLinkError(message){
 }
 
 // 🆕 [Discord 登入] 沒有登入、也不是從連結進來時顯示的全頁畫面。
-// 有開啟 Discord 登入時提供登入按鈕；沒有的話維持原本「請索取分享連結」的說明。
+// 有開啟登入（Discord／LINE）時提供登入按鈕；沒有的話維持原本「請索取分享連結」的說明。
 function showNoAccessScreen(){
   const el = document.getElementById('noAccessScreen');
   el.innerHTML = oauthEnabled ? `
@@ -104,8 +104,8 @@ function showNoAccessScreen(){
         <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><div><b>最少轉帳次數結清</b><span>算出誰該付誰多少，付完一鍵標記</span></div></li>
         <li><svg class="ic" aria-hidden="true"><use href="#i-chat"/></svg><div><b>Discord 即時同步</b><span>綁定伺服器後，用 Mousebot 的 /splitbill 面板也能記帳</span></div></li>
       </ul>
-      <button class="btn btn-brass no-access-login" type="button" data-click="loginWithDiscord">用 Discord 登入</button>
-      <p class="no-access-note">只會讀取你的 Discord 名稱與頭像。<br>朋友傳了連結給你的話，直接點開那個連結即可。</p>    </div>
+      <div class="no-access-login">${loginButtonsHtml()}</div>
+      <p class="no-access-note">只會讀取你的 ${loginProviderNames()} 名稱與頭像。<br>朋友傳了連結給你的話，直接點開那個連結即可。</p>    </div>
   ` : `
     <div class="no-access-card">
       <svg class="no-access-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
@@ -191,11 +191,11 @@ function showJoinScreen(token, info){
     el.innerHTML = `
       <div class="invite-card">
         ${head}
-        <p>有人邀請你一起記這個行程的帳。<br>用 Discord 登入後，選擇你是哪一位就能加入。</p>
+        <p>有人邀請你一起記這個行程的帳。<br>登入後，選擇你是哪一位就能加入。</p>
         <div class="btn-row" style="justify-content:center;">
           ${oauthEnabled
-            ? `<button class="btn btn-brass" type="button" ${act('click','loginWithDiscord','/#link=' + encodeURIComponent(token))}>用 Discord 登入並加入</button>`
-            : '<p class="hint">這個網站尚未開啟 Discord 登入，請聯絡網站管理者。</p>'}
+            ? loginButtonsHtml('/#link=' + encodeURIComponent(token), '並加入')
+            : '<p class="hint">這個網站尚未開啟登入，請聯絡網站管理者。</p>'}
         </div>
         <div class="btn-row" style="justify-content:center; margin-top:14px;">${secondary}</div>
       </div>`;
@@ -211,7 +211,7 @@ function showJoinScreen(token, info){
     <div class="invite-card">
       ${head}
       ${unlinked.length ? `
-      <p>你是下面哪一位？選了之後，這位成員過去的代墊與分攤紀錄都會連結到你的 Discord 帳號（${escapeHtml(currentUser.name)}）。</p>
+      <p>你是下面哪一位？選了之後，這位成員過去的代墊與分攤紀錄都會連結到你的帳號（${escapeHtml(currentUser.name)}）。</p>
       <div class="invite-members">
         ${unlinked.map(m => `<button class="modal-list-item" type="button" ${act('click','confirmJoinClaim',token,m.id,'$el')}><div class="mli-title">我是「${escapeHtml(m.name)}」</div></button>`).join('')}
       </div>` : '<p>名單上的成員都已經被認領了，你可以用新成員的身分加入。</p>'}
@@ -232,7 +232,7 @@ let joinMemberNames = new Map();
 async function confirmJoinClaim(token, memberId, btn){
   const name = joinMemberNames.get(memberId) || '這位成員';
   const ok = await confirmModal(
-    `確定你就是「${name}」嗎？確認後，「${name}」過去的代墊與分攤紀錄都會連結到你的 Discord 帳號。`,
+    `確定你就是「${name}」嗎？確認後，「${name}」過去的代墊與分攤紀錄都會連結到你的帳號。`,
     { title: '認領成員', confirmText: '是我，認領' }
   );
   if (ok) await claimJoin(token, { memberId }, btn);

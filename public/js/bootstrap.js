@@ -88,6 +88,7 @@ async function openTripAsMember(tripId){
 }
 
 (async function init(){
-  showLoginResultFromUrl();
+  const bindConfirm = showLoginResultFromUrl();
   await applyEntry(await resolveEntry());
+  if (bindConfirm && currentUser) await showAccountLinkConfirm();
 })();

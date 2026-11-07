@@ -29,7 +29,7 @@ const UI_ACTIONS = new Set([
   'focusNewMemberInput', 'generateBindCode', 'historyRestoreChange', 'historyRestoreRevision',
   'loadHistory', 'loadMoreHistory', 'goAddMember', 'goHome', 'handleFileImport',
   'handleReceiptUpload', 'importJsonAsNewTrip', 'joinReceiptSession', 'leaveJoinScreen',
-  'loadTripFromApi', 'loadTripLinks', 'loginWithDiscord', 'logout', 'markTransferPaid',
+  'linkAccount', 'loadTripFromApi', 'loadTripLinks', 'loginWithDiscord', 'loginWithLine', 'logout', 'markTransferPaid',
   'onChipToggle', 'onDebtCurrencyChange', 'onDebtViewChange', 'onDepositFilterChange',
   'onExpenseFilterChange', 'onParticipantAmountInput', 'onPayerAmountInput', 'onSyncStatusClick',
   'openLinkComposer', 'openTripSwitcher', 'pickLinkPreset', 'receiptAddManualItem',
@@ -42,7 +42,7 @@ const UI_ACTIONS = new Set([
   'setLinkEditGuest', 'setLinkEditJoin', 'setLinkEditLabel', 'setShowAllTrips', 'showMainTab',
   'showSettingsSub', 'startFirstDeposit', 'startFirstExpense', 'switchAccount', 'toggleDepositExpand',
   'toggleDepositFilterMember', 'toggleExpenseExpand', 'toggleExpenseFilterMember', 'toggleFormCard',
-  'toggleLinkEditor', 'toggleMemberDetail', 'toggleTheme', 'unlinkMember', 'updateRate',
+  'toggleLinkEditor', 'toggleMemberDetail', 'toggleTheme', 'unlinkAccount', 'unlinkMember', 'updateRate',
 ]);
 
 /** 產生 data-<type>="name" data-args="[…]" 屬性字串（放進 HTML template 用）。 */

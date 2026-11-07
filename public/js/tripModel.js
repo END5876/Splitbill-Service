@@ -41,6 +41,7 @@ function repairTrip(raw){
   t.members = Array.isArray(t.members) ? t.members.map(m=>{
     const mem = {id:safeId(m.id, 'mem'), name:m.name||m.id||'未知成員'};
     if (m.discordId) mem.discordId = m.discordId;
+    else if (m.lineId) mem.lineId = m.lineId;
     // 分享連結訪客拿到的行程不含 Discord ID，只有 linked: true（見 service 的 storage.toGuestTrip）
     else if (m.linked === true) mem.linked = true;
     return mem;

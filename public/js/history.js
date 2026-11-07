@@ -106,8 +106,9 @@ function describeChange(c){
     case 'member.add': return { text: `新增成員 ${b(c.label)}` };
     case 'member.remove': return { text: `刪除了成員 ${b(c.label)}` };
     case 'member.rename': return { text: `把成員 ${b(c.from)} 改名為 ${b(c.to)}` };
-    case 'member.link': return { text: `${b(c.label)} 連結了 Discord 帳號` };
-    case 'member.unlink': return { text: `${b(c.label)} 解除了 Discord 連結` };
+    case 'member.link': return { text: `${b(c.label)} 連結了帳號` };
+    case 'member.unlink': return { text: `${b(c.label)} 解除了帳號連結` };
+    case 'member.account': return { text: `${b(c.label)} 綁定了 LINE 與 Discord 帳號` };
     case 'more': return { text: `…以及另外 ${c.count} 項變動` };
   }
   const m = /^(expense|deposit)\.(add|edit|remove)$/.exec(c.type);
@@ -137,6 +138,7 @@ function historyReasonHtml(item){
   const r = item.reason;
   if (!r) return '';
   if (r.type === 'restore-entry') return '<span class="hist-badge">還原</span>';
+  if (r.type === 'account-merge') return '<span class="hist-badge">帳號綁定</span>';
   if (r.type === 'restore-revision') return `<span class="hist-badge">回到 ${escapeHtml(historyDayLabel(r.from).split(' ')[0])} ${escapeHtml(historyTimeLabel(r.from))} 的版本</span>`;
   return '';
 }

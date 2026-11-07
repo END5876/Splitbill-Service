@@ -121,7 +121,7 @@ async function saveTripToApiImpl(){
     showMainTab('settings'); showSettingsSub('connect');
     toast(currentUser
       ? '還沒開啟任何行程：請先在「設定 → 帳號」開啟或建立一個行程。'
-      : '尚未登入：請先到「設定 → 帳號」用 Discord 登入並開啟行程。', 'error', { duration: 7000 });
+      : '尚未登入：請先到「設定 → 帳號」登入並開啟行程。', 'error', { duration: 7000 });
     return;
   }
 

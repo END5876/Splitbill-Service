@@ -1,6 +1,7 @@
 'use strict';
 const express = require('express');
 const { mergeIncomingMembers } = require('../lib/members');
+const { memberAccountId } = require('../lib/accounts');
 
 // 行程本體的讀寫端點：GET/PUT/DELETE /api/trip/:tripId，以及舊網頁用的 GET /api/guilds。
 // 🆕 [行程獨立化] 行程以 tripId 為主鍵，綁定的 Discord 伺服器只是行程上的 guildId 欄位；
@@ -107,7 +108,7 @@ module.exports = function createTripsRouter(ctx) {
       incoming.members,
       {
         canLink: canLinkMembers(req),
-        canRemoveLinked: (m) => LEVEL_RANK[level] >= LEVEL_RANK.owner || (!!uid && m.discordId === uid),
+        canRemoveLinked: (m) => LEVEL_RANK[level] >= LEVEL_RANK.owner || (!!uid && memberAccountId(m) === uid),
       }
     );
 

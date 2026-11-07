@@ -63,7 +63,9 @@ module.exports = function createSseRouter(ctx) {
       canRead: () => {
         if (principal && principal.sid && session.isSessionRevoked(principal.sid)) return false;
         const current = storage.peekTrip(tripId);
-        return !!current && hasTripAccess({ principal }, current, 'read');
+        // 🆕 [LINE 登入] 帳號綁定／解除後主身分會變，每次都用登入的帳號重新換算
+        const p = principal && principal.loginId ? { ...principal, userId: storage.resolveAccount(principal.loginId) } : principal;
+        return !!current && hasTripAccess({ principal: p }, current, 'read');
       },
     });
   });

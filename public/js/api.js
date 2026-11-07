@@ -4,13 +4,21 @@
 /* ===================== connection ===================== */
 // 🆕 [行程獨立化] 行程以 tripId 為主鍵（/api/trip/:tripId），不再需要先選伺服器。
 // 網頁的身分只有兩種：
-//   - Discord 登入：cookie 自動帶上，寫入請求另外帶 x-requested-with 標頭
+//   - 登入（Discord 或 LINE）：cookie 自動帶上，寫入請求另外帶 x-requested-with 標頭
 //     （service 端的 CSRF 檢查，見 lib/auth.js）。Bot 擁有者（OWNER_USER_ID）
 //     登入後可以切換「列出所有行程」，不需要另外輸入金鑰。
 //   - 分享連結訪客：token 只放在網址路徑 /api/shared-trip/:token/...（見 shareGuest.js）
 // SPLITBILL_API_KEY 只給 Bot／維運腳本用，網頁不再接受。
-let currentUser = null;      // { id, name, avatar, admin } | null
-let oauthEnabled = false;
+let currentUser = null;      // { id, name, avatar, admin, provider, accounts } | null
+let oauthEnabled = false;    // 至少有一種登入方式
+let loginProviders = { discord: false, line: false }; // 🆕 [LINE 登入] 哪些登入方式已經設定好
+const PROVIDER_LABELS = { discord: 'Discord', line: 'LINE' };
+
+// 🆕 [LINE 登入] 成員連結的帳號：discordId（Discord）或 lineId（只用 LINE 的人，line:U…）。
+// currentUser.id 是主身分（LINE 綁定到 Discord 後就是 Discord ID），直接跟這個比對。
+function memberAccountId(m){ return (m && (m.discordId || m.lineId)) || null; }
+function isMemberLinked(m){ return !!(m && (m.discordId || m.lineId || m.linked)); }
+function isMyMember(m){ return !!(currentUser && m && memberAccountId(m) === currentUser.id); }
 let myTrips = [];            // GET /api/my/trips 的結果（含 role）
 let currentTripId = null;    // 目前開啟的雲端行程；null＝還沒開啟任何行程
 let lastSyncedTripJSON = null; // 用來做簡單的樂觀鎖：跟伺服器目前的版本比對，偵測是否被別人改過
@@ -33,7 +41,7 @@ function currentTripRole(){
   const entry = myTrips.find(t => t.id === currentTripId);
   if (entry) return entry.role;
   if (currentUser && trip.ownerId === currentUser.id) return 'owner';
-  if (currentUser && trip.members.some(m => m.discordId === currentUser.id)) return 'member';
+  if (currentUser && trip.members.some(isMyMember)) return 'member';
   return null;
 }
 function canManageTrip(){
@@ -78,15 +86,31 @@ async function fetchMe(){
     const body = await apiJson(res);
     currentUser = body.user || null;
     oauthEnabled = !!body.oauth;
+    loginProviders = body.providers || { discord: oauthEnabled, line: false };
   }catch(e){
     currentUser = null;
   }
   renderAccountArea();
   return currentUser;
 }
-function loginWithDiscord(next){
+function loginWith(provider, next){
   const target = next || (location.pathname + location.search + location.hash);
-  location.href = `/auth/discord/login?next=${encodeURIComponent(target)}`;
+  location.href = `/auth/${encodeURIComponent(provider)}/login?next=${encodeURIComponent(target)}`;
+}
+function loginWithDiscord(next){ loginWith('discord', next); }
+function loginWithLine(next){ loginWith('line', next); }
+// 已設定好的登入方式各一顆按鈕。next：登入後回到哪裡；verb：按鈕文字「用 X 登入」後面接的字（例如「並加入」）
+function loginButtonsHtml(next, verb){
+  const list = [];
+  if (loginProviders.line) list.push(['line', 'loginWithLine', 'btn-line']);
+  if (loginProviders.discord) list.push(['discord', 'loginWithDiscord', 'btn-brass']);
+  return list.map(([p, fn, cls]) =>
+    `<button class="btn ${cls}" type="button" ${next ? act('click', fn, next) : `data-click="${fn}"`}>用 ${PROVIDER_LABELS[p]} 登入${escapeHtml(verb || '')}</button>`
+  ).join('');
+}
+// 「只會讀取你的…名稱與頭像」說明用：「Discord」「LINE」或「Discord／LINE」
+function loginProviderNames(){
+  return ['line', 'discord'].filter(p => loginProviders[p]).map(p => PROVIDER_LABELS[p]).join('／');
 }
 async function logout(){
   try{
@@ -95,25 +119,94 @@ async function logout(){
   clearOwnerConnectionState();
   location.reload();
 }
-// 換一個 Discord 帳號：先登出，再帶 switch=1 去 Discord。登出不會登出 Discord 本身，
-// 一般登入授權過就直接導回來；switch=1 一定顯示同意畫面，上面有「不是你？」可以換帳號（與音樂庫相同）
+// 換一個帳號：先登出，再帶 switch=1 回到同一個平台。登出不會登出 Discord／LINE 本身，
+// 一般登入授權過就直接導回來；switch=1 一定顯示同意畫面（Discord 上面有「不是你？」可以換帳號，與音樂庫相同；
+// LINE 會關掉自動登入，讓你輸入別的帳號）
 async function switchAccount(){
+  const provider = (currentUser && currentUser.provider) || 'discord';
   try{
     await fetch('/auth/logout', { method: 'POST', headers: { 'x-requested-with': 'splitbill' } });
   }catch(e){}
   clearOwnerConnectionState();
-  location.href = `/auth/discord/login?switch=1&next=${encodeURIComponent('/')}`;
+  location.href = `/auth/${encodeURIComponent(provider)}/login?switch=1&next=${encodeURIComponent('/')}`;
 }
-// Discord 登入導回來的結果（?login=cancelled／failed）：顯示提示，並從網址拿掉
+// 登入導回來的結果（?login=cancelled／failed）與帳號綁定的結果（?bind=…）：顯示提示，並從網址拿掉。
+// ?bind=confirm 要等 fetchMe() 之後才能問使用者（回傳 true，由 bootstrap 接著呼叫 showAccountLinkConfirm）
 function showLoginResultFromUrl(){
   let u;
-  try{ u = new URL(location.href); }catch(e){ return; }
+  try{ u = new URL(location.href); }catch(e){ return false; }
   const result = u.searchParams.get('login');
-  if (!result) return;
+  const bind = u.searchParams.get('bind');
+  if (!result && !bind) return false;
   u.searchParams.delete('login');
+  u.searchParams.delete('bind');
   history.replaceState(history.state, '', u.pathname + u.search + u.hash);
-  if (result === 'cancelled') toast('已取消 Discord 登入', 'info');
-  else toast('Discord 登入失敗，請稍後再試一次', 'error');
+  if (result === 'cancelled') toast('已取消登入', 'info');
+  else if (result) toast('登入失敗，請稍後再試一次', 'error');
+  if (bind === 'done') toast('帳號綁定完成，之後用哪一個登入都是同一個帳號', 'success', { duration: 6000 });
+  else if (bind === 'already') toast('這兩個帳號本來就綁定在一起了', 'info');
+  else if (bind === 'cancelled') toast('已取消帳號綁定', 'info');
+  else if (bind === 'failed') toast('帳號綁定失敗，請稍後再試一次', 'error');
+  return bind === 'confirm';
+}
+
+/* ===================== 🆕 帳號綁定（Discord ⇄ LINE） ===================== */
+// 用另一個平台登入一次，證明兩個帳號都是你的（伺服器見 routes/oauth.js 的 ?link=1、routes/accountLink.js）
+function linkAccount(provider){
+  const next = location.pathname + location.search + location.hash;
+  location.href = `/auth/${encodeURIComponent(provider)}/login?link=1&next=${encodeURIComponent(next)}`;
+}
+// LINE 帳號名下已經有行程：列出影響，讓使用者確認合併
+async function showAccountLinkConfirm(){
+  let pending;
+  try{
+    pending = (await apiJson(await fetch('/api/account-link/pending', { headers: apiHeaders() }))).pending;
+  }catch(e){ pending = null; }
+  if (!pending){ toast('綁定已經過期，請重新綁定一次', 'error'); return; }
+  const lines = pending.trips.map(t => {
+    const role = t.owner ? '你建立的行程' : `成員「${t.memberName}」`;
+    return `・${t.name}（${role}${t.willUnlink ? `；你的 Discord 帳號已經是這個行程的成員，「${t.memberName}」會改成未連結，帳目不變` : ''}）`;
+  });
+  const who = pending.aliasName ? `LINE 帳號「${pending.aliasName}」` : '這個 LINE 帳號';
+  const ok = await confirmModal(
+    `${who}已經有 ${pending.trips.length} 個行程，綁定後會一起併到你的 Discord 帳號：
+
+${lines.join(String.fromCharCode(10))}
+
+之後用 LINE 或 Discord 登入都會看到這些行程。解除綁定時行程會留在 Discord 帳號。`,
+    { title: '確認綁定並合併', confirmText: '綁定並合併', cancelText: '先不要' }
+  );
+  if (!ok){
+    await fetch('/api/account-link/cancel', { method: 'POST', headers: apiHeaders() }).catch(()=>{});
+    toast('已取消帳號綁定', 'info');
+    return;
+  }
+  try{
+    await apiJson(await fetch('/api/account-link/confirm', { method: 'POST', headers: apiHeaders() }));
+    toast('帳號綁定完成，行程已經合併', 'success', { duration: 6000 });
+    await fetchMe();
+    await refreshTripList({ silent: true }).catch(()=>{});
+  }catch(err){
+    toast('綁定失敗：' + err.message, 'error');
+  }
+}
+async function unlinkAccount(){
+  const viaLine = currentUser && currentUser.provider === 'line';
+  const ok = await confirmModal(
+    viaLine
+      ? '確定要解除 LINE 與 Discord 的綁定嗎？行程都會留在 Discord 帳號，你現在是用 LINE 登入，解除後這個 LINE 帳號就看不到那些行程了（用 Discord 登入才看得到）。'
+      : '確定要解除 LINE 與 Discord 的綁定嗎？行程都會留在 Discord 帳號；之後用 LINE 登入會是一個全新、沒有任何行程的帳號。',
+    { title: '解除帳號綁定', confirmText: '解除綁定', danger: true }
+  );
+  if (!ok) return;
+  try{
+    await apiJson(await fetch('/api/account-link', { method: 'DELETE', headers: apiHeaders() }));
+    toast('已解除綁定', 'success');
+    if (viaLine){ clearOwnerConnectionState(); location.reload(); return; }
+    await fetchMe();
+  }catch(err){
+    toast('解除綁定失敗：' + err.message, 'error');
+  }
 }
 
 /* ===================== 我的行程 ===================== */
@@ -140,7 +233,7 @@ async function refreshTripList(opts){
     myTrips = [];
     populateTripSelect();
     if (!opts.silent){
-      toast(err.status === 401 ? '請先用 Discord 登入' : ('讀取行程清單失敗：' + err.message), 'error');
+      toast(err.status === 401 ? '請先登入' : ('讀取行程清單失敗：' + err.message), 'error');
     }
     throw err;
   }
@@ -219,7 +312,7 @@ async function createTripOnServer(){
 // 會先問「你是哪一位」，讓那位成員連結到自己的 Discord 帳號；其他人之後用邀請連結認領。
 // 成功回傳建立的行程摘要，取消或失敗回傳 null。
 async function createCloudTripFrom(source){
-  if (!currentUser){ toast('請先用 Discord 登入', 'error'); return null; }
+  if (!currentUser){ toast('請先登入', 'error'); return null; }
   let selfMemberId = '';
   if (source.members.length){
     selfMemberId = await pickModal(`匯入「${source.name}」：這個行程裡哪一位是你？`, [

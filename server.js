@@ -11,6 +11,8 @@
  *   SPLITBILL_API_KEY   Bot（與維運）用的共用金鑰，以 x-api-key 帶上；沒設定時 Bot 無法連線
  *   DISCORD_CLIENT_ID / DISCORD_CLIENT_SECRET / PUBLIC_BASE_URL / SESSION_SECRET
  *                       網頁的 Discord 登入（見 routes/oauth.js）；沒設定時網頁只能用分享連結
+ *   LINE_CHANNEL_ID / LINE_CHANNEL_SECRET
+ *                       網頁的 LINE 登入與帳號綁定（同樣需要 PUBLIC_BASE_URL、SESSION_SECRET）；沒設定時不顯示 LINE 登入
  *   OWNER_USER_ID       Bot 擁有者的 Discord ID（逗號分隔），對所有行程有建立者權限；與 Mousebot、音樂庫設成一樣
  *   TRUST_PROXY         Express 的 trust proxy，預設 'loopback, linklocal, uniquelocal'（只信任私有網段的反向代理）
  *   PORT / SPLITBILL_WEB_PORT   監聽埠號，預設 3000
@@ -47,6 +49,7 @@ const createGuildRouter = require('./routes/guild');
 const createMeRouter = require('./routes/me');
 const createOAuthRouter = require('./routes/oauth');
 const createMembersRouter = require('./routes/members');
+const createAccountLinkRouter = require('./routes/accountLink');
 const createAttachRouter = require('./routes/attach');
 const createEntriesRouter = require('./routes/entries');
 const createHistoryRouter = require('./routes/history');
@@ -61,7 +64,7 @@ const CONTENT_SECURITY_POLICY = [
   "script-src 'self'",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com",
-  "img-src 'self' data: blob: https://cdn.discordapp.com",
+  "img-src 'self' data: blob: https://cdn.discordapp.com https://profile.line-scdn.net",
   "connect-src 'self'",
   "object-src 'none'",
   "base-uri 'self'",
@@ -154,9 +157,11 @@ function startWebApi(options = {}) {
 
   // 🆕 [登出撤銷] 已登出的 session 記在資料庫（見 lib/session.js、storage.revokeSession）
   session.setRevocationStore({ isRevoked: storage.isSessionRevoked, revoke: storage.revokeSession });
+  // 🆕 [LINE 登入] 登入的帳號 → 主身分（帳號綁定，見 storage.resolveAccount）
+  session.setAccountResolver(storage.resolveAccount);
 
   // ---- 🆕 [Discord 登入] OAuth 登入／登出（不在 /api 底下，瀏覽器直接導向） ----
-  app.use('/auth', createOAuthRouter());
+  app.use('/auth', createOAuthRouter({ storage }));
 
   // ---- 身分辨識：金鑰（Bot）／登入 cookie（網頁）；分享 token 只走網址路徑（細節見 lib/auth.js） ----
   app.use('/api', createIdentityMiddleware(apiKey));
@@ -220,6 +225,7 @@ function startWebApi(options = {}) {
   app.use('/api', createGuildRouter(ctx));
   app.use('/api', createMeRouter(ctx));
   app.use('/api', createMembersRouter(ctx));
+  app.use('/api', createAccountLinkRouter(ctx));
   app.use('/api', createAttachRouter(ctx));
   app.use('/api', createEntriesRouter(ctx));
   app.use('/api', createHistoryRouter(ctx));
