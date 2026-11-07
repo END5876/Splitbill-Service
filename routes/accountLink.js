@@ -82,7 +82,7 @@ module.exports = function createAccountLinkRouter(ctx) {
     const p = requireWebUser(req, res);
     if (!p || limited(req, res, p)) return;
     const pending = loadPending(req, res, p);
-    if (!pending) return res.status(409).json({ error: '沒有等待確認的綁定，可能已經過期，請重新綁定一次' });
+    if (!pending) return res.status(409).json({ error: '這次綁定已經逾時，請重新綁定一次' });
     let result;
     try {
       result = storage.linkAccounts(pending.primary, pending.alias, {

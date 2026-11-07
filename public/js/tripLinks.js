@@ -99,7 +99,7 @@ function renderInviteSection(){
       </div>
       <button class="btn btn-brass tl-hero-btn" type="button" data-click="copyInviteLink" data-loading="產生中…">複製邀請連結</button>
     </div>
-    ${canManageTrip() ? '' : '<p class="hint tl-foot">想讓不想登入的朋友看帳或一起記帳，可以請行程建立者建立免登入的連結。</p>'}`;
+    ${canManageTrip() ? '' : '<p class="hint tl-foot">想讓朋友不登入也能看帳或記帳，可以請行程建立者建立免登入的連結。</p>'}`;
 }
 
 // 下半部：建立者的連結管理。只在狀態改變時重繪（裡面有輸入框）
@@ -200,7 +200,7 @@ function linkComposerHtml(c){
   const preset = LINK_PRESETS.find(p => p.id === c.preset);
   return `
     <div class="tl-composer">
-      <div class="tl-label">給不用登入的朋友（不用帳號也能開）：</div>
+      <div class="tl-label">給不用登入的朋友：</div>
       <div class="tl-presets" role="radiogroup" aria-label="連結用途">
         ${LINK_PRESETS.map(p => `
           <button type="button" role="radio" aria-checked="${p.id === c.preset}" class="tl-preset ${p.id === c.preset ? 'on' : ''}" ${act('click','pickLinkPreset',p.id)}>

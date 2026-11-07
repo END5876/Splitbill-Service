@@ -143,10 +143,10 @@ function showLoginResultFromUrl(){
   history.replaceState(history.state, '', u.pathname + u.search + u.hash);
   if (result === 'cancelled') toast('已取消登入', 'info');
   else if (result) toast('登入失敗，請稍後再試一次', 'error');
-  if (bind === 'done') toast('帳號綁定完成，之後用哪一個登入都是同一個帳號', 'success', { duration: 6000 });
-  else if (bind === 'already') toast('這兩個帳號本來就綁定在一起了', 'info');
-  else if (bind === 'cancelled') toast('已取消帳號綁定', 'info');
-  else if (bind === 'failed') toast('帳號綁定失敗，請稍後再試一次', 'error');
+  if (bind === 'done') toast('綁定完成，用 Discord 或 LINE 登入都看得到你的行程', 'success', { duration: 6000 });
+  else if (bind === 'already') toast('你的 Discord 和 LINE 帳號已經綁定了', 'info');
+  else if (bind === 'cancelled') toast('已取消綁定', 'info');
+  else if (bind === 'failed') toast('綁定失敗，請稍後再試一次', 'error');
   return bind === 'confirm';
 }
 
@@ -162,28 +162,27 @@ async function showAccountLinkConfirm(){
   try{
     pending = (await apiJson(await fetch('/api/account-link/pending', { headers: apiHeaders() }))).pending;
   }catch(e){ pending = null; }
-  if (!pending){ toast('綁定已經過期，請重新綁定一次', 'error'); return; }
+  if (!pending){ toast('這次綁定已經逾時，請重新綁定一次', 'error'); return; }
+  const NL = String.fromCharCode(10);
   const lines = pending.trips.map(t => {
-    const role = t.owner ? '你建立的行程' : `成員「${t.memberName}」`;
-    return `・${t.name}（${role}${t.willUnlink ? `；你的 Discord 帳號已經是這個行程的成員，「${t.memberName}」會改成未連結，帳目不變` : ''}）`;
+    if (t.willUnlink){
+      return `・${t.name}（你的 Discord 帳號已經在這個行程裡，LINE 認領的「${t.memberName}」會變成未連結的成員，帳目不變）`;
+    }
+    return `・${t.name}（${t.owner ? '你建立的' : `你是「${t.memberName}」`}）`;
   });
   const who = pending.aliasName ? `LINE 帳號「${pending.aliasName}」` : '這個 LINE 帳號';
   const ok = await confirmModal(
-    `${who}已經有 ${pending.trips.length} 個行程，綁定後會一起併到你的 Discord 帳號：
-
-${lines.join(String.fromCharCode(10))}
-
-之後用 LINE 或 Discord 登入都會看到這些行程。解除綁定時行程會留在 Discord 帳號。`,
-    { title: '確認綁定並合併', confirmText: '綁定並合併', cancelText: '先不要' }
+    `${who}參與了 ${pending.trips.length} 個行程。綁定後，用 Discord 或 LINE 登入都看得到這些行程：${NL}${NL}${lines.join(NL)}`,
+    { title: '綁定 Discord 和 LINE 帳號？', confirmText: '綁定', cancelText: '取消' }
   );
   if (!ok){
     await fetch('/api/account-link/cancel', { method: 'POST', headers: apiHeaders() }).catch(()=>{});
-    toast('已取消帳號綁定', 'info');
+    toast('已取消綁定', 'info');
     return;
   }
   try{
     await apiJson(await fetch('/api/account-link/confirm', { method: 'POST', headers: apiHeaders() }));
-    toast('帳號綁定完成，行程已經合併', 'success', { duration: 6000 });
+    toast('綁定完成，兩個帳號的行程都看得到了', 'success', { duration: 6000 });
     await fetchMe();
     await refreshTripList({ silent: true }).catch(()=>{});
   }catch(err){
@@ -194,9 +193,9 @@ async function unlinkAccount(){
   const viaLine = currentUser && currentUser.provider === 'line';
   const ok = await confirmModal(
     viaLine
-      ? '確定要解除 LINE 與 Discord 的綁定嗎？行程都會留在 Discord 帳號，你現在是用 LINE 登入，解除後這個 LINE 帳號就看不到那些行程了（用 Discord 登入才看得到）。'
-      : '確定要解除 LINE 與 Discord 的綁定嗎？行程都會留在 Discord 帳號；之後用 LINE 登入會是一個全新、沒有任何行程的帳號。',
-    { title: '解除帳號綁定', confirmText: '解除綁定', danger: true }
+      ? '你現在是用 LINE 登入。解除後，畫面上的行程會消失，要改用 Discord 登入才看得到。'
+      : '解除後，用 LINE 登入就看不到你的行程，要用 Discord 登入才看得到。',
+    { title: '解除 LINE 帳號綁定？', confirmText: '解除綁定', cancelText: '取消', danger: true }
   );
   if (!ok) return;
   try{

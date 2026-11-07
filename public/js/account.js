@@ -54,20 +54,20 @@ function accountLinkHtml(){
   if (acc.discord && acc.line){
     return `
       <div class="account-link">
-        <div class="account-link-status"><span class="link-badge linked">Discord ✓</span><span class="link-badge linked">LINE ✓</span><span class="hint" style="margin:0;">已綁定，用哪一個登入都是同一個帳號</span></div>
+        <div class="account-link-status"><span class="link-badge linked">Discord ✓</span><span class="link-badge linked">LINE ✓</span><span class="hint" style="margin:0;">已綁定，用 Discord 或 LINE 登入都會看到你的行程</span></div>
         <button class="btn btn-ghost btn-sm" type="button" data-click="unlinkAccount">解除綁定</button>
       </div>`;
   }
   if (acc.discord){
     return `
       <div class="account-link">
-        <p class="hint" style="margin:0;">綁定 LINE 帳號後，在手機上用 LINE 一鍵登入，也會看到同樣的行程。</p>
+        <p class="hint" style="margin:0;">綁定 LINE 帳號後，在手機上用 LINE 一鍵登入，也看得到你的行程。</p>
         <button class="btn btn-line btn-sm" type="button" ${act('click', 'linkAccount', 'line')}>綁定 LINE 帳號</button>
       </div>`;
   }
   return `
     <div class="account-link">
-      <p class="hint" style="margin:0;">有 Discord 帳號的話可以綁定：用 Discord 登入也會看到同樣的行程，在 Discord 也能用 Mousebot 的 /splitbill 面板記帳。</p>
+      <p class="hint" style="margin:0;">綁定 Discord 帳號後，用 Discord 登入也看得到你的行程，還能在 Discord 用 Mousebot 的 /splitbill 記帳。</p>
       <button class="btn btn-brass btn-sm" type="button" ${act('click', 'linkAccount', 'discord')}>綁定 Discord 帳號</button>
     </div>`;
 }

@@ -293,7 +293,8 @@ module.exports = function createOAuthRouter(deps = {}) {
       const current = req.get('sec-fetch-site') === 'cross-site' ? null : session.readSession(req);
       if (!current) return sendPage(res, 401, '請先登入', `<p>要綁定帳號，請先用原本的帳號登入拆帳本。</p>${backLink}`);
       if (current.provider === prov) {
-        return sendPage(res, 400, `你目前就是用 ${provider.label} 登入`, `<p>綁定要用另一個平台的帳號。</p>${backLink}`);
+        const other = prov === 'line' ? 'Discord' : 'LINE';
+      return sendPage(res, 400, `你現在就是用 ${provider.label} 登入`, `<p>請到「設定 → 帳號」綁定 ${other} 帳號。</p>${backLink}`);
       }
       link = { sid: current.sid, uid: current.loginId };
     }
@@ -360,7 +361,7 @@ module.exports = function createOAuthRouter(deps = {}) {
     if (!storage) return sendPage(res, 503, '帳號綁定尚未開放', backLink);
     // 發起綁定的那次登入，在登入平台的這段期間登出了
     if (session.isSessionRevoked(link.sid)) {
-      return sendPage(res, 400, '登入狀態已經失效', `<p>請重新登入後再綁定一次。</p>${backLink}`);
+      return sendPage(res, 400, '你已經登出了', `<p>請重新登入後再綁定一次。</p>${backLink}`);
     }
     const initiator = storage.resolveAccount(link.uid);
     let primary;
@@ -368,33 +369,35 @@ module.exports = function createOAuthRouter(deps = {}) {
     if (isSnowflake(initiator) && isLineId(user.id)) { primary = initiator; alias = user.id; }
     else if (isLineId(initiator) && isSnowflake(user.id)) { primary = user.id; alias = initiator; }
     else if (initiator === user.id) {
-      return sendRedirectPage(res, '已經綁定', withParam(next, 'bind', 'already'));
+      return sendRedirectPage(res, '已經綁定過了', withParam(next, 'bind', 'already'));
     } else {
-      return sendPage(res, 400, '無法綁定', `<p>只能把一個 Discord 帳號和一個 LINE 帳號綁在一起。</p>${backLink}`);
+      // 用 LINE 登入、而且這個 LINE 已經綁定了 Discord 帳號，又去綁另一個 Discord 帳號
+      return sendPage(res, 409, '你的 LINE 已經綁定了另一個 Discord 帳號',
+        `<p>要改綁的話，請先在「設定 → 帳號」解除綁定，再重新綁定。</p>${backLink}`);
     }
 
     const existing = storage.getAccountLink(alias);
-    if (existing && existing.primary === primary) return sendRedirectPage(res, '已經綁定', withParam(next, 'bind', 'already'));
+    if (existing && existing.primary === primary) return sendRedirectPage(res, '已經綁定過了', withParam(next, 'bind', 'already'));
     if (existing) {
-      return sendPage(res, 409, '這個 LINE 帳號已經綁定別的帳號',
-        `<p>它已經綁定到另一個 Discord 帳號。請先用那個帳號登入、解除綁定後再試一次。</p>${backLink}`);
+      return sendPage(res, 409, '這個 LINE 帳號已經綁定其他 Discord 帳號',
+        `<p>請先用那個 Discord 帳號登入，在「設定 → 帳號」解除綁定後再試一次。</p>${backLink}`);
     }
     if (storage.listAccountAliases(primary).length) {
-      return sendPage(res, 409, '這個 Discord 帳號已經綁定了 LINE',
-        `<p>一個 Discord 帳號只能綁定一個 LINE 帳號。請先解除原本的綁定。</p>${backLink}`);
+      return sendPage(res, 409, '這個 Discord 帳號已經綁定其他 LINE 帳號',
+        `<p>一個 Discord 帳號只能綁定一個 LINE 帳號。要改綁的話，請先在「設定 → 帳號」解除綁定。</p>${backLink}`);
     }
 
     // LINE 那一方的名字（給確認畫面顯示）
     const aliasName = alias === user.id ? user.name : '';
     if (storage.listAccountTrips(alias).length) {
       session.writeLinkPending(res, { sid: link.sid, primary, alias, aliasName });
-      return sendRedirectPage(res, '確認合併', withParam(next, 'bind', 'confirm'));
+      return sendRedirectPage(res, '正在返回', withParam(next, 'bind', 'confirm'));
     }
     try {
       storage.linkAccounts(primary, alias, { actor: { kind: 'user', userId: primary } });
     } catch (err) {
       console.error('[splitbill-oauth] 帳號綁定失敗：', err.message);
-      return sendPage(res, err.code ? 409 : 500, '綁定失敗', `<p>${escapeHtml(err.code ? err.message : '請稍後再試一次。')}</p>${backLink}`);
+      return sendPage(res, err.code ? 409 : 500, '綁定失敗', `<p>${escapeHtml(err.code ? err.message : '目前無法完成綁定，請稍後再試一次。')}</p>${backLink}`);
     }
     sendRedirectPage(res, '綁定成功', withParam(next, 'bind', 'done'));
   }
