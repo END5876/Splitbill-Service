@@ -25,7 +25,7 @@ const UI_ACTIONS = new Set([
   'claimJoinAsNew', 'clearDepositFilter', 'clearExpenseFilter', 'clearInvalid', 'closeLinkComposer',
   'confirmJoinClaim', 'copyBindCommand', 'copyInviteLink', 'copyJson', 'copyLinkUrl',
   'createTripLink', 'createTripOnServer', 'deleteDeposit', 'deleteExpense', 'deleteSelectedTrip', 'detachFromDiscord',
-  'downloadJson', 'editDeposit', 'editExpense', 'equalFillChips', 'finalizeReceiptExpense',
+  'downloadCsv', 'downloadJson', 'editDeposit', 'editExpense', 'equalFillChips', 'finalizeReceiptExpense',
   'focusNewMemberInput', 'generateBindCode', 'historyDeleteItem', 'historyRestoreChange', 'historyRestoreRevision',
   'loadHistory', 'loadMoreHistory', 'goAddMember', 'goHome', 'handleFileImport',
   'handleReceiptUpload', 'importJsonAsNewTrip', 'joinReceiptSession', 'leaveJoinScreen',

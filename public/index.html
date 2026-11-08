@@ -463,10 +463,18 @@
     <!-- ---------- 🛠 進階：備份與匯入（js/importExport.js） ---------- -->
     <div class="subpanel" id="panel-advanced" data-subpanel="advanced">
       <div class="card">
-        <h2 class="section-title">下載備份</h2>
-        <p class="hint" style="margin-top:0;">行程的資料都存在雲端，平常不需要另外備份；想自己留一份，或要搬到別的地方時，可以下載成 JSON 檔。</p>
+        <h2 class="section-title">匯出試算表</h2>
+        <p class="hint" style="margin-top:0;">下載成 CSV 檔，可以用 Excel、Numbers 或 Google 試算表打開：每筆支出與轉帳一列、每位成員該收或該付多少，最後附上建議轉帳。</p>
         <div class="btn-row">
-          <button class="btn btn-brass" type="button" data-click="downloadJson">⬇ 下載這個行程的 JSON</button>
+          <button class="btn btn-brass" type="button" data-click="downloadCsv">⬇ 下載 CSV 試算表</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="section-title">下載備份</h2>
+        <p class="hint" style="margin-top:0;">行程的資料都存在雲端，平常不需要另外備份；想自己留一份，或要搬到別的地方時，可以下載成 JSON 檔。JSON 檔可以再匯入成新行程，CSV 不行。</p>
+        <div class="btn-row">
+          <button class="btn btn-ghost" type="button" data-click="downloadJson">⬇ 下載這個行程的 JSON</button>
           <button class="btn btn-ghost" type="button" data-click="copyJson">複製 JSON</button>
         </div>
       </div>
