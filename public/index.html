@@ -329,7 +329,7 @@
   </div>
 
   <!-- ================= SETTINGS ================= -->
-  <!-- 子分頁依「你想做什麼」分組：行程本身的設定／成員與分享／帳號與行程清單／進階備援。
+  <!-- 子分頁依「你想做什麼」分組：行程（清單與本身設定）／成員與分享／帳號／紀錄／進階備援。
        舊的子分頁名稱（members、rates、share、connect、discord、io）仍可傳給 showSettingsSub()，
        會自動切到新的分組並捲到對應卡片，見 js/state.js 的 SETTINGS_SUB_ALIASES。 -->
   <div class="panel" id="panel-settings" data-panel="settings" data-owner-only>
@@ -341,60 +341,8 @@
       <button class="subtab-btn" data-subtab="advanced" data-click="showSettingsSub" data-args='["advanced"]'><svg class="ic" aria-hidden="true"><use href="#i-tool"/></svg>進階</button>
     </div>
 
-    <!-- ---------- 🧳 行程：這個行程本身的設定 ---------- -->
+    <!-- ---------- 🧳 行程：切換／建立行程，以及這個行程本身的設定 ---------- -->
     <div class="subpanel active" id="panel-trip" data-subpanel="trip">
-      <div class="card" id="tripInfoCard">
-        <h2 class="section-title">基本資訊</h2>
-        <p class="hint" style="margin:0;">行程名稱可以直接點頁首的名稱修改。基準幣別在建立行程時決定，之後無法更改。</p>
-      </div>
-
-      <div class="card" id="ratesCard">
-        <h2 class="section-title">匯率</h2>
-        <p class="hint" style="margin-top:0;">記帳時會優先自動查詢即時匯率；這裡的數字是查不到時的備用值。每列表示「1 單位該幣別 ＝ 多少 <span id="baseLabel">TWD</span>」。</p>
-        <table class="rate-table">
-          <thead><tr><th>幣別</th><th>1 單位 ＝ 多少基準幣</th><th></th></tr></thead>
-          <tbody id="rateTableBody"></tbody>
-        </table>
-        <div class="btn-row add-rate-row">
-          <input type="text" id="newRateCurrency" placeholder="幣別代碼 (如 JPY)" style="max-width:140px; text-transform:uppercase;" aria-label="幣別代碼">
-          <input type="number" inputmode="decimal" id="newRateValue" placeholder="匯率" step="0.0001" style="max-width:120px;" aria-label="匯率">
-          <button class="btn btn-primary" data-click="addRate">＋ 新增幣別</button>
-        </div>
-      </div>
-
-      <!-- 🆕 [行程獨立化] 綁定到 Discord 伺服器（內容由 js/account.js 的 renderDiscordPanel 產生） -->
-      <div class="card" id="discordCard">
-        <h2 class="section-title">Discord 伺服器綁定</h2>
-        <div id="discordPanelBody"></div>
-      </div>
-    </div>
-
-    <!-- ---------- 👥 成員與分享：誰在這個行程裡、誰看得到 ---------- -->
-    <div class="subpanel" id="panel-people" data-subpanel="people">
-      <div class="card" id="membersCard">
-        <h2 class="section-title">成員名單 <span class="n" id="memberCount"></span></h2>
-        <div class="member-list" id="memberList"></div>
-        <div class="btn-row inline-add-row">
-          <input type="text" id="newMemberName" placeholder="新成員名稱" style="max-width:180px;" aria-label="新成員名稱" data-enter="addMember">
-          <button class="btn btn-primary" data-click="addMember">＋ 新增成員</button>
-        </div>
-        <p class="hint">在這裡新增的成員一開始是「未連結」：可以照常記帳，但他本人要看到這個行程，需要用下方的邀請連結認領。</p>
-      </div>
-      <!-- 🆕 [行程連結] 邀請與分享：整張卡片由 js/tripLinks.js 依狀態繪出 -->
-      <div class="card" id="tripLinksCard">
-        <h2 class="section-title">邀請與分享</h2>
-        <div id="inviteHero"></div>
-        <div id="linkManager"></div>
-      </div>
-    </div>
-
-    <!-- ---------- 👤 帳號：登入、我的行程、建立行程 ---------- -->
-    <div class="subpanel" id="panel-account" data-subpanel="account">
-      <div class="card">
-        <h2 class="section-title">帳號</h2>
-        <div id="accountArea"></div>
-      </div>
-
       <div class="card" id="myTripsCard" style="display:none;">
         <h2 class="section-title">我的行程</h2>
         <div class="field">
@@ -440,6 +388,58 @@
           <button class="btn btn-primary" data-click="createTripOnServer" data-loading="建立中…">＋ 建立行程</button>
         </div>
         <p class="hint">你會是這個行程的建立者，也是第一位成員。之後可以到「成員與分享」邀請朋友，或到「行程」綁定 Discord 伺服器。</p>
+      </div>
+
+      <div class="card" id="tripInfoCard">
+        <h2 class="section-title">基本資訊</h2>
+        <p class="hint" style="margin:0;">行程名稱可以直接點頁首的名稱修改。基準幣別在建立行程時決定，之後無法更改。</p>
+      </div>
+
+      <div class="card" id="ratesCard">
+        <h2 class="section-title">匯率</h2>
+        <p class="hint" style="margin-top:0;">記帳時會優先自動查詢即時匯率；這裡的數字是查不到時的備用值。每列表示「1 單位該幣別 ＝ 多少 <span id="baseLabel">TWD</span>」。</p>
+        <table class="rate-table">
+          <thead><tr><th>幣別</th><th>1 單位 ＝ 多少基準幣</th><th></th></tr></thead>
+          <tbody id="rateTableBody"></tbody>
+        </table>
+        <div class="btn-row add-rate-row">
+          <input type="text" id="newRateCurrency" placeholder="幣別代碼 (如 JPY)" style="max-width:140px; text-transform:uppercase;" aria-label="幣別代碼">
+          <input type="number" inputmode="decimal" id="newRateValue" placeholder="匯率" step="0.0001" style="max-width:120px;" aria-label="匯率">
+          <button class="btn btn-primary" data-click="addRate">＋ 新增幣別</button>
+        </div>
+      </div>
+
+      <!-- 🆕 [行程獨立化] 綁定到 Discord 伺服器（內容由 js/account.js 的 renderDiscordPanel 產生） -->
+      <div class="card" id="discordCard">
+        <h2 class="section-title">Discord 伺服器綁定</h2>
+        <div id="discordPanelBody"></div>
+      </div>
+    </div>
+
+    <!-- ---------- 👥 成員與分享：誰在這個行程裡、誰看得到 ---------- -->
+    <div class="subpanel" id="panel-people" data-subpanel="people">
+      <div class="card" id="membersCard">
+        <h2 class="section-title">成員名單 <span class="n" id="memberCount"></span></h2>
+        <div class="member-list" id="memberList"></div>
+        <div class="btn-row inline-add-row">
+          <input type="text" id="newMemberName" placeholder="新成員名稱" style="max-width:180px;" aria-label="新成員名稱" data-enter="addMember">
+          <button class="btn btn-primary" data-click="addMember">＋ 新增成員</button>
+        </div>
+        <p class="hint">在這裡新增的成員一開始是「未連結」：可以照常記帳，但他本人要看到這個行程，需要用下方的邀請連結認領。</p>
+      </div>
+      <!-- 🆕 [行程連結] 邀請與分享：整張卡片由 js/tripLinks.js 依狀態繪出 -->
+      <div class="card" id="tripLinksCard">
+        <h2 class="section-title">邀請與分享</h2>
+        <div id="inviteHero"></div>
+        <div id="linkManager"></div>
+      </div>
+    </div>
+
+    <!-- ---------- 👤 帳號：登入與帳號綁定 ---------- -->
+    <div class="subpanel" id="panel-account" data-subpanel="account">
+      <div class="card">
+        <h2 class="section-title">帳號</h2>
+        <div id="accountArea"></div>
       </div>
     </div>
 

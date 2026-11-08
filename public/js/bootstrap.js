@@ -70,7 +70,7 @@ async function bootstrapHome(){
     if (myTrips.length){
       await loadTripFromApi({ quiet: true, tripId: myTrips[0].id });
     } else {
-      showMainTab('settings'); showSettingsSub('connect');
+      showMainTab('settings'); showSettingsSub('trips');
       toast('歡迎！先建立你的第一個行程吧', 'info');
     }
     renderSyncStatus();

@@ -230,7 +230,7 @@ function handleIncomingTripDeleted(){
   trip = defaultTrip();
   lastSyncedTripJSON = null;
   renderAll();
-  showMainTab('settings'); showSettingsSub('account');
+  showMainTab('settings'); showSettingsSub('trips');
   toast(`「${deletedName}」已經被刪除了，請從「我的行程」開啟其他行程，或建立新的`, 'error', { duration: 10000 });
   refreshTripList({ silent: true }).catch(()=>{});
 }
@@ -247,7 +247,7 @@ function handleTripAccessRevoked(){
   trip = defaultTrip();
   lastSyncedTripJSON = null;
   renderAll();
-  showMainTab('settings'); showSettingsSub('account');
+  showMainTab('settings'); showSettingsSub('trips');
   toast(`你已經看不到「${name}」了，可能被移出行程，或帳號連結被解除`, 'error', { duration: 10000 });
   refreshTripList({ silent: true }).catch(()=>{});
 }

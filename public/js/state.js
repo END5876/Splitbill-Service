@@ -38,6 +38,7 @@ const SETTINGS_SUB_ALIASES = {
   rates:    { sub: 'trip',     anchor: 'ratesCard' },
   discord:  { sub: 'trip',     anchor: 'discordCard' },
   connect:  { sub: 'account',  anchor: null },
+  trips:    { sub: 'trip',     anchor: 'myTripsCard' },
   io:       { sub: 'advanced', anchor: null },
 };
 function showMainTab(tab){

@@ -118,10 +118,10 @@ async function saveTripToApiImpl(){
   if (shareMode) return saveSharedTripToApi();
 
   if (!currentTripId){
-    showMainTab('settings'); showSettingsSub('connect');
+    showMainTab('settings'); showSettingsSub(currentUser ? 'trips' : 'connect');
     toast(currentUser
-      ? '還沒開啟任何行程：請先在「設定 → 帳號」開啟或建立一個行程。'
-      : '尚未登入：請先到「設定 → 帳號」登入並開啟行程。', 'error', { duration: 7000 });
+      ? '還沒開啟任何行程：請先在「設定 → 行程」開啟或建立一個行程。'
+      : '尚未登入：請先到「設定 → 帳號」登入，再到「行程」開啟行程。', 'error', { duration: 7000 });
     return;
   }
 

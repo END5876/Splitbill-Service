@@ -85,7 +85,7 @@ async function openTripSwitcher(){
   const picked = await pickModal('切換行程', items);
   if (!picked || picked === currentTripId) return;
   if (picked === '__new__'){
-    showMainTab('settings'); showSettingsSub('account');
+    showMainTab('settings'); showSettingsSub('trip');
     const nameInput = document.getElementById('newTripName');
     requestAnimationFrame(()=>{ nameInput.scrollIntoView({ behavior:'smooth', block:'center' }); nameInput.focus(); });
     return;
@@ -177,7 +177,7 @@ function renderDiscordPanel(){
   if (!el) return;
   clearInterval(bindCodeTimer); bindCodeTimer = null;
   if (!currentTripId){
-    el.innerHTML = '<p class="hint">請先到「帳號」開啟一個雲端行程。</p>';
+    el.innerHTML = '<p class="hint">請先到上方「我的行程」開啟一個雲端行程。</p>';
     return;
   }
   const manage = canManageTrip();

@@ -82,7 +82,7 @@ function renderInviteSection(){
   if (!isTripMember()){
     el.innerHTML = `<p class="hint" style="margin:0;">${currentTripId && shareMode
       ? '你是用連結開啟這個行程的訪客，邀請其他人請找行程成員。'
-      : '請先到「帳號」開啟一個雲端行程，才能邀請朋友或分享給別人。'}</p>`;
+      : '請先到「行程」分頁開啟一個雲端行程，才能邀請朋友或分享給別人。'}</p>`;
     document.getElementById('linkManager').innerHTML = '';
     return;
   }
