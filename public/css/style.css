@@ -415,6 +415,11 @@
   select option{ background-color:var(--card); color:var(--ink); }
   input:focus, select:focus, textarea:focus{outline:2px solid var(--brass-soft); outline-offset:1px;}
   textarea{font-family:'IBM Plex Mono',monospace; font-size:12.5px; resize:vertical;}
+  /* iPhone Safari 在輸入框字級小於 16px 時，點進去會自動放大整個頁面；觸控裝置一律 16px 避免放大 */
+  @media (hover:none) and (pointer:coarse){
+    input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]), select, textarea,
+    .member-tag input, .receipt-item-head input[type=text]{ font-size:16px; }
+  }
   .num{font-family:'IBM Plex Mono',monospace;}
   .input-with-toggle{position:relative;}
   .input-with-toggle input{padding-right:56px;}

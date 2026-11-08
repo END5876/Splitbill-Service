@@ -193,16 +193,16 @@
       </div>
       <div class="row">
         <div class="field" style="max-width:160px;">
-          <label>金額</label>
+          <label for="expAmount">金額</label>
           <input type="number" inputmode="decimal" id="expAmount" class="num" placeholder="0" step="0.01">
         </div>
         <div class="field" style="max-width:130px;">
-          <label>幣別</label>
+          <label for="expCurrency">幣別</label>
           <select id="expCurrency"></select>
         </div>
       </div>
       <div class="field" id="expBaseAmountField" hidden>
-        <label>換算後真實金額（<span id="expBaseCurrencyLabel"></span>，選填）</label>
+        <label for="expAmountInBase">換算後真實金額（<span id="expBaseCurrencyLabel"></span>，選填）</label>
         <input type="number" inputmode="decimal" id="expAmountInBase" class="num" placeholder="留白則依匯率自動換算" step="0.01">
         <p class="hint">若實際扣款金額和匯率換算的結果不同，可以直接填入正確金額，分帳會以這裡填寫的基準幣別金額計算。</p>
       </div>
@@ -273,26 +273,26 @@
       <p class="hint" style="margin:0 0 12px;">轉帳：結算時 A 把錢轉給 B。預收：出發前先跟大家收團費、公基金。</p>
       <div class="row">
         <div class="field">
-          <label>付款人（轉出的人）</label>
+          <label for="depPayer">付款人（轉出的人）</label>
           <select id="depPayer"></select>
         </div>
         <div class="field">
-          <label>收款人（收到的人）</label>
+          <label for="depCollector">收款人（收到的人）</label>
           <select id="depCollector"></select>
         </div>
       </div>
       <div class="row">
         <div class="field" style="max-width:160px;">
-          <label>金額</label>
+          <label for="depAmount">金額</label>
           <input type="number" inputmode="decimal" id="depAmount" class="num" placeholder="0" step="0.01">
         </div>
         <div class="field" style="max-width:130px;">
-          <label>幣別</label>
+          <label for="depCurrency">幣別</label>
           <select id="depCurrency"></select>
         </div>
       </div>
       <div class="field" id="depBaseAmountField" hidden>
-        <label>換算後真實金額（<span id="depBaseCurrencyLabel"></span>，選填）</label>
+        <label for="depAmountInBase">換算後真實金額（<span id="depBaseCurrencyLabel"></span>，選填）</label>
         <input type="number" inputmode="decimal" id="depAmountInBase" class="num" placeholder="留白則依匯率自動換算" step="0.01">
         <p class="hint">若實際轉帳金額和匯率換算的結果不同，可以直接填入正確金額，結算會以這裡填寫的基準幣別金額計算。</p>
       </div>
