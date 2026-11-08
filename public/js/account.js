@@ -67,7 +67,7 @@ function accountLinkHtml(){
   }
   return `
     <div class="account-link">
-      <p class="hint" style="margin:0;">綁定 Discord 帳號後，用 Discord 登入也看得到你的行程，還能在 Discord 用 Mousebot 的 /splitbill 記帳。</p>
+      <p class="hint" style="margin:0;">綁定 Discord 帳號後，用 Discord 登入也看得到你的行程，還能在 Discord 用 Mousebot 的 /splitbill panel 記帳。</p>
       <button class="btn btn-brass btn-sm" type="button" ${act('click', 'linkAccount', 'discord')}>綁定 Discord 帳號</button>
     </div>`;
 }
@@ -184,7 +184,7 @@ function renderDiscordPanel(){
   if (trip.guildId){
     el.innerHTML = `
       <div class="discord-status on"><span class="dot"></span>已綁定到 Discord 伺服器 <code class="inline">${escapeHtml(trip.guildId)}</code></div>
-      <p class="hint">在那個伺服器輸入 <code class="inline">/splitbill</code> 就能用 Mousebot 的面板操作這個行程。已連結 Discord 的成員可以操作面板；尚未連結、或只用 LINE 的成員在 Discord 只會顯示名字。</p>
+      <p class="hint">在那個伺服器輸入 <code class="inline">/splitbill panel</code> 就能用 Mousebot 的面板操作這個行程。已連結 Discord 的成員可以操作面板；尚未連結、或只用 LINE 的成員在 Discord 只會顯示名字。</p>
       ${manage ? `<div class="btn-row"><button class="btn btn-danger btn-sm" type="button" data-click="detachFromDiscord" data-loading="處理中…">解除綁定</button></div>
       <p class="hint">解除綁定後 Discord 面板就看不到這個行程了；網頁、分享連結與帳目都不受影響，之後可以重新綁定（也可以綁到別的伺服器）。</p>` : ''}`;
     return;
@@ -192,7 +192,7 @@ function renderDiscordPanel(){
   const code = lastBindCode && lastBindCode.tripId === currentTripId && lastBindCode.expiresAt > Date.now() ? lastBindCode : null;
   el.innerHTML = `
     <div class="discord-status"><span class="dot"></span>尚未綁定任何 Discord 伺服器</div>
-    <p class="hint">綁定後，伺服器裡的人可以用 Mousebot 的 <code class="inline">/splitbill</code> 面板記帳、結算，跟網頁即時同步。</p>
+    <p class="hint">綁定後，伺服器裡的人可以用 Mousebot 的 <code class="inline">/splitbill panel</code> 記帳、結算，跟網頁即時同步。</p>
     ${manage ? `
       <ol class="discord-steps">
         <li>按下方「產生綁定碼」（10 分鐘內有效、只能用一次）</li>
@@ -240,7 +240,7 @@ async function copyBindCommand(){
   }
 }
 async function detachFromDiscord(){
-  const ok = await confirmModal('解除後，Discord 的 /splitbill 面板就看不到這個行程了。網頁和帳目不受影響，之後可以重新綁定。', { title:'解除 Discord 伺服器綁定？', confirmText:'解除綁定', cancelText:'取消', danger:true });
+  const ok = await confirmModal('解除後，Discord 的 /splitbill panel 就看不到這個行程了。網頁和帳目不受影響，之後可以重新綁定。', { title:'解除 Discord 伺服器綁定？', confirmText:'解除綁定', cancelText:'取消', danger:true });
   if (!ok) return;
   try{
     const body = await apiJson(await fetch(tripApiUrl('/detach'), { method: 'POST', headers: apiHeaders() }));

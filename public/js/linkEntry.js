@@ -102,7 +102,7 @@ function showNoAccessScreen(){
         <li><svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg><div><b>拍照辨識帳單</b><span>上傳收據，自動列出品項，大家點選自己吃了什麼</span></div></li>
         <li><svg class="ic" aria-hidden="true"><use href="#i-globe"/></svg><div><b>多幣別自動換算</b><span>出國刷卡、付現都能記，依即時匯率換算</span></div></li>
         <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><div><b>最少轉帳次數結清</b><span>算出誰該付誰多少，付完一鍵標記</span></div></li>
-        <li><svg class="ic" aria-hidden="true"><use href="#i-chat"/></svg><div><b>Discord 即時同步</b><span>綁定伺服器後，用 Mousebot 的 /splitbill 面板也能記帳</span></div></li>
+        <li><svg class="ic" aria-hidden="true"><use href="#i-chat"/></svg><div><b>Discord 即時同步</b><span>綁定伺服器後，用 Mousebot 的 /splitbill panel 也能記帳</span></div></li>
       </ul>
       <div class="no-access-login">${loginButtonsHtml()}</div>
       <p class="no-access-note">只會讀取你的 ${loginProviderNames()} 名稱與頭像。<br>朋友傳了連結給你的話，直接點開那個連結即可。</p>    </div>
