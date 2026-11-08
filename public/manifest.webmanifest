@@ -1,0 +1,19 @@
+{
+  "id": "/",
+  "name": "拆帳本｜Mousebot Splitbill",
+  "short_name": "拆帳本",
+  "description": "跟朋友一起記旅行和聚餐的花費，自動算出誰該付誰多少。",
+  "lang": "zh-Hant",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#24272F",
+  "theme_color": "#24272F",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

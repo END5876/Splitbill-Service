@@ -148,6 +148,15 @@ function startWebApi(options = {}) {
     res.set('Cache-Control', 'no-cache');
     res.type('html').send(versionedIndexHtml);
   });
+  // 🆕 [PWA] Service Worker：把前端內容雜湊填進 SW_VERSION，前端有改時瀏覽器就會換新版並清舊快取。
+  // sw.js 本身一律不快取，否則手機可能一直用舊的 Service Worker。
+  const swSourceRaw = fs.readFileSync(path.join(publicDir, 'sw.js'), 'utf8');
+  const swVersion = crypto.createHash('sha1').update(versionedIndexHtml).update(swSourceRaw).digest('hex').slice(0, 10);
+  const swSource = swSourceRaw.replace('__SW_VERSION__', swVersion);
+  app.get('/sw.js', (req, res) => {
+    res.set('Cache-Control', 'no-cache');
+    res.type('application/javascript').send(swSource);
+  });
   // 帶 ?v=<雜湊> 的網址內容永遠不變，可以讓瀏覽器長期快取、不必每次回來驗證
   app.use(express.static(publicDir, {
     setHeaders(res) {
