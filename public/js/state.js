@@ -64,6 +64,4 @@ function showSettingsSub(sub){
   else if (document.getElementById('panel-settings').classList.contains('active')) window.scrollTo({ top:0 });
 }
 
-/* ===================== cover fields ===================== */
-document.getElementById('tripName').addEventListener('input', e=>{ trip.name = e.target.value; scheduleCloudSave(1000); });
 

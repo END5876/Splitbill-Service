@@ -156,16 +156,13 @@
     color:var(--header-accent); white-space:nowrap; letter-spacing:.02em;
   }
   #tripName{
-    flex:1; min-width:0;
-    background:transparent; border:none; color:var(--on-dark);
-    font-family:'Noto Serif TC',serif; font-weight:700; font-size:16px;
-    padding:6px 8px; border-radius:6px;
+    flex:1; min-width:0; margin:0;
+    color:var(--on-dark);
+    font-family:'Noto Serif TC',serif; font-weight:700; font-size:16px; line-height:1.4;
+    padding:6px 8px;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
-  #tripName:focus-visible{outline:2px solid var(--header-accent); background:rgba(255,255,255,0.08);}
-  /* 讓人看得出行程名稱可以直接點來改：hover 時淡淡的底色＋虛線底線 */
-  #tripName:not([readonly]):hover{background:rgba(255,255,255,0.06); box-shadow:inset 0 -1px 0 color-mix(in srgb, var(--on-dark) 35%, transparent);}
-  #tripName[readonly]{cursor:default;}
-  #tripName::placeholder{color:var(--on-dark-faint);}
+  #tripName.is-empty{color:var(--on-dark-faint); font-weight:500;}
   .header-currency{
     background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.22);
     color:var(--on-dark); padding:6px 8px; border-radius:8px; font-size:12.5px;
@@ -370,6 +367,12 @@
     font-size:13px; color:var(--brass); font-weight:700; font-family:inherit;
   }
   .link-btn:hover{ text-decoration:underline; }
+  /* 「我的行程」：標題列右側的小勾選、刪除按鈕靠右 */
+  .trip-showall{font-size:11.5px; color:var(--ink-soft); gap:5px; font-weight:500;}
+  .trip-showall input[type=checkbox]{width:14px; height:14px;}
+  .field-head .trip-showall{margin-bottom:0; display:flex;}
+  .trip-actions{align-items:center;}
+  .trip-actions .trip-delete{margin-left:auto;}
   .field-head .link-btn{ font-size:11.5px; }
   .invite-new-toggle{ margin-top:16px; }
   .field-head .field-meta[data-state="ok"]{ color:var(--credit); }
@@ -920,9 +923,10 @@
     .split-actions{flex-wrap:nowrap;}
     .split-actions .btn{flex:1 1 0; min-width:0; padding-left:6px; padding-right:6px;}
     .split-actions .lbl-long{display:none;}
-    /* 開啟／儲存行程兩顆按鈕平分一行，「重新整理清單」單獨在下一行 */
-    .trip-actions #btnLoadTrip, .trip-actions #btnSaveTrip{flex:1 1 0; min-width:0; padding-left:6px; padding-right:6px; font-size:13px; gap:4px;}
-    .trip-actions .btn-sm{flex:0 0 auto; margin-right:100%;}
+    /* 「開啟這個行程」佔滿剩下的寬度，刪除按鈕維持原尺寸靠右 */
+    .trip-actions{flex-wrap:nowrap;}
+    .trip-actions #btnLoadTrip{flex:1 1 auto; min-width:0; font-size:13px; gap:4px;}
+    .trip-actions .trip-delete{flex:0 0 auto;}
   }
   .member-tag input:focus-visible{outline:none; border-bottom:1px solid var(--brass);}
 
@@ -1026,6 +1030,25 @@
   }
   .rate-table td{padding:9px 8px; border-bottom:1px dashed var(--card-line); font-size:14px;}
   .rate-table input{width:100px;}
+  .rate-cur-name{font-size:12px; color:var(--ink-soft);}
+  /* 幣別搜尋選單（js/currencyPicker.js） */
+  .cur-picker{position:relative; flex:1 1 220px; min-width:0;}
+  .cur-picker input{width:100%;}
+  .cur-list{
+    position:absolute; z-index:30; left:0; right:0; top:calc(100% + 4px);
+    max-height:260px; overflow-y:auto; margin:0; padding:4px; list-style:none;
+    background:var(--card); border:1px solid var(--card-line); border-radius:8px;
+    box-shadow:var(--shadow);
+  }
+  .cur-opt{display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:6px; cursor:pointer; font-size:14px; color:var(--ink);}
+  .cur-opt.active, .cur-opt:hover{background:var(--brass-tint);}
+  .cur-opt-name{flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .cur-opt-code{font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:var(--ink-soft);}
+  .cur-opt-has{font-size:11px; color:var(--ink-soft); border:1px solid var(--card-line); border-radius:999px; padding:1px 7px;}
+  .cur-opt-empty{padding:10px; font-size:13px; color:var(--ink-soft);}
+  .cur-hint{margin:6px 0 0; min-height:1em;}
+  .cur-hint:empty{display:none;}
+  .cur-hint[data-state="error"]{color:var(--debt);}
 
   .hint{font-size:12px; color:var(--ink-soft); margin-top:6px; line-height:1.6;}
   code.inline{background:var(--chip-bg); border-radius:4px; padding:1px 5px; font-family:'IBM Plex Mono',monospace; font-size:12px; word-break:break-all;}
@@ -1201,6 +1224,8 @@
     .row > .date-field{flex-basis:100%;}
     .add-rate-row input{flex:1 1 0; min-width:0; max-width:none !important;}
     .add-rate-row .btn{flex-basis:100%;}
+    .add-rate-row .cur-picker{flex-basis:100%;}
+    .rate-cur-name{display:none;}
     /* 「輸入框＋按鈕」維持同一行，由輸入框縮放 */
     .inline-add-row{flex-wrap:nowrap;}
     .inline-add-row input{flex:1 1 auto; min-width:0; max-width:none !important;}

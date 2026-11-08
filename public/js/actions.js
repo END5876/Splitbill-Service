@@ -24,7 +24,7 @@ const UI_ACTIONS = new Set([
   'abandonReceiptSession', 'addMember', 'addRate', 'checkAllParticipants', 'chooseGuestMode',
   'claimJoinAsNew', 'clearDepositFilter', 'clearExpenseFilter', 'clearInvalid', 'closeLinkComposer',
   'confirmJoinClaim', 'copyBindCommand', 'copyInviteLink', 'copyJson', 'copyLinkUrl',
-  'createTripLink', 'createTripOnServer', 'deleteDeposit', 'deleteExpense', 'detachFromDiscord',
+  'createTripLink', 'createTripOnServer', 'deleteDeposit', 'deleteExpense', 'deleteSelectedTrip', 'detachFromDiscord',
   'downloadJson', 'editDeposit', 'editExpense', 'equalFillChips', 'finalizeReceiptExpense',
   'focusNewMemberInput', 'generateBindCode', 'historyRestoreChange', 'historyRestoreRevision',
   'loadHistory', 'loadMoreHistory', 'goAddMember', 'goHome', 'handleFileImport',
@@ -35,14 +35,14 @@ const UI_ACTIONS = new Set([
   'openLinkComposer', 'openTripSwitcher', 'pickLinkPreset', 'receiptAddManualItem',
   'receiptRemoveItem', 'receiptResetUpload', 'receiptSetField', 'receiptSetShared',
   'receiptToggleAttendee', 'receiptToggleClaim', 'receiptToggleItemType', 'receiptUpdateField',
-  'receiptUpdateServiceChargeRate', 'refreshTripList', 'removeMember', 'removeRate', 'renameMember',
+  'receiptUpdateServiceChargeRate', 'refreshTripList', 'removeMember', 'removeRate', 'renameMember', 'renameSelectedTrip',
   'resetDepositForm', 'resetExpenseForm', 'revealInviteNewBlock', 'revokeTripLink',
   'saveDepositAndSync', 'saveExpenseAndSync', 'saveLinkEdit', 'saveMyNickname',
   'selfShareParticipants', 'setLinkComposerDays', 'setLinkComposerJoin', 'setLinkComposerLabel',
   'setLinkEditGuest', 'setLinkEditJoin', 'setLinkEditLabel', 'setShowAllTrips', 'showMainTab',
   'showSettingsSub', 'startFirstDeposit', 'startFirstExpense', 'switchAccount', 'toggleDepositExpand',
   'toggleDepositFilterMember', 'toggleExpenseExpand', 'toggleExpenseFilterMember', 'toggleFormCard',
-  'toggleLinkEditor', 'toggleMemberDetail', 'toggleTheme', 'unlinkAccount', 'unlinkMember', 'updateRate',
+  'toggleLinkEditor', 'toggleMemberDetail', 'toggleTheme', 'unlinkAccount', 'unlinkMember', 'updateDeleteTripButton', 'updateRate',
 ]);
 
 /** 產生 data-<type>="name" data-args="[…]" 屬性字串（放進 HTML template 用）。 */

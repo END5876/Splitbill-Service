@@ -245,6 +245,7 @@ function populateTripSelect(){
     ? myTrips.map(t=>`<option value="${escapeHtml(t.id)}">${escapeHtml(t.name)}${t.archived?'（已封存）':''}　·　${ROLE_LABELS[t.role]||''}${t.guildId?'　·　🤖 已綁定':''}</option>`).join('')
     : '<option value="">（還沒有任何行程，先在下方建立一個）</option>';
   if (prev && myTrips.some(t=>t.id===prev)) sel.value = prev;
+  updateDeleteTripButton();
 }
 
 // 🆕 記住上次開的行程，下次重新整理頁面時可以自動接回去。存在 localStorage：
@@ -305,6 +306,98 @@ async function createTripOnServer(){
   }catch(err){
     toast('建立行程失敗：' + err.message, 'error');
   }
+}
+
+/* ===================== 刪除行程 ===================== */
+// 刪除「我的行程」下拉選單目前選到的行程。只有建立者（或 Bot 擁有者）看得到按鈕，
+// 伺服器也會再檢查一次（DELETE /api/trip/:tripId 需要 owner 權限）。
+function selectedTripEntry(){
+  const sel = document.getElementById('tripSelect');
+  return sel && sel.value ? myTrips.find(t => t.id === sel.value) || null : null;
+}
+function updateDeleteTripButton(){
+  const renameBtn = document.getElementById('btnRenameTrip');
+  if (renameBtn) renameBtn.style.display = selectedTripEntry() ? '' : 'none';
+  const btn = document.getElementById('btnDeleteTrip');
+  if (!btn) return;
+  const t = selectedTripEntry();
+  btn.style.display = t && (t.role === 'owner' || t.role === 'admin') ? '' : 'none';
+}
+// 改名：下拉選單選到的行程。目前開著的行程直接改本地資料、走一般存檔流程
+// （跟其他修改一起合併）；其他行程用 PATCH /api/trip/:tripId/name 只改名稱。
+async function renameSelectedTrip(){
+  const t = selectedTripEntry();
+  if (!t) return;
+  const isCurrent = t.id === currentTripId;
+  const oldName = isCurrent ? trip.name : t.name;
+  const name = await promptModal('', {
+    title: '行程改名', value: oldName, maxLength: 60, placeholder: '例如：沖繩三天兩夜', confirmText: '儲存',
+  });
+  if (name === null) return;
+  const clean = name.replace(/\s+/g, ' ').trim();
+  if (!clean){ toast('行程名稱不能空白', 'error'); return; }
+  if (clean === oldName) return;
+  if (isCurrent){
+    trip.name = clean;
+    renderAll();
+    scheduleCloudSave(0);
+  } else {
+    try{
+      await apiJson(await fetch(`/api/trip/${encodeURIComponent(t.id)}/name`, {
+        method: 'PATCH',
+        headers: Object.assign({ 'Content-Type': 'application/json' }, apiHeaders()),
+        body: JSON.stringify({ name: clean }),
+      }));
+    }catch(err){
+      toast('改名失敗：' + err.message, 'error');
+      return;
+    }
+  }
+  t.name = clean;
+  populateTripSelect();
+  toast(`已改名為「${clean}」`, 'success');
+  refreshTripList({ silent: true }).catch(()=>{});
+}
+async function deleteSelectedTrip(){
+  const t = selectedTripEntry();
+  if (!t) return;
+  // 第一次確認：講清楚會失去什麼
+  const ok = await confirmModal(
+    `行程裡所有的支出、轉帳、成員和操作紀錄都會一起刪除，所有成員都會看不到這個行程，Discord 伺服器的綁定和分享連結也會失效。
+
+刪除後無法復原。想留一份的話，請先開啟這個行程，到「設定 → 進階」下載 JSON 備份。`,
+    { title: `刪除行程「${t.name}」？`, confirmText: '繼續刪除', cancelText: '取消', danger: true }
+  );
+  if (!ok) return;
+  // 第二次確認：要輸入行程名稱才能刪
+  const typed = await typeToConfirmModal(
+    `請輸入行程名稱「${t.name}」確認刪除。`,
+    t.name,
+    { title: '最後確認', confirmText: '永久刪除', placeholder: t.name }
+  );
+  if (!typed) return;
+
+  const isCurrent = t.id === currentTripId;
+  // 自己刪除目前開著的行程時，伺服器也會推「行程已被刪除」給這個分頁；
+  // 先斷線，免得跳出給「別人刪掉」用的錯誤提示。
+  if (isCurrent) disconnectTripEventStream();
+  try{
+    await apiJson(await fetch(`/api/trip/${encodeURIComponent(t.id)}`, { method: 'DELETE', headers: apiHeaders() }));
+  }catch(err){
+    if (isCurrent) connectTripEventStream().catch(()=>{});
+    toast('刪除行程失敗：' + err.message, 'error');
+    return;
+  }
+  if (isCurrent){
+    currentTripId = null;
+    clearOwnerConnectionState();
+    trip = defaultTrip();
+    lastSyncedTripJSON = null;
+    renderAll();
+    showMainTab('settings'); showSettingsSub('trips');
+  }
+  toast(`已刪除行程「${t.name}」`, 'success');
+  await refreshTripList({ silent: true }).catch(()=>{});
 }
 
 // 把一份行程資料（從 JSON 匯入）建立成新的雲端行程，建立後直接開啟。

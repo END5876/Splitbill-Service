@@ -117,6 +117,52 @@ function alertModal(message, opts){
     document.getElementById('modalOkBtn').focus();
   });
 }
+// 輸入一行文字的 modal（取代原生 prompt()）。resolve 輸入的字串；取消／關閉 resolve null。
+function promptModal(message, opts){
+  opts = opts || {};
+  return new Promise(resolve=>{
+    mountModal(`
+      ${modalTitleHtml(opts.title)}
+      ${message ? `<div class="modal-body" id="modalBody">${escapeHtml(message)}</div>` : ''}
+      <input type="text" id="modalPromptInput" autocomplete="off" ${opts.maxLength ? `maxlength="${Number(opts.maxLength)}"` : ''} placeholder="${escapeHtml(opts.placeholder || '')}" aria-label="${escapeHtml(opts.title || '輸入')}" style="margin-bottom:18px;">
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="modalCancelBtn">${escapeHtml(opts.cancelText || '取消')}</button>
+        <button class="btn btn-primary" id="modalConfirmBtn">${escapeHtml(opts.confirmText || '確定')}</button>
+      </div>`, { hasTitle: !!opts.title, hasBody: !!message, onDismiss: ()=>resolve(null) });
+    const input = document.getElementById('modalPromptInput');
+    input.value = opts.value || '';
+    const finish = (val)=>{ closeModal(); resolve(val); };
+    input.addEventListener('keydown', (e)=>{ if (e.key === 'Enter'){ e.preventDefault(); finish(input.value); } });
+    document.getElementById('modalCancelBtn').onclick = ()=>finish(null);
+    document.getElementById('modalConfirmBtn').onclick = ()=>finish(input.value);
+    input.focus();
+    input.select();
+  });
+}
+// 輸入文字確認的 modal（不可復原的刪除用）：輸入內容要和 expected 完全相同，確認按鈕才會亮起。
+// resolve true＝確認；false＝取消／關閉。
+function typeToConfirmModal(message, expected, opts){
+  opts = opts || {};
+  return new Promise(resolve=>{
+    mountModal(`
+      ${modalTitleHtml(opts.title)}
+      <div class="modal-body" id="modalBody">${escapeHtml(message)}</div>
+      <input type="text" id="modalConfirmInput" autocomplete="off" placeholder="${escapeHtml(opts.placeholder || '')}" aria-label="輸入確認文字" style="margin-bottom:18px;">
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="modalCancelBtn">${escapeHtml(opts.cancelText || '取消')}</button>
+        <button class="btn btn-danger" id="modalConfirmBtn" disabled style="background:var(--debt-solid);color:#fff;border:none;">${escapeHtml(opts.confirmText || '確定')}</button>
+      </div>`, { role: 'alertdialog', hasTitle: !!opts.title, hasBody: true, onDismiss: ()=>resolve(false) });
+    const input = document.getElementById('modalConfirmInput');
+    const btn = document.getElementById('modalConfirmBtn');
+    const matches = ()=> input.value.trim() === String(expected).trim();
+    const finish = (val)=>{ closeModal(); resolve(val); };
+    input.addEventListener('input', ()=>{ btn.disabled = !matches(); });
+    input.addEventListener('keydown', (e)=>{ if (e.key === 'Enter' && matches()){ e.preventDefault(); finish(true); } });
+    document.getElementById('modalCancelBtn').onclick = ()=>finish(false);
+    btn.onclick = ()=>{ if (matches()) finish(true); };
+    input.focus();
+  });
+}
 // 清單挑選 modal（取代原本 prompt() 手動打行程 ID 的做法）
 function pickModal(title, items){
   // items: [{ value, title, sub }]

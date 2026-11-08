@@ -123,6 +123,25 @@ module.exports = function createTripsRouter(ctx) {
     res.json(storage.toPublicTrip(repaired));
   });
 
+  // ---- PATCH /api/trip/:tripId/name：只改行程名稱 ----
+  // 網頁「設定 → 行程 → 我的行程」的改名用：不必先開啟行程、也不用整包 PUT。
+  // 權限跟編輯行程內容相同（成員以上）。改完照常 touchTrip，開著的分頁會收到推播。
+  // body: { name }
+  router.patch('/trip/:tripId/name', (req, res) => {
+    const trip = loadTripOr404(req, res);
+    if (!trip) return;
+    if (!requireTripAccess(req, res, trip, 'write')) return;
+    const raw = req.body && typeof req.body.name === 'string' ? req.body.name : '';
+    const name = raw.replace(/\s+/g, ' ').trim().slice(0, 60);
+    if (!name) return res.status(400).json({ error: '請輸入行程名稱' });
+    if (name !== trip.name) {
+      trip.name = name;
+      storage.touchTrip(trip, { actor: actorOf(req) });
+      storage.persist();
+    }
+    res.json({ ok: true, name: trip.name, updatedAt: trip.updatedAt });
+  });
+
   // ---- DELETE /api/trip/:tripId：徹底刪除一個行程 ----
   // 只有行程建立者（含 OWNER_USER_ID）可以刪除——不論是網頁登入者，還是 Bot
   // 宣告的操作者（x-actor-id），都在 lib/auth.js 以同一套規則判斷。

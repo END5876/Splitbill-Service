@@ -126,8 +126,6 @@ function applyGuestModeUI(){
   document.body.classList.add('share-mode');
   if (shareMode.permission !== 'write'){
     document.body.classList.add('share-readonly');
-    // 唯讀時行程名稱改成唯讀展示，避免朋友以為改了會生效（伺服器本來就會擋）
-    document.getElementById('tripName').readOnly = true;
   }
 }
 

@@ -60,7 +60,8 @@
   <div class="app-header-inner">
     <div class="header-row1">
       <span class="brand">裊器分帳</span>
-      <input type="text" id="tripName" placeholder="行程名稱，例如：沖繩三天兩夜" title="點擊修改行程名稱" aria-label="行程名稱">
+      <!-- 行程名稱只顯示；改名一律在「設定 → 行程 → 我的行程」 -->
+      <h1 class="trip-title" id="tripName"></h1>
       <button class="header-icon-btn" id="tripSwitchBtn" type="button" data-click="openTripSwitcher" aria-label="切換行程" title="切換行程" style="display:none;"><svg class="ic" aria-hidden="true"><use href="#i-switch"/></svg></button>
       <span class="header-currency" id="baseCurrencyLabel" title="基準幣別於建立行程時決定，之後無法更改"></span>
       <!-- 同步狀態：已同步／儲存中／未儲存（點擊重試）／未開啟行程／唯讀，見 js/tripSync.js 的 renderSyncStatus() -->
@@ -345,18 +346,26 @@
     <div class="subpanel active" id="panel-trip" data-subpanel="trip">
       <div class="card" id="myTripsCard" style="display:none;">
         <h2 class="section-title">我的行程</h2>
+        <!-- 標題列右側放「重新整理」；Bot 擁有者才看得到「列出所有行程」（js/account.js renderAccountArea） -->
         <div class="field">
-          <label for="tripSelect">行程</label>
-          <select id="tripSelect"><option value="">－ 讀取中 －</option></select>
+          <div class="field-head">
+            <label for="tripSelect">行程</label>
+            <div class="field-tools">
+              <label class="check-row trip-showall" id="showAllTripsRow" style="display:none;">
+                <input type="checkbox" id="showAllTripsToggle" data-change="setShowAllTrips" data-args='["$checked"]'>
+                <span>列出所有行程</span>
+              </label>
+              <button class="link-btn" type="button" data-click="refreshTripList" data-loading="讀取中…">↻ 重新整理</button>
+            </div>
+          </div>
+          <select id="tripSelect" data-change="updateDeleteTripButton"><option value="">－ 讀取中 －</option></select>
         </div>
+        <!-- 主要動作在左；刪除推到最右邊，只有建立者看得到 -->
         <div class="btn-row trip-actions">
           <button class="btn btn-brass" id="btnLoadTrip" data-click="loadTripFromApi" data-loading="載入中…">⬇ 開啟這個行程</button>
-          <button class="btn btn-ghost btn-sm" data-click="refreshTripList" data-loading="讀取中…">重新整理清單</button>
+          <button class="btn btn-ghost btn-sm" id="btnRenameTrip" type="button" style="display:none;" data-click="renameSelectedTrip" data-loading="儲存中…">改名</button>
+          <button class="btn btn-danger btn-sm trip-delete" id="btnDeleteTrip" type="button" style="display:none;" data-click="deleteSelectedTrip" data-loading="刪除中…">刪除這個行程</button>
         </div>
-        <label class="check-row" id="showAllTripsRow" style="display:none;">
-          <input type="checkbox" id="showAllTripsToggle" data-change="setShowAllTrips" data-args='["$checked"]'>
-          <span>列出所有行程（Bot 擁有者）</span>
-        </label>
         <p class="hint">也可以直接點頁首行程名稱旁的切換按鈕快速換行程。所有變更都會自動寫入雲端，頁首會顯示同步狀態；如果別人剛好也改過，會先自動合併，無法合併時才會詢問你。</p>
 
         <h3 class="section-subtitle" id="createTripHeading">建立新行程</h3>
@@ -390,11 +399,6 @@
         <p class="hint">你會是這個行程的建立者，也是第一位成員。之後可以到「成員與分享」邀請朋友，或到「行程」綁定 Discord 伺服器。</p>
       </div>
 
-      <div class="card" id="tripInfoCard">
-        <h2 class="section-title">基本資訊</h2>
-        <p class="hint" style="margin:0;">行程名稱可以直接點頁首的名稱修改。基準幣別在建立行程時決定，之後無法更改。</p>
-      </div>
-
       <div class="card" id="ratesCard">
         <h2 class="section-title">匯率</h2>
         <p class="hint" style="margin-top:0;">記帳時會優先自動查詢即時匯率；這裡的數字是查不到時的備用值。每列表示「1 單位該幣別 ＝ 多少 <span id="baseLabel">TWD</span>」。</p>
@@ -402,11 +406,16 @@
           <thead><tr><th>幣別</th><th>1 單位 ＝ 多少基準幣</th><th></th></tr></thead>
           <tbody id="rateTableBody"></tbody>
         </table>
+        <!-- 幣別搜尋選單：可以打國家、貨幣名稱或代碼；選到後自動帶入即時匯率（js/currencyPicker.js） -->
         <div class="btn-row add-rate-row">
-          <input type="text" id="newRateCurrency" placeholder="幣別代碼 (如 JPY)" style="max-width:140px; text-transform:uppercase;" aria-label="幣別代碼">
+          <div class="cur-picker">
+            <input type="text" id="newRateCurrency" placeholder="搜尋國家、貨幣或代碼，如：日本" autocomplete="off" aria-label="搜尋幣別">
+            <ul class="cur-list" id="newRateCurrencyList" role="listbox" aria-label="幣別" hidden></ul>
+          </div>
           <input type="number" inputmode="decimal" id="newRateValue" placeholder="匯率" step="0.0001" style="max-width:120px;" aria-label="匯率">
           <button class="btn btn-primary" data-click="addRate">＋ 新增幣別</button>
         </div>
+        <p class="hint cur-hint" id="newRateHint" aria-live="polite"></p>
       </div>
 
       <!-- 🆕 [行程獨立化] 綁定到 Discord 伺服器（內容由 js/account.js 的 renderDiscordPanel 產生） -->
@@ -492,6 +501,7 @@
 <script src="js/uiKit.js"></script>
 <script src="js/state.js"></script>
 <script src="js/membersRates.js"></script>
+<script src="js/currencyPicker.js"></script>
 <script src="js/expenseForm.js"></script>
 <script src="js/receiptScan.js"></script>
 <script src="js/expenseCrud.js"></script>

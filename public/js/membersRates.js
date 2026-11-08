@@ -57,15 +57,18 @@ async function removeMember(id){
 function addRate(){
   const codeInput = document.getElementById('newRateCurrency');
   const valInput = document.getElementById('newRateValue');
-  const code = codeInput.value.trim().toUpperCase();
+  // 幣別從搜尋選單選取（js/currencyPicker.js）；也接受直接打代碼或完整的貨幣名稱
+  const code = resolveTypedCurrency(codeInput);
   const val = parseFloat(valInput.value);
-  if (!code){ toast('請輸入幣別代碼', 'error'); return; }
+  if (!codeInput.value.trim()){ toast('請先選擇幣別', 'error'); codeInput.focus(); return; }
   // 跟伺服器的格式一致（lib/validate.js），不合格的代碼存檔時會被伺服器丟掉
-  if (!/^[A-Z][A-Z0-9]{1,9}$/.test(code)){ toast('幣別代碼只能是英文字母開頭的 2～10 個英文或數字，例如 JPY', 'error'); return; }
-  if (!(val>0)){ toast('匯率要大於 0', 'error'); return; }
+  if (!code){ toast('找不到這個幣別，請從清單選一個，或輸入貨幣代碼（例如 JPY）', 'error'); codeInput.focus(); return; }
+  if (code === trip.baseCurrency){ toast(`${code} 是這個行程的基準幣別，不用另外設定匯率`, 'error'); return; }
+  if (!(val>0)){ toast('匯率要大於 0', 'error'); valInput.focus(); return; }
   trip.rates[code] = val;
-  codeInput.value=''; valInput.value='';
-  toast(`已設定 ${code} = ${val}`, 'success');
+  valInput.value='';
+  resetCurrencyPicker();
+  toast(`已設定 ${currencyLabel(code)}：1 ${code} ＝ ${val} ${trip.baseCurrency}`, 'success');
   renderAll();
   scheduleCloudSave();
 }

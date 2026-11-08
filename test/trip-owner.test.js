@@ -139,3 +139,21 @@ test('一般使用者帶 ?all=1 只會看到自己的行程', async () => {
   assert.equal(all.status, 200);
   assert.ok(!all.body.trips.some((t) => t.id === 'o1'));
 });
+
+test('PATCH /trip/:id/name：只改名稱、空白擋下、非成員不能改', async () => {
+  await put('rn1', trip({ ownerId: ALICE }));
+  const patch = (body, actor) => fetch(`${BASE}/api/trip/rn1/name`, {
+    method: 'PATCH', headers: actor ? { ...OWNER, 'x-actor-id': actor } : OWNER, body: JSON.stringify(body),
+  }).then(j);
+
+  const ok = await patch({ name: '  沖繩   三天兩夜 ' }, ALICE);
+  assert.equal(ok.status, 200);
+  assert.equal(ok.body.name, '沖繩 三天兩夜');
+  const after1 = await get('rn1');
+  assert.equal(after1.body.name, '沖繩 三天兩夜');
+  assert.equal(after1.body.members.length, 1, '其他欄位不受影響');
+
+  assert.equal((await patch({ name: '   ' }, ALICE)).status, 400);
+  assert.equal((await patch({ name: '偷改' }, MALLORY)).status, 403);
+  assert.equal((await get('rn1')).body.name, '沖繩 三天兩夜');
+});
