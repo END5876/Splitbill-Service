@@ -199,7 +199,7 @@ function escapeHtml(s) {
 function sendPage(res, status, title, bodyHtml, { refresh } = {}) {
   res.status(status).set('Cache-Control', 'no-store').type('html').send(`<!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-${refresh ? `<meta http-equiv="refresh" content="0;url=${escapeHtml(refresh)}">` : ''}<title>${escapeHtml(title)}｜拆帳本</title>
+${refresh ? `<meta http-equiv="refresh" content="0;url=${escapeHtml(refresh)}">` : ''}<title>${escapeHtml(title)}｜裊器分帳</title>
 <style>
 :root{--ink:#1F2330;--ink-soft:#4F5566;--paper:#F2F3F7;--card:#FFFFFF;--line:#DCDFE8;--brass:#8A5A12;--on-brass:#FFFFFF}
 @media (prefers-color-scheme:dark){:root{--ink:#F2F3F5;--ink-soft:#A8ACB4;--paper:#1E1F22;--card:#2B2D31;--line:#3F4147;--brass:#D6A646;--on-brass:#1E1F22}}
@@ -210,7 +210,7 @@ a.btn{height:44px;border-radius:22px;font-size:15px;font-weight:700;display:flex
 </style></head><body><main><h1>${escapeHtml(title)}</h1>${bodyHtml}</main></body></html>`);
 }
 
-const backLink = '<a class="btn" href="/">回到拆帳本</a>';
+const backLink = '<a class="btn" href="/">回到裊器分帳</a>';
 
 // 用同站頁面跳轉（理由見 callback 結尾的說明）
 function sendRedirectPage(res, title, next) {
@@ -291,7 +291,7 @@ module.exports = function createOAuthRouter(deps = {}) {
     if (req.query.link === '1') {
       if (!storage) return sendPage(res, 503, '帳號綁定尚未開放', backLink);
       const current = req.get('sec-fetch-site') === 'cross-site' ? null : session.readSession(req);
-      if (!current) return sendPage(res, 401, '請先登入', `<p>要綁定帳號，請先用原本的帳號登入拆帳本。</p>${backLink}`);
+      if (!current) return sendPage(res, 401, '請先登入', `<p>要綁定帳號，請先用原本的帳號登入裊器分帳。</p>${backLink}`);
       if (current.provider === prov) {
         const other = prov === 'line' ? 'Discord' : 'LINE';
       return sendPage(res, 400, `你現在就是用 ${provider.label} 登入`, `<p>請到「設定 → 帳號」綁定 ${other} 帳號。</p>${backLink}`);
@@ -320,7 +320,7 @@ module.exports = function createOAuthRouter(deps = {}) {
     }
     if (!saved || savedProv !== prov || typeof saved.state !== 'string' || typeof state !== 'string'
       || !safeEqual(state, saved.state) || typeof code !== 'string') {
-      return sendPage(res, 400, '這次登入已經逾時', `<p>請回到拆帳本重新登入一次。</p>${backLink}`);
+      return sendPage(res, 400, '這次登入已經逾時', `<p>請回到裊器分帳重新登入一次。</p>${backLink}`);
     }
 
     const now = Date.now();

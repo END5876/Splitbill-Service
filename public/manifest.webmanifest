@@ -1,7 +1,7 @@
 {
   "id": "/",
-  "name": "拆帳本｜Mousebot Splitbill",
-  "short_name": "拆帳本",
+  "name": "裊器分帳",
+  "short_name": "裊器分帳",
   "description": "跟朋友一起記旅行和聚餐的花費，自動算出誰該付誰多少。",
   "lang": "zh-Hant",
   "start_url": "/",

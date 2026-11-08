@@ -94,7 +94,7 @@ function showNoAccessScreen(){
   const el = document.getElementById('noAccessScreen');
   el.innerHTML = oauthEnabled ? `
     <div class="no-access-card">
-      <div class="no-access-brand">拆帳本</div>
+      <div class="no-access-brand">裊器分帳</div>
       <h1>跟朋友一起記帳、結算</h1>
       <div class="no-access-divider"></div>
       <p>旅行、聚餐、合租的花費，記下來就自動算好誰該付誰多少。</p>

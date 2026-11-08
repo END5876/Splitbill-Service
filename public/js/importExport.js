@@ -59,10 +59,10 @@ async function importJsonAsNewTrip(){
   const raw = document.getElementById('jsonInput').value.trim();
   if (!raw){ toast('請選擇 JSON 檔案，或把內容貼上', 'error'); return; }
   let parsed;
-  try { parsed = JSON.parse(raw); } catch(err){ toast('讀不懂這份內容，請確認是從拆帳本下載的 JSON 檔', 'error'); return; }
+  try { parsed = JSON.parse(raw); } catch(err){ toast('讀不懂這份內容，請確認是從裊器分帳下載的 JSON 檔', 'error'); return; }
 
   const candidate = await resolveTripFromRaw(parsed);
-  if (!candidate){ toast('這份檔案裡沒有行程資料，請確認是從拆帳本下載的 JSON 檔', 'error'); return; }
+  if (!candidate){ toast('這份檔案裡沒有行程資料，請確認是從裊器分帳下載的 JSON 檔', 'error'); return; }
   const created = await createCloudTripFrom(repairTrip(candidate));
   if (created){
     document.getElementById('jsonInput').value = '';
