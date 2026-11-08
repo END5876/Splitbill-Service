@@ -8,6 +8,7 @@ const { memberAccountId } = require('../lib/accounts');
 //   GET  …/activity?before=<updatedAt>&limit=30   操作紀錄，新的在前（能看行程就能看）
 //   GET  …/revisions/:updatedAt                   某個版本的完整內容（能看行程就能看）
 //   POST …/revisions/:updatedAt/restore           把行程內容整份還原成那個版本（需要可編輯）
+//   DELETE /api/trip/:tripId/activity/:updatedAt  刪掉單筆紀錄＋那個版本的快照（只有建立者，分享連結不行）
 // 單筆「還原刪掉的支出」不在這裡：網頁直接用操作紀錄裡存的內容呼叫單筆 API
 // （routes/entries.js，帶 restore: true）。
 //
@@ -111,6 +112,16 @@ module.exports = function createHistoryRouter(ctx) {
       res.json({ trip: r.guest ? storage.toGuestTrip(restored) : storage.toPublicTrip(restored) });
     });
   }
+
+  // 刪除單筆紀錄：操作紀錄是大家對帳的依據，只開放給建立者（含 Bot 擁有者），訪客與一般成員都不行
+  router.delete('/trip/:tripId/activity/:version', (req, res) => {
+    const trip = storage.getTrip(req.params.tripId);
+    if (!trip) return res.status(404).json({ error: '找不到這個行程' });
+    if (!requireTripAccess(req, res, trip, 'owner')) return;
+    const v = parseVersion(req.params.version);
+    if (!v || !storage.deleteTripActivity(trip.id, v)) return res.status(404).json({ error: '找不到這筆紀錄，可能已經被刪掉了' });
+    res.json({ ok: true });
+  });
 
   mount('/trip/:tripId', byTripId);
   mount('/shared-trip/:token', byShareToken);

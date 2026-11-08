@@ -1380,3 +1380,4 @@
   .hist-action{ flex-shrink:0; font-size:12.5px; white-space:nowrap; }
   .hist-meta{ display:inline-flex; align-items:baseline; gap:10px; flex-shrink:0; }
   .hist-revert{ font-size:12px; white-space:nowrap; color:var(--ink-soft); font-weight:600; }
+  .hist-delete{ font-size:12px; white-space:nowrap; color:var(--debt); font-weight:600; }

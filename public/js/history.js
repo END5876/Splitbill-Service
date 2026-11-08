@@ -29,6 +29,10 @@ function historyTripKey(){
 function canWriteHistory(){
   return !!historyTripKey() && !(shareMode && shareMode.permission !== 'write');
 }
+// 刪除單筆紀錄：只有建立者（含 Bot 擁有者），分享連結訪客不行（伺服器也會擋）
+function canDeleteHistory(){
+  return !shareMode && !!currentTripId && canManageTrip();
+}
 
 // renderAll()／切到「設定 → 紀錄」時呼叫：只有這個子分頁開著時才做事；行程換了或版本變了就重新載入
 function renderHistoryIfVisible(){
@@ -156,11 +160,14 @@ function historyItemHtml(item){
   const revisionBtn = writable && item.restorable
     ? `<button type="button" class="link-btn hist-revert" ${act('click','historyRestoreRevision', item.updatedAt)} title="把整個行程回到這筆修改之後的狀態">回到此版本</button>`
     : '';
+  const deleteBtn = canDeleteHistory()
+    ? `<button type="button" class="link-btn hist-delete" ${act('click','historyDeleteItem', item.updatedAt)} title="刪除這筆紀錄">刪除</button>`
+    : '';
   return `
     <div class="hist-item">
       <div class="hist-head">
         <span class="hist-actor"><span aria-hidden="true">${HISTORY_ACTOR_ICON[actor.kind] || '•'}</span>${escapeHtml(actor.name || '未知')}${actor.isMe ? '<span class="hist-me">（你）</span>' : ''}${actor.kind === 'bot' ? '<span class="hist-via">在 Discord</span>' : ''}</span>
-        <span class="hist-meta">${revisionBtn}<span class="hist-time">${historyTimeLabel(item.at)}</span></span>
+        <span class="hist-meta">${revisionBtn}${deleteBtn}<span class="hist-time">${historyTimeLabel(item.at)}</span></span>
       </div>
       ${historyReasonHtml(item)}
       <ul class="hist-changes">${changes}</ul>
@@ -197,6 +204,31 @@ function renderHistoryPanel(){
     </div>`).join('') + (historyHasMore
       ? `<div class="btn-row" style="justify-content:center; margin-top:14px;"><button class="btn btn-ghost btn-sm" type="button" data-click="loadMoreHistory" data-loading="讀取中…">載入更早的紀錄</button></div>`
       : '');
+}
+
+/* ---------------- 刪除單筆紀錄 ---------------- */
+// 只刪紀錄本身（和那個時間點的版本快照），不會動到行程裡的帳目。
+async function historyDeleteItem(updatedAt){
+  const item = historyItems.find(x => x.updatedAt === updatedAt);
+  if (!item) return;
+  const when = `${historyDayLabel(item.at)} ${historyTimeLabel(item.at)}`;
+  const who = (item.actor && item.actor.name) || '未知';
+  const ok = await confirmModal(
+    `${when}，${who} 的這筆紀錄會從清單移除，所有成員都看不到。
+
+只會刪掉紀錄，行程裡的支出和轉帳不受影響；但之後就不能再用這筆紀錄還原或回到這個版本。刪除後無法復原。`,
+    { title: '刪除這筆紀錄？', confirmText: '刪除紀錄', cancelText: '取消', danger: true }
+  );
+  if (!ok) return;
+  try{
+    await apiJson(await fetch(historyApiUrl(`/activity/${updatedAt}`), { method: 'DELETE', headers: apiHeaders() }));
+  }catch(err){
+    toast('刪除紀錄失敗：' + err.message, 'error');
+    return;
+  }
+  historyItems = historyItems.filter(x => x.updatedAt !== updatedAt);
+  renderHistoryPanel();
+  toast('已刪除這筆紀錄', 'success');
 }
 
 /* ---------------- 還原 ---------------- */

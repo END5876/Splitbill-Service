@@ -167,3 +167,22 @@ test('沒有權限看不到紀錄', async () => {
   const stranger = loginCookie('300000000000000099', 'x');
   assert.equal((await activity('', undefined, { cookie: stranger })).status, 403);
 });
+
+test('刪除單筆紀錄：只有建立者／管理端可以，訪客與一般成員不行，連同版本快照一起刪', async () => {
+  assert.equal((await putEntry('expenses', 'del-me', { entry: expense({ description: '要刪的紀錄' }) })).status, 200);
+  const list = await activity('?limit=5');
+  const target = list.body.items.find((it) => (it.changes || []).some((c) => c.id === 'del-me'));
+  assert.ok(target, '找得到剛剛那筆紀錄');
+  const v = target.updatedAt;
+  const del = (base, headers) => fetch(`${base}/activity/${v}`, { method: 'DELETE', headers }).then(j);
+
+  assert.equal((await del(`${BASE}/api/trip/h1`, asAlice())).status, 403, '一般成員不能刪');
+  assert.notEqual((await del(`${BASE}/api/shared-trip/${RW}`, JSONH)).status, 200, '可編輯分享連結也不能刪');
+
+  assert.equal((await del(`${BASE}/api/trip/h1`, OWNER)).status, 200);
+  const after = await activity('?limit=100');
+  assert.ok(!after.body.items.some((it) => it.updatedAt === v), '紀錄已經不在清單裡');
+  assert.equal((await fetch(`${BASE}/api/trip/h1/revisions/${v}`, { headers: OWNER })).status, 404, '版本快照一起刪掉');
+  assert.ok((await getTrip()).expenses.some((e) => e.id === 'del-me'), '帳目本身不受影響');
+  assert.equal((await del(`${BASE}/api/trip/h1`, OWNER)).status, 404, '重複刪除回 404');
+});
