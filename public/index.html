@@ -358,15 +358,14 @@
               <button class="link-btn" type="button" data-click="refreshTripList" data-loading="讀取中…">↻ 重新整理</button>
             </div>
           </div>
-          <select id="tripSelect" data-change="updateDeleteTripButton"><option value="">－ 讀取中 －</option></select>
+          <select id="tripSelect" data-change="onTripSelectChange"><option value="">－ 讀取中 －</option></select>
         </div>
-        <!-- 主要動作在左；刪除推到最右邊，只有建立者看得到 -->
+        <!-- 下拉選單選了就直接開啟（onTripSelectChange）；改名在左，刪除推到最右邊（只有建立者看得到） -->
         <div class="btn-row trip-actions">
-          <button class="btn btn-brass" id="btnLoadTrip" data-click="loadTripFromApi" data-loading="載入中…">⬇ 開啟這個行程</button>
-          <button class="btn btn-ghost btn-sm" id="btnRenameTrip" type="button" style="display:none;" data-click="renameSelectedTrip" data-loading="儲存中…">改名</button>
+          <button class="btn btn-ghost btn-sm" id="btnRenameTrip" type="button" style="display:none;" data-click="renameSelectedTrip" data-loading="儲存中…">行程改名</button>
           <button class="btn btn-danger btn-sm trip-delete" id="btnDeleteTrip" type="button" style="display:none;" data-click="deleteSelectedTrip" data-loading="刪除中…">刪除這個行程</button>
         </div>
-        <p class="hint">也可以直接點頁首行程名稱旁的切換按鈕快速換行程。所有變更都會自動寫入雲端，頁首會顯示同步狀態；如果別人剛好也改過，會先自動合併，無法合併時才會詢問你。</p>
+        <p class="hint">從選單選一個行程就會直接開啟，也可以點頁首行程名稱旁的切換按鈕快速換行程。所有變更都會自動寫入雲端，頁首會顯示同步狀態；如果別人剛好也改過，會先自動合併，無法合併時才會詢問你。</p>
 
         <h3 class="section-subtitle" id="createTripHeading">建立新行程</h3>
         <div class="row">

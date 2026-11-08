@@ -323,6 +323,20 @@ function updateDeleteTripButton(){
   const t = selectedTripEntry();
   btn.style.display = t && (t.role === 'owner' || t.role === 'admin') ? '' : 'none';
 }
+// 下拉選單選了就直接開啟該行程並帶到總覽；載入失敗時選單退回目前開著的行程。
+async function onTripSelectChange(){
+  const sel = document.getElementById('tripSelect');
+  const id = sel.value;
+  if (id && id !== currentTripId){
+    sel.disabled = true;
+    try{ await loadTripFromApi({ tripId: id }); }
+    finally{ sel.disabled = false; }
+    if (currentTripId === id) showMainTab('overview');
+    else if (currentTripId) sel.value = currentTripId;
+  }
+  updateDeleteTripButton();
+}
+
 // 改名：下拉選單選到的行程。目前開著的行程直接改本地資料、走一般存檔流程
 // （跟其他修改一起合併）；其他行程用 PATCH /api/trip/:tripId/name 只改名稱。
 async function renameSelectedTrip(){

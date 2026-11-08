@@ -31,7 +31,7 @@ const UI_ACTIONS = new Set([
   'handleReceiptUpload', 'importJsonAsNewTrip', 'joinReceiptSession', 'leaveJoinScreen',
   'linkAccount', 'loadTripFromApi', 'loadTripLinks', 'loginWithDiscord', 'loginWithLine', 'logout', 'markTransferPaid',
   'onChipToggle', 'onDebtCurrencyChange', 'onDebtViewChange', 'onDepositFilterChange',
-  'onExpenseFilterChange', 'onParticipantAmountInput', 'onPayerAmountInput', 'onSyncStatusClick',
+  'onExpenseFilterChange', 'onParticipantAmountInput', 'onPayerAmountInput', 'onSyncStatusClick', 'onTripSelectChange',
   'openLinkComposer', 'openTripSwitcher', 'pickLinkPreset', 'receiptAddManualItem',
   'receiptRemoveItem', 'receiptResetUpload', 'receiptSetField', 'receiptSetShared',
   'receiptToggleAttendee', 'receiptToggleClaim', 'receiptToggleItemType', 'receiptUpdateField',

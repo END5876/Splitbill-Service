@@ -923,10 +923,8 @@
     .split-actions{flex-wrap:nowrap;}
     .split-actions .btn{flex:1 1 0; min-width:0; padding-left:6px; padding-right:6px;}
     .split-actions .lbl-long{display:none;}
-    /* 「開啟這個行程」佔滿剩下的寬度，刪除按鈕維持原尺寸靠右 */
+    /* 改名在左、刪除靠右，維持同一行 */
     .trip-actions{flex-wrap:nowrap;}
-    .trip-actions #btnLoadTrip{flex:1 1 auto; min-width:0; font-size:13px; gap:4px;}
-    .trip-actions .trip-delete{flex:0 0 auto;}
   }
   .member-tag input:focus-visible{outline:none; border-bottom:1px solid var(--brass);}
 
