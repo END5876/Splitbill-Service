@@ -21,7 +21,11 @@
  *   GEMINI_RECEIPT_MODEL  帳單辨識用的 Gemini 模型（預設 gemini-3.1-flash-lite）
  *   SPLITBILL_LOG_REQUESTS=all  每個請求都記一行 log（預設只記 403／409／429／5xx 與慢請求）
  *   ALERT_WEBHOOK_URL   Discord webhook：每日備份失敗時通知（未設定＝不送）
+ *   LOG_TIMESTAMPS=0    關閉 log 前面的時間（預設開啟，時區用 TZ，沒設定就用 Asia/Taipei）
  */
+
+// 直接啟動時才幫 console 加時間（放最前面，連載入其他模組時印的 log 也有時間；測試 require 時不動 console）
+if (require.main === module) require('./lib/consoleStamp').installConsoleTimestamps();
 
 const path = require('path');
 const fs = require('fs');
