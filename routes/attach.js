@@ -6,13 +6,13 @@ const { createRateLimiter } = require('../lib/rateLimit');
 // ════════════════════════════════════════════════════════════════
 // 🆕 [行程獨立化] 把網頁建立的行程綁到 Discord 伺服器（之後 Discord 面板就能操作）。
 //
-// 流程：建立者在網頁按「產生綁定碼」→ 到想綁定的伺服器輸入 /splitbill-attach code:<碼>
+// 流程：建立者在網頁按「產生綁定碼」→ 到想綁定的伺服器輸入 /splitbill attach code:<碼>
 //       → Mousebot 帶著 x-actor-id 呼叫 POST /api/attach。
 //
 // 規則：
 //   - 綁定碼只有建立者（或 OWNER_USER_ID）能產生，10 分鐘內有效、用一次就作廢，
 //     一個行程同時只有一組有效的碼（重新產生會讓舊的作廢）
-//   - 執行 /splitbill-attach 的人也必須是建立者（或 OWNER_USER_ID）：綁定碼只是
+//   - 執行 /splitbill attach 的人也必須是建立者（或 OWNER_USER_ID）：綁定碼只是
 //     「指出要綁哪個行程」，不是權限本身——就算碼外流，別人也綁不走
 //   - 一個行程只綁一個伺服器；已綁到別的伺服器時必須先在網頁解除綁定
 //   - 執行者若還不是已連結的成員，自動加入為成員；並把這個行程設成他在該伺服器的作用行程
@@ -55,7 +55,7 @@ module.exports = function createAttachRouter(ctx) {
     do { code = genCode(); } while (bindCodes.has(code));
     const expiresAt = Date.now() + CODE_TTL_MS;
     bindCodes.set(code, { tripId: trip.id, expiresAt });
-    res.json({ code, expiresAt, command: `/splitbill-attach code:${code}` });
+    res.json({ code, expiresAt, command: `/splitbill attach code:${code}` });
   });
 
   // ---- POST /api/attach：用綁定碼把行程綁到伺服器（Bot 專用，必須宣告操作者） ----
@@ -63,7 +63,7 @@ module.exports = function createAttachRouter(ctx) {
   router.post('/attach', (req, res) => {
     const p = req.principal;
     if (!p || p.kind !== 'service' || !p.actorId) {
-      return res.status(403).json({ error: '綁定只能從 Discord 執行 /splitbill-attach' });
+      return res.status(403).json({ error: '綁定只能從 Discord 執行 /splitbill attach' });
     }
     const actor = p.actorId;
     const r = attachLimiter.take(actor);

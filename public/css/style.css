@@ -139,6 +139,10 @@
   textarea:focus-visible, [tabindex]:focus-visible{
     outline:2px solid var(--brass); outline-offset:2px; border-radius:4px;
   }
+  /* 放在 overflow:hidden 圓角區塊裡的整列按鈕：焦點框往內縮，才不會被區塊裁掉 */
+  .ledger-entry-row:focus-visible, .member-detail-head:focus-visible, .settle-paid-link:focus-visible{
+    outline:2px solid var(--brass); outline-offset:-3px; border-radius:10px;
+  }
 
   /* ---------- Sticky app header ---------- */
   .app-header{
@@ -413,7 +417,8 @@
      .header-currency option 那行是更早之前針對「頁首固定深色底」的特例
      （不隨主題切換，永遠要用深色文字），優先度較高，不受這裡影響。 */
   select option{ background-color:var(--card); color:var(--ink); }
-  input:focus, select:focus, textarea:focus{outline:2px solid var(--brass-soft); outline-offset:1px;}
+  input:focus, select:focus, textarea:focus{border-color:var(--brass);}
+  input:focus-visible, select:focus-visible, textarea:focus-visible{outline:2px solid var(--brass); outline-offset:1px;}
   textarea{font-family:'IBM Plex Mono',monospace; font-size:12.5px; resize:vertical;}
   /* iPhone Safari 在輸入框字級小於 16px 時，點進去會自動放大整個頁面；觸控裝置一律 16px 避免放大 */
   @media (hover:none) and (pointer:coarse){
@@ -873,6 +878,17 @@
   .ledger-entry-amt .cur{ font-size:10.5px; color:var(--ink-soft); font-weight:500; margin-left:4px; }
   .ledger-entry-sub{ font-size:12.5px; color:var(--ink-soft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .ledger-entry-sub .muted{ font-style:italic; opacity:.75; }
+  /* 轉帳列：付款人與收款人各自截斷，箭頭與「你」標記不縮 */
+  .ledger-transfer{ display:flex; align-items:baseline; min-width:0; }
+  .ledger-party{ display:inline-flex; align-items:baseline; min-width:0; flex:0 1 auto; }
+  .ledger-party-name{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .ledger-transfer .ledger-entry-arrow, .ledger-party .you-tag{ flex-shrink:0; }
+  /* 展開後：被截斷的項目名稱、收款人、備註都顯示全文 */
+  .ledger-entry.open .ledger-entry-title, .ledger-entry.open .ledger-entry-sub,
+  .ledger-entry.open .ledger-party-name{ white-space:normal; overflow-wrap:anywhere; overflow:visible; }
+  /* 展開後改回一般文字排列，名字很長時箭頭跟著文字換行，不會單獨掉到一行 */
+  .ledger-entry.open .ledger-transfer{ display:block; }
+  .ledger-entry.open .ledger-party{ display:inline; }
   .ledger-entry-me{ text-align:right; font-size:12.5px; font-weight:700; white-space:nowrap; }
   .ledger-entry-me .num{ font-family:'IBM Plex Mono',monospace; }
   .ledger-entry-detail{ padding:0 14px 14px; }
@@ -989,7 +1005,12 @@
   .settle-box{ background:var(--surface); border:1px solid var(--card-line); border-radius:12px; overflow:hidden; }
   .settle-item{ display:flex; align-items:center; gap:4px 14px; padding:12px 14px; font-size:14px; }
   .settle-item + .settle-item{ border-top:1px solid var(--card-line); margin-left:14px; padding-left:0; }
-  .settle-who{ flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:600; }
+  /* 付款人、收款人各自截斷名字；動詞（付給、應付你）與「你」標記不縮，一定看得到要付給誰 */
+  .settle-who{ flex:1; min-width:0; display:flex; align-items:baseline; gap:0 6px; white-space:nowrap; font-weight:600; }
+  .settle-party{ display:flex; align-items:baseline; min-width:0; flex:0 1 auto; }
+  .settle-name{ min-width:0; overflow:hidden; text-overflow:ellipsis; }
+  .settle-who .settle-verb, .settle-who .you-tag{ flex-shrink:0; }
+  .settle-who .you-tag{ margin:0 4px 0 0; }
   .settle-verb{ color:var(--ink-soft); font-weight:400; margin:0 6px; }
   .settle-verb.lead{ margin-left:0; } /* 句首的動詞（例如「付給 小美」）不需要左邊距 */
   .settle-amt{ flex-shrink:0; white-space:nowrap; font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:14.5px; }
@@ -1003,7 +1024,8 @@
   .settle-paid-link:disabled{ opacity:.6; cursor:wait; text-decoration:none; }
   @media (max-width:520px){
     .settle-item{ flex-wrap:wrap; }
-    .settle-who{ flex-basis:100%; }
+    /* 窄畫面改兩行：第一行付款人，第二行「付給 收款人」 */
+    .settle-who{ flex-basis:100%; flex-direction:column; align-items:stretch; gap:2px; }
     .settle-amt{ margin-right:auto; }
   }
   .settle-amt-cur{font-size:11px; font-weight:500; color:var(--ink-soft); margin-left:3px;}
@@ -1139,6 +1161,17 @@
   .member-detail-head:hover{ background:var(--surface-hover); }
   .member-detail-name{
     font-weight:700; font-size:14px; display:flex; align-items:center; gap:8px;
+    flex:1 1 auto; min-width:0;
+  }
+  /* 名字最多兩行，再長就省略；金額那一側不縮 */
+  .member-detail-name-text{
+    min-width:0; overflow-wrap:anywhere;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+  }
+  .member-detail-right{ display:flex; align-items:center; gap:8px; flex-shrink:0; }
+  @media (max-width:400px){
+    .member-detail-head{ flex-wrap:wrap; }
+    .member-detail-right{ margin-left:auto; }
   }
   .member-detail-name .status-dot{
     width:8px; height:8px; border-radius:50%; flex-shrink:0;

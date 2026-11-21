@@ -91,7 +91,7 @@ async function renderDebtSectionUI(){
   if (noteEl) noteEl.textContent = rateNote;
 
   listEl.innerHTML = sourceList.length ? `<div class="settle-box">${displayList.map(t => settleRowHtml(t,
-      `${ledgerWho(t.from)}<span class="settle-verb">${verb}</span>${ledgerWho(t.to)}`,
+      `<span class="settle-party">${settleNameHtml(t.from)}</span><span class="settle-party"><span class="settle-verb lead">${verb}</span>${settleNameHtml(t.to)}</span>`,
       t.amount, effectiveCurrency, isTransfer)).join('')}</div>` : `<p class="empty-state" style="padding:16px;">${emptyMsg}</p>`;
 }
 
@@ -102,6 +102,12 @@ async function renderDebtSectionUI(){
 ===================================================================== */
 // 結算列（放在 .settle-box 圓角區塊裡）：誰付給誰（太長截斷）｜金額｜「標記已付」文字按鈕。
 // 窄螢幕上名字獨佔第一行，金額和按鈕排在第二行左右兩端（見 style.css 的 .settle-item）。
+// 結算列裡的一個名字：名字太長時只截名字本身，「你」標記放在名字前面、一定看得到
+function settleNameHtml(memberId){
+  const me = typeof myTripMember === 'function' ? myTripMember() : null;
+  const you = me && me.id === memberId ? '<span class="you-tag">你</span>' : '';
+  return `${you}<span class="settle-name">${escapeHtml(memberName(memberId))}</span>`;
+}
 function settleRowHtml(t, whoHtml, amount, currency, withPaidBtn){
   return `<div class="settle-item">
       <span class="settle-who">${whoHtml}</span>
@@ -151,8 +157,8 @@ function renderMyStatusCard(net){
   const rows = mine.map(t => {
     const paying = t.from === me.id;
     const who = paying
-      ? `<span class="settle-verb lead">付給</span>${escapeHtml(memberName(t.to))}`
-      : `${escapeHtml(memberName(t.from))}<span class="settle-verb">應付你</span>`;
+      ? `<span class="settle-party"><span class="settle-verb lead">付給</span><span class="settle-name">${escapeHtml(memberName(t.to))}</span></span>`
+      : `<span class="settle-party"><span class="settle-name">${escapeHtml(memberName(t.from))}</span><span class="settle-verb">應付你</span></span>`;
     return settleRowHtml(t, who, t.amount, base, true);
   }).join('');
   el.innerHTML = `
@@ -360,9 +366,9 @@ function renderMemberDetails(net) {
       <button type="button" class="member-detail-head" aria-expanded="${isOpen}" aria-controls="mdb-${m.id}" ${act('click','toggleMemberDetail',m.id)}>
         <div class="member-detail-name">
           <span class="status-dot" style="background:${v>0.01?'var(--credit)':v<-0.01?'var(--debt)':'var(--card-line)'}"></span>
-          ${escapeHtml(m.name)}
+          <span class="member-detail-name-text">${escapeHtml(m.name)}</span>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;">
+        <div class="member-detail-right">
           <span class="member-detail-net ${netCls}">${netLabel}</span>
           <span class="member-detail-chevron" aria-hidden="true">▼</span>
         </div>

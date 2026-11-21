@@ -137,6 +137,12 @@ function renderExpenseRow(e){
     </div>`;
 }
 
+// 轉帳列的付款人／收款人：兩個名字平分寬度，太長時各自截斷，箭頭和「你」標記一定看得到；展開後顯示全文
+function ledgerPartyHtml(memberId){
+  const me = myTripMember();
+  return `<span class="ledger-party"><span class="ledger-party-name">${escapeHtml(memberName(memberId))}</span>${me && me.id === memberId ? '<span class="you-tag">你</span>' : ''}</span>`;
+}
+
 // 單筆轉帳列：收合時兩行——「付款人 → 收款人｜金額」與備註；時間、換算金額與編輯/刪除收進展開後。
 function renderDepositRow(d){
   const expanded = expandedDepositIds.has(d.id);
@@ -151,7 +157,7 @@ function renderDepositRow(d){
   return `
     <div class="ledger-entry ${expanded?'open':''}">
       <button type="button" class="ledger-entry-row" ${act('click','toggleDepositExpand',d.id)} aria-expanded="${expanded}">
-        <span class="ledger-entry-title">${ledgerWho(d.payerId)}<span class="ledger-entry-arrow">→</span>${ledgerWho(d.collectorId)}</span>
+        <span class="ledger-entry-title ledger-transfer">${ledgerPartyHtml(d.payerId)}<span class="ledger-entry-arrow">→</span>${ledgerPartyHtml(d.collectorId)}</span>
         <span class="ledger-entry-amt">${ledgerAmountHtml(d.amount, d.currency)}</span>
         <span class="ledger-entry-sub">${d.note ? escapeHtml(d.note) : '<span class="muted">無備註</span>'}</span>
       </button>
