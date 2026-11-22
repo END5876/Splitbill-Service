@@ -4,26 +4,69 @@
    Toast 系統 — 取代所有原本分散在各分頁的 msg 區塊。
    固定顯示在畫面底部（桌面在右下），不管使用者在哪個分頁操作都看得到。
 ===================================================================== */
+// 三個產品共用的規則（ui-review DECISIONS 第 3 題）：
+//   一般提示 3 秒（opts.duration 可以給長一點）；帶動作（復原、重試…）8 秒；
+//   滑鼠移上去、手指按住或鍵盤聚焦時暫停倒數；錯誤（type 'error'）紅底、有關閉鈕、不自動消失。
+// opts：{ duration, action: { label, fn } }（復原用 toastUndo）
+const MAX_TOASTS = 4;
 function toast(message, type, opts){
   type = type || 'info';
   opts = opts || {};
   const stack = document.getElementById('toastStack');
+  const isError = type === 'error';
+  const action = opts.action || null;
   const el = document.createElement('div');
   el.className = 'toast ' + type;
-  const icon = type === 'success' ? '✅' : (type === 'error' ? '⚠️' : 'ℹ️');
-  el.innerHTML = `<span class="ic">${icon}</span><span class="msg-text"></span>`;
+  if (isError) el.setAttribute('role', 'alert');
+  const iconId = type === 'success' ? 'i-check' : (isError ? 'i-alert' : 'i-info');
+  el.innerHTML = `<svg class="ic" aria-hidden="true"><use href="#${iconId}"/></svg><span class="msg-text"></span>`;
   el.querySelector('.msg-text').textContent = message;
-  if (opts.undo){
+  if (action){
     const btn = document.createElement('button');
     btn.className = 'undo-btn';
     btn.type = 'button';
-    btn.textContent = '復原';
-    btn.onclick = ()=>{ opts.undo(); dismissToast(el); };
+    btn.textContent = action.label;
+    btn.onclick = ()=>{ action.fn(); dismissToast(el); };
     el.appendChild(btn);
   }
+  if (isError){
+    const close = document.createElement('button');
+    close.className = 'toast-close';
+    close.type = 'button';
+    close.setAttribute('aria-label', '關閉這則提示');
+    close.innerHTML = '<svg class="ic" aria-hidden="true"><use href="#i-x"/></svg>';
+    close.onclick = ()=>dismissToast(el);
+    el.appendChild(close);
+  }
+  // 同一句錯誤還開著就不再疊一則（例如斷線時每次自動儲存都失敗）
+  if (isError && [...stack.querySelectorAll('.toast.error:not(.closing) .msg-text')].some(m => m.textContent === message)) return null;
   stack.appendChild(el);
-  const duration = opts.duration || (type === 'error' ? 6000 : (opts.undo ? 6000 : 3200));
-  el._t = setTimeout(()=>dismissToast(el), duration);
+  // 同時堆太多則時，先收掉最舊的一般提示；錯誤要等使用者自己關，不算在內
+  const open = [...stack.querySelectorAll('.toast:not(.closing):not(.error)')];
+  open.slice(0, Math.max(0, open.length - MAX_TOASTS)).forEach(dismissToast);
+  if (isError) return el;
+
+  let remaining = action ? 8000 : (opts.duration || 3000);
+  let startedAt = Date.now();
+  let paused = false;
+  el._t = setTimeout(()=>dismissToast(el), remaining);
+  // 指標在上面或鍵盤焦點在裡面時暫停；兩者都離開後才繼續（至少再留 1.5 秒）
+  const pause = ()=>{
+    if (paused) return;
+    paused = true;
+    clearTimeout(el._t);
+    remaining -= Date.now() - startedAt;
+  };
+  const maybeResume = ()=>setTimeout(()=>{
+    if (!paused || el.matches(':hover') || el.contains(document.activeElement)) return;
+    paused = false;
+    startedAt = Date.now();
+    el._t = setTimeout(()=>dismissToast(el), Math.max(1500, remaining));
+  }, 0);
+  el.addEventListener('pointerenter', pause);
+  el.addEventListener('pointerleave', maybeResume);
+  el.addEventListener('focusin', pause);
+  el.addEventListener('focusout', maybeResume);
   return el;
 }
 function dismissToast(el){
@@ -35,7 +78,7 @@ function dismissToast(el){
 // 復原式刪除：資料立即移除，但跳一個帶「復原」按鈕的 toast，
 // 幾秒內按下就還原，取代原本「刪除前跳原生確認框」的模式。
 function toastUndo(message, restoreFn){
-  toast(message, 'success', { undo: restoreFn });
+  toast(message, 'success', { action: { label: '復原', fn: restoreFn } });
 }
 
 /* =====================================================================
@@ -82,6 +125,11 @@ function mountModal(boxHtml, opts){
   pushLayer('modal', ()=>{ if (activeModal) activeModal.dismiss(); });
   return box;
 }
+// 確認鈕的文字必填，寫具體動作（例如「刪除支出」），不要用「確定」；漏傳時提醒開發者
+function confirmTextOf(opts){
+  if (!opts.confirmText) console.warn('confirmModal／promptModal：缺少 confirmText，請寫具體的動作', opts.title);
+  return opts.confirmText || '繼續';
+}
 function modalTitleHtml(title){
   return title ? `<div class="modal-title" id="modalTitle">${escapeHtml(title)}</div>` : '';
 }
@@ -93,7 +141,7 @@ function confirmModal(message, opts){
       <div class="modal-body" id="modalBody">${escapeHtml(message)}</div>
       <div class="modal-actions">
         <button class="btn btn-ghost" id="modalCancelBtn">${escapeHtml(opts.cancelText || '取消')}</button>
-        <button class="btn ${opts.danger ? 'btn-danger' : 'btn-primary'}" id="modalConfirmBtn" style="${opts.danger ? 'background:var(--debt-solid);color:#fff;border:none;' : ''}">${escapeHtml(opts.confirmText || '確定')}</button>
+        <button class="btn ${opts.danger ? 'btn-danger' : 'btn-primary'}" id="modalConfirmBtn" style="${opts.danger ? 'background:var(--debt-solid);color:#fff;border:none;' : ''}">${escapeHtml(confirmTextOf(opts))}</button>
       </div>`, { hasTitle: !!opts.title, hasBody: true, onDismiss: ()=>resolve(false) });
     const finish = (val)=>{ closeModal(); resolve(val); };
     document.getElementById('modalCancelBtn').onclick = ()=>finish(false);
@@ -130,7 +178,7 @@ function promptModal(message, opts){
       <input type="text" id="modalPromptInput" autocomplete="off" ${opts.maxLength ? `maxlength="${Number(opts.maxLength)}"` : ''} placeholder="${escapeHtml(opts.placeholder || '')}" aria-label="${escapeHtml(opts.title || '輸入')}" style="margin-bottom:18px;">
       <div class="modal-actions">
         <button class="btn btn-ghost" id="modalCancelBtn">${escapeHtml(opts.cancelText || '取消')}</button>
-        <button class="btn btn-primary" id="modalConfirmBtn">${escapeHtml(opts.confirmText || '確定')}</button>
+        <button class="btn btn-primary" id="modalConfirmBtn">${escapeHtml(confirmTextOf(opts))}</button>
       </div>`, { hasTitle: !!opts.title, hasBody: !!message, onDismiss: ()=>resolve(null) });
     const input = document.getElementById('modalPromptInput');
     input.value = opts.value || '';
@@ -153,7 +201,7 @@ function typeToConfirmModal(message, expected, opts){
       <input type="text" id="modalConfirmInput" autocomplete="off" placeholder="${escapeHtml(opts.placeholder || '')}" aria-label="輸入確認文字" style="margin-bottom:18px;">
       <div class="modal-actions">
         <button class="btn btn-ghost" id="modalCancelBtn">${escapeHtml(opts.cancelText || '取消')}</button>
-        <button class="btn btn-danger" id="modalConfirmBtn" disabled style="background:var(--debt-solid);color:#fff;border:none;">${escapeHtml(opts.confirmText || '確定')}</button>
+        <button class="btn btn-danger" id="modalConfirmBtn" disabled style="background:var(--debt-solid);color:#fff;border:none;">${escapeHtml(confirmTextOf(opts))}</button>
       </div>`, { role: 'alertdialog', hasTitle: !!opts.title, hasBody: true, onDismiss: ()=>resolve(false) });
     const input = document.getElementById('modalConfirmInput');
     const btn = document.getElementById('modalConfirmBtn');

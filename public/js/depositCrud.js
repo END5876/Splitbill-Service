@@ -102,7 +102,7 @@ function saveDeposit(){
       editingDepositId = null;
       document.getElementById('depositFormTitle').textContent = '新增一筆轉帳／預收款';
       setFormCardEditing('depositFormCard', 'btnSaveDepositSync', 'btnResetDeposit', false);
-      toast('這筆轉帳已經被其他人刪除。表單內容還在，按「儲存」可以重新新增', 'error', { duration: 7000 });
+      toast('這筆轉帳已經被其他人刪除。表單內容還在，按「儲存」可以重新新增', 'error');
       return false;
     }
     Object.assign(saved, { payerId, collectorId, amount, currency, amountInBase, note, createdAt: applyDateToTimestamp(dateStr, saved.createdAt) });

@@ -5,6 +5,59 @@
 //   - Discord 綁定（產生綁定碼、解除綁定）
 // 所有權限都由 service 判斷；這裡只依身分決定「要不要顯示某個按鈕」。
 
+/* ===================== 頁首帳號鈕 ===================== */
+// 頁首右側的頭像：點開選單看「已用 Discord／LINE 登入」、換帳號、登出。分享連結訪客沒有帳號，不顯示
+function accountAvatarHtml(cls){
+  return currentUser.avatar
+    ? `<img class="${cls}" src="${escapeHtml(currentUser.avatar)}" alt="" referrerpolicy="no-referrer">`
+    : `<span class="${cls} account-avatar-fallback">${escapeHtml(Array.from(currentUser.name || '?')[0])}</span>`;
+}
+// 只依登入身分（fetchMe）與是否是分享連結訪客（applyGuestModeUI）決定，那兩處各呼叫一次
+function renderHeaderAccount(){
+  const btn = document.getElementById('headerAcctBtn');
+  const menu = document.getElementById('headerAcctMenu');
+  if (!btn || !menu) return;
+  const show = !!currentUser && !shareMode;
+  btn.hidden = !show;
+  if (!show){ setAccountMenu(false); return; }
+  const via = PROVIDER_LABELS[currentUser.provider] || 'Discord';
+  const name = currentUser.name || `${via} 使用者`;
+  btn.innerHTML = accountAvatarHtml('header-acct-avatar');
+  btn.setAttribute('aria-label', `帳號：${name}`);
+  menu.innerHTML = `
+    <div class="acct-menu-info"><b>${escapeHtml(name)}</b><span>已用 ${via} 登入${currentUser.admin ? '，管理員' : ''}</span></div>
+    <button class="acct-menu-item" type="button" data-click="openAccountSettings">帳號設定</button>
+    <button class="acct-menu-item" type="button" data-click="switchAccount">換帳號</button>
+    <button class="acct-menu-item" type="button" data-click="logout">登出</button>`;
+}
+function setAccountMenu(open){
+  const btn = document.getElementById('headerAcctBtn');
+  const menu = document.getElementById('headerAcctMenu');
+  if (!btn || !menu || open === !menu.hidden) return;
+  menu.hidden = !open;
+  btn.setAttribute('aria-expanded', String(open));
+  if (open){ pushLayer('acctMenu', ()=>setAccountMenu(false)); const first = menu.querySelector('button'); if (first) first.focus(); }
+  else dropLayer('acctMenu');
+}
+function toggleAccountMenu(){ setAccountMenu(document.getElementById('headerAcctMenu').hidden); }
+function openAccountSettings(){ showMainTab('settings'); showSettingsSub('account'); } // 選單由下面的點擊監聽收起
+document.addEventListener('click', (e)=>{
+  if (e.target.closest('#headerAcctBtn')) return;
+  if (e.target.closest('#headerAcctMenu')){ if (e.target.closest('button')) setAccountMenu(false); return; }
+  setAccountMenu(false);
+});
+document.addEventListener('keydown', (e)=>{
+  if (e.key !== 'Escape' || document.getElementById('headerAcctMenu')?.hidden !== false) return;
+  setAccountMenu(false);
+  document.getElementById('headerAcctBtn').focus();
+});
+// 用 Tab 離開選單就收起來
+document.getElementById('headerAcctMenu')?.addEventListener('focusout', (e)=>{
+  const to = e.relatedTarget;
+  if (to && (to.closest('#headerAcctMenu') || to.closest('#headerAcctBtn'))) return;
+  if (to) setAccountMenu(false);
+});
+
 /* ===================== 帳號區塊 ===================== */
 function renderAccountArea(){
   const el = document.getElementById('accountArea');
@@ -14,9 +67,7 @@ function renderAccountArea(){
   if (editingNickname){
     // 只略過重繪帳號區塊，下面行程卡片的顯示狀態照常更新
   } else if (currentUser){
-    const avatar = currentUser.avatar
-      ? `<img class="account-avatar" src="${escapeHtml(currentUser.avatar)}" alt="" referrerpolicy="no-referrer">`
-      : `<span class="account-avatar account-avatar-fallback">${escapeHtml((currentUser.name || '?').slice(0,1))}</span>`;
+    const avatar = accountAvatarHtml('account-avatar');
     const via = PROVIDER_LABELS[currentUser.provider] || 'Discord';
     el.innerHTML = `
       <div class="account-row">

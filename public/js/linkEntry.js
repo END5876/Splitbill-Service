@@ -55,7 +55,7 @@ function discardLegacyApiKeyHash(){
   const hashParams = new URLSearchParams((location.hash || '').replace(/^#/, ''));
   if (!hashParams.has('apiKey')) return;
   history.replaceState(null, '', location.pathname + location.search);
-  toast('管理員金鑰書籤已經停用，請改用登入（Bot 擁有者登入後可以列出所有行程）', 'error', { duration: 8000 });
+  toast('管理員金鑰書籤已經停用，請改用登入（Bot 擁有者登入後可以列出所有行程）', 'error');
 }
 
 /* ===================== 全頁畫面的共用工具 ===================== */
@@ -152,6 +152,7 @@ function showNoAccessScreen(){
 /* ===================== 訪客模式 ===================== */
 function applyGuestModeUI(){
   document.body.classList.add('share-mode');
+  renderHeaderAccount(); // 分享連結訪客不顯示帳號鈕
   if (shareMode.permission !== 'write'){
     document.body.classList.add('share-readonly');
   }

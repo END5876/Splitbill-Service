@@ -250,7 +250,7 @@ async function historyRestoreChange(updatedAt, idx){
       : [target.payerId, target.collectorId];
     const missing = [...new Set(refs)].filter(id => !trip.members.some(mem => mem.id === id));
     if (missing.length){
-      toast(`這筆${noun}用到的成員已經被刪除了，請先把成員加回來（或改用「回到這個版本」）`, 'error', { duration: 7000 });
+      toast(`這筆${noun}用到的成員已經被刪除了，請先把成員加回來（或改用「回到這個版本」）`, 'error');
       return;
     }
   }

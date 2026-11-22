@@ -209,7 +209,7 @@ function handleIncomingTripUpdate(rawPushedTrip){
   }
   trip = merged;
   renderAll();
-  if (lastMergeConflicts) toast(`其他人剛更新了這個行程，其中 ${lastMergeConflicts} 筆跟你還沒儲存的修改衝突，暫時以你的版本為準`, 'error', { duration: 7000 });
+  if (lastMergeConflicts) toast(`其他人剛更新了這個行程，其中 ${lastMergeConflicts} 筆跟你還沒儲存的修改衝突，暫時以你的版本為準`, 'error');
   else toast(hadLocalChanges ? '已自動合併其他人剛剛的更新' : '其他人剛更新了這個行程，畫面已同步', 'info');
 }
 
@@ -231,7 +231,7 @@ function handleIncomingTripDeleted(){
   lastSyncedTripJSON = null;
   renderAll();
   showMainTab('settings'); showSettingsSub('trips');
-  toast(`「${deletedName}」已經被刪除了，請從「我的行程」開啟其他行程，或建立新的`, 'error', { duration: 10000 });
+  toast(`「${deletedName}」已經被刪除了，請從「我的行程」開啟其他行程，或建立新的`, 'error');
   refreshTripList({ silent: true }).catch(()=>{});
 }
 
@@ -248,7 +248,7 @@ function handleTripAccessRevoked(){
   lastSyncedTripJSON = null;
   renderAll();
   showMainTab('settings'); showSettingsSub('trips');
-  toast(`你已經看不到「${name}」了，可能被移出行程，或帳號連結被解除`, 'error', { duration: 10000 });
+  toast(`你已經看不到「${name}」了，可能被移出行程，或帳號連結被解除`, 'error');
   refreshTripList({ silent: true }).catch(()=>{});
 }
 

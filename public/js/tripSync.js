@@ -70,6 +70,10 @@ async function runCloudSave(){
 // 讓使用者隨時知道資料存了沒：已同步／儲存中／未儲存（點擊重試）／未開啟行程／唯讀。
 let syncSaving = 0;       // 進行中的儲存請求數
 let syncFailed = false;   // 最近一次儲存沒有成功（失敗、衝突或使用者取消覆蓋）
+// 還有東西沒存到：存檔失敗、正在送出、表單填到一半（關閉頁面、重新載入前提醒）
+function hasUnsavedWork(){
+  return syncFailed || syncSaving > 0 || isExpenseFormDirty() || isDepositFormDirty();
+}
 function renderSyncStatus(){
   const el = document.getElementById('syncStatus');
   if (!el) return;
@@ -122,7 +126,7 @@ async function saveTripToApiImpl(){
     showMainTab('settings'); showSettingsSub(currentUser ? 'trips' : 'connect');
     toast(currentUser
       ? '還沒開啟任何行程：請先在「設定 → 行程」開啟或建立一個行程。'
-      : '尚未登入：請先到「設定 → 帳號」登入，再到「行程」開啟行程。', 'error', { duration: 7000 });
+      : '尚未登入：請先到「設定 → 帳號」登入，再到「行程」開啟行程。', 'error');
     return;
   }
 
@@ -471,7 +475,7 @@ async function syncEntry(kind, id, entry, opts){
     // 伺服器明確拒絕（4xx：權限、行程不存在、格式不對）：重送也不會成功，從待補存清單拿掉並說明
     if (!unreachable && opts.fromQueue){
       removePendingEntry(kind, id);
-      toast(`有 1 筆存在這台手機上的帳目沒辦法補存：${err.message}`, 'error', { duration: 8000 });
+      toast(`有 1 筆存在這台手機上的帳目沒辦法補存：${err.message}`, 'error');
     }
     if (unreachable && entry && opts.isNew && addPendingEntry(kind, id, entry)){
       toast(navigator.onLine === false

@@ -21,6 +21,10 @@
     --shadow-sm: 0 1px 3px rgba(31,35,48,0.18);
     --shadow-up: 0 -4px 16px rgba(31,35,48,0.08);
     --safe-b: env(safe-area-inset-bottom, 0px);
+    /* 手機橫放、平板主畫面模式：左右避開瀏海與圓角 */
+    --safe-l: env(safe-area-inset-left, 0px);
+    --safe-r: env(safe-area-inset-right, 0px);
+    --gutter: 14px; /* 頁面左右留白（桌面 20px） */
     --bottomnav-h: 62px;
     --focus-ring: 0 0 0 3px color-mix(in srgb, var(--brass) 35%, transparent);
     /* 🆕 [下拉選單深色模式] 讓瀏覽器原生繪製的表單控制項（select 選單展開
@@ -67,7 +71,6 @@
     --on-emphasis:#FFFFFF;
     --on-brass:#FFFFFF;
     --toast-success-bg:color-mix(in srgb, var(--credit) 24%, var(--emphasis));
-    --toast-error-bg:color-mix(in srgb, var(--debt) 24%, var(--emphasis));
     --debt-solid:#C0392B;         /* 目前唯一用途：確認刪除 Modal 的紅色按鈕背景（白字疊在上面） */
   }
 
@@ -122,10 +125,10 @@
       var(--paper);
     color:var(--ink);
     font-family:'Noto Sans TC', system-ui, sans-serif;
-    min-height:100vh;
+    min-height:100dvh;
     padding-bottom: calc(var(--bottomnav-h) + var(--safe-b) + 18px);
   }
-  .wrap{max-width:880px; margin:0 auto; padding:0 14px;}
+  .wrap{max-width:880px; margin:0 auto; padding:0 max(var(--gutter), var(--safe-r)) 0 max(var(--gutter), var(--safe-l));}
   a{color:inherit;}
 
   /* 線條 icon（index.html 開頭的 SVG sprite）：線條跟著文字顏色走，大小跟著字級 */
@@ -150,7 +153,7 @@
     background:var(--header-bg);
     color:var(--on-dark);
     border-bottom:1px solid var(--header-line);
-    padding:calc(10px + env(safe-area-inset-top, 0px)) 14px 10px;
+    padding:calc(10px + env(safe-area-inset-top, 0px)) max(var(--gutter), var(--safe-r)) 10px max(var(--gutter), var(--safe-l));
     box-shadow:var(--header-shadow);
   }
   .app-header-inner{max-width:880px; margin:0 auto;}
@@ -304,7 +307,7 @@
     position:fixed; left:0; right:0; bottom:0; z-index:60;
     display:flex; background:var(--card);
     border-top:1px solid var(--card-line);
-    padding-bottom:var(--safe-b);
+    padding-bottom:var(--safe-b); padding-left:var(--safe-l); padding-right:var(--safe-r);
     box-shadow:var(--shadow-up);
   }
   .bottom-nav .nav-btn{
@@ -713,10 +716,17 @@
     box-shadow:0 8px 24px rgba(0,0,0,0.25);
     animation:toast-in .18s ease;
   }
-  .toast .ic{font-size:16px; flex-shrink:0;}
-  .toast .msg-text{flex:1;}
+  .toast .ic{width:18px; height:18px; flex-shrink:0;}
+  .toast .msg-text{flex:1; min-width:0; overflow-wrap:anywhere;}
   .toast.success{background:var(--toast-success-bg);}
-  .toast.error{background:var(--toast-error-bg);}
+  /* 錯誤：實色紅底白字＋圖示，不自動消失，有關閉鈕 */
+  .toast.error{background:var(--debt-solid); color:#fff;}
+  .toast-close{
+    display:inline-grid; place-items:center; flex-shrink:0; width:30px; height:30px; margin:-6px -8px -6px 0;
+    background:none; border:none; color:inherit; border-radius:7px; cursor:pointer;
+  }
+  .toast-close:hover{background:color-mix(in srgb, currentColor 18%, transparent);}
+  .toast-close .ic{width:16px; height:16px;}
   .toast .undo-btn{
     background:color-mix(in srgb, currentColor 12%, transparent); border:none; color:inherit;
     font-weight:700; font-size:12.5px; padding:6px 11px; border-radius:7px;
@@ -728,6 +738,18 @@
   @keyframes toast-out{to{opacity:0; transform:translateY(8px);}}
   @media (min-width:860px){
     #toastStack{left:auto; right:20px; bottom:20px; align-items:flex-end;}
+  }
+
+  /* 觸控：可點的地方至少 44×44（膠囊、小按鈕 40），視覺可以小、點擊區不能小 */
+  @media (pointer:coarse){
+    .settle-paid-link{min-height:44px; padding:0 12px;}
+    .claim-chip{min-height:40px; padding:9px 14px;}
+    .ledger-search-clear{min-width:40px; min-height:40px;}
+    .seg-tab{min-height:36px;}
+    .toast .undo-btn{min-height:40px; padding:8px 14px;}
+    .toast-close{width:40px; height:40px;}
+    .header-icon-btn{width:40px; height:40px;}
+    .sync-status{height:40px;}
   }
 
   /* ---------- Modal system ---------- */
@@ -742,7 +764,7 @@
     border-radius:16px 16px 0 0; padding:22px 20px calc(20px + var(--safe-b));
     box-shadow:0 -8px 30px rgba(0,0,0,0.3);
     animation:modal-in .2s ease;
-    max-height:82vh; overflow-y:auto;
+    max-height:82dvh; overflow-y:auto;
   }
   @keyframes modal-in{from{transform:translateY(24px); opacity:0;} to{transform:none; opacity:1;}}
   .modal-title{font-family:'Noto Serif TC',serif; font-weight:700; font-size:17px; margin:0 0 10px;}
@@ -1279,8 +1301,8 @@
   /* ---------- Desktop layout ---------- */
   @media (min-width:860px){
     body{padding-bottom:60px;}
-    .wrap{padding:0 20px;}
-    .app-header{padding:16px 20px;}
+    :root{--gutter:20px;}
+    .app-header{padding-top:16px; padding-bottom:16px;}
     .header-row1 .brand{font-size:18px;}
     #tripName{font-size:19px;}
     .top-nav{display:flex;}
@@ -1293,6 +1315,31 @@
   /* ═════════ 🆕 [行程獨立化] 帳號／邀請／Discord 綁定 ═════════ */
   .account-row{display:flex; align-items:center; gap:12px;}
   .account-avatar{width:40px; height:40px; border-radius:50%; flex-shrink:0; object-fit:cover; border:1px solid var(--card-line);}
+  /* 頁首帳號鈕：32px 頭像，點擊區 40px；選單是卡片色的浮層 */
+  .header-acct-btn{
+    display:inline-grid; place-items:center; flex-shrink:0; width:40px; height:40px; padding:0;
+    background:none; border:none; border-radius:50%; cursor:pointer;
+  }
+  .header-acct-btn[hidden]{display:none;}
+  .header-acct-avatar{width:30px; height:30px; border-radius:50%; object-fit:cover; border:1px solid rgba(255,255,255,0.3); font-size:13px;}
+  .header-acct-btn:hover .header-acct-avatar, .header-acct-btn[aria-expanded="true"] .header-acct-avatar{border-color:var(--brass);}
+  .header-acct{position:relative; display:inline-flex; flex-shrink:0;}
+  .header-acct:has(> .header-acct-btn[hidden]){display:none;} /* 沒登入時不佔頁首的間距 */
+  .acct-menu{
+    position:absolute; top:calc(100% + 6px); right:0; z-index:120; min-width:220px; max-width:min(300px, calc(100vw - 16px));
+    display:flex; flex-direction:column; padding:6px;
+    background:var(--card); color:var(--ink); border:1px solid var(--card-line); border-radius:12px;
+    box-shadow:0 12px 32px rgba(0,0,0,0.22);
+  }
+  .acct-menu[hidden]{display:none;}
+  .acct-menu-info{display:grid; gap:2px; padding:8px 10px 10px; margin-bottom:4px; border-bottom:1px solid var(--card-line);}
+  .acct-menu-info b{font-size:14.5px; overflow-wrap:anywhere;}
+  .acct-menu-info span{font-size:12.5px; color:var(--ink-soft);}
+  .acct-menu-item{
+    min-height:40px; padding:0 10px; border:none; background:none; border-radius:8px; text-align:left;
+    font:inherit; font-size:14px; color:inherit; cursor:pointer;
+  }
+  .acct-menu-item:hover{background:var(--surface-hover);}
   .account-avatar-fallback{display:inline-flex; align-items:center; justify-content:center; background:var(--brass-tint); color:var(--brass); font-weight:700;}
   .account-meta{flex:1; min-width:0;}
   .account-name{font-weight:700; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}

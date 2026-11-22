@@ -96,6 +96,7 @@ async function fetchMe(){
     meUnreachable = !e.status || e.status >= 500;
   }
   renderAccountArea();
+  renderHeaderAccount();
   return currentUser;
 }
 function loginWith(provider, next){

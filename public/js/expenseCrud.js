@@ -84,7 +84,7 @@ function saveExpense(){
       editingExpenseId = null;
       document.getElementById('expenseFormTitle').textContent = '新增一筆支出';
       setFormCardEditing('expenseFormCard', 'btnSaveExpenseSync', 'btnResetExpense', false);
-      toast('這筆支出已經被其他人刪除。表單內容還在，按「儲存」可以重新新增', 'error', { duration: 7000 });
+      toast('這筆支出已經被其他人刪除。表單內容還在，按「儲存」可以重新新增', 'error');
       return false;
     }
     Object.assign(saved, { description, amount, currency, amountInBase, payers, participants, createdAt: applyDateToTimestamp(dateStr, saved.createdAt) });

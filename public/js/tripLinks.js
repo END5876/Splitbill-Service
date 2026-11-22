@@ -21,7 +21,7 @@ async function copyLinkUrl(token, okMessage){
     await navigator.clipboard.writeText(url);
     toast(okMessage || '已複製連結，貼給朋友即可（請勿公開分享）', 'success');
   }catch(e){
-    toast('複製失敗，這是連結網址（請手動複製）：' + url, 'error', { duration: 12000 });
+    toast('複製失敗，這是連結網址（請手動複製）：' + url, 'error');
   }
 }
 

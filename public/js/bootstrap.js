@@ -102,7 +102,7 @@ guardFormOnBack({
 });
 // 還有東西沒存到（存檔失敗、正在送出、表單填到一半）時，關掉或重新整理前先提醒
 window.addEventListener('beforeunload', (e) => {
-  if (syncFailed || syncSaving > 0 || isExpenseFormDirty() || isDepositFormDirty()){ e.preventDefault(); e.returnValue = ''; }
+  if (hasUnsavedWork()){ e.preventDefault(); e.returnValue = ''; }
 });
 // 連上網路後自動補存還沒存到的帳目
 window.addEventListener('online', () => flushPendingEntries(false));
