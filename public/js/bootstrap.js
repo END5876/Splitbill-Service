@@ -1,6 +1,15 @@
 'use strict';
 // 頁面載入時的啟動流程：resolveEntry() 判斷這個分頁該進入哪一種狀態，applyEntry() 畫出來。
 /* init */
+// 頁首（sticky）的實際高度：行程名稱換行、字放大時會變高。給 CSS 的 --header-h 用，
+// 讓設定子分頁、桌機的表單欄固定在頁首正下方，不會被蓋住
+(() => {
+  const header = document.getElementById('appHeader');
+  if (!header || !('ResizeObserver' in window)) return;
+  new ResizeObserver(() => {
+    document.documentElement.style.setProperty('--header-h', `${header.offsetHeight}px`);
+  }).observe(header);
+})();
 window.addEventListener('beforeunload', disconnectTripEventStream); // 🆕 [即時同步] 離開頁面時主動關閉 SSE 連線，讓伺服器能立即釋放資源
 document.getElementById('expDate').value = toDateInputValue(Date.now());
 document.getElementById('depDate').value = toDateInputValue(Date.now());

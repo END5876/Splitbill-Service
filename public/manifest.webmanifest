@@ -7,7 +7,7 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "orientation": "portrait",
+  "orientation": "any",
   "categories": ["finance", "travel"],
   "background_color": "#24272F",
   "theme_color": "#24272F",

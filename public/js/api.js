@@ -385,7 +385,7 @@ async function deleteSelectedTrip(){
   const ok = await confirmModal(
     `行程裡所有的支出、轉帳、成員和操作紀錄都會一起刪除，所有成員都會看不到這個行程，Discord 伺服器的綁定和分享連結也會失效。
 
-刪除後無法復原。想留一份的話，請先開啟這個行程，到「設定 → 進階」下載 JSON 備份。`,
+刪除後無法復原。想留一份的話，請先開啟這個行程，到「設定 → 備份與匯出」下載 JSON 備份。`,
     { title: `刪除行程「${t.name}」？`, confirmText: '繼續刪除', cancelText: '取消', danger: true }
   );
   if (!ok) return;

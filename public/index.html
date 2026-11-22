@@ -107,6 +107,9 @@
   <div class="panel active" id="panel-overview" data-panel="overview">
     <!-- 版面順序依「打開總覽最想知道什麼」排列：我的狀態 → 怎麼結清 → 統計 → 圖表 → 逐筆明細。
          「你的狀態」只有在能辨識出你是哪位成員（登入且已連結）時才會顯示，見 js/overview.js 的 renderMyStatusCard()。 -->
+    <!-- 平板與桌機的欄位安排見 style.css 的「平板與桌機版面」：
+         ≥1024 左欄 .ov-main、右欄 .ov-side、成員明細在下方；700～1023 長條圖與成員明細並排 -->
+    <div class="ov-main">
     <div class="receipt my-status-card" id="myStatusCard" style="display:none; margin-bottom:14px;"></div>
 
     <!-- 🆕 [總覽簡化] 「建議轉帳」與「彼此累計欠款總額」合併成同一張卡片，
@@ -129,7 +132,9 @@
       </div>
       <div class="settle-list" id="debtSettleList"></div>
     </div>
+    </div>
 
+    <div class="ov-side">
     <div class="kv-summary">
       <div class="kv-card"><div class="k">總花費（基準幣）</div><div class="v" id="kvTotal">0</div></div>
       <div class="kv-card"><div class="k">每人平均</div><div class="v" id="kvAvg">0</div></div>
@@ -137,7 +142,7 @@
       <div class="kv-card"><div class="k">轉帳筆數</div><div class="v" id="kvDeposits">0</div></div>
     </div>
 
-    <div class="receipt" style="margin-bottom:14px;">
+    <div class="receipt ov-bar" style="margin-bottom:14px;">
       <div class="receipt-head">
         <div>
           <div class="t1">收支淨額一覽</div>
@@ -153,8 +158,9 @@
         <div id="balanceBarChart"></div>
       </div>
     </div>
+    </div>
 
-    <div class="receipt">
+    <div class="receipt ov-members">
       <div class="receipt-head">
         <div>
           <div class="t1">各成員收支明細</div>
@@ -167,7 +173,8 @@
 
 
   <!-- ================= EXPENSES ================= -->
-  <div class="panel" id="panel-expenses" data-panel="expenses">
+  <div class="panel ledger-panel" id="panel-expenses" data-panel="expenses">
+    <div class="ledger-side" data-write-only>
     <div class="card" id="receiptSessionBanner" data-write-only style="display:none;"></div>
 
     <!-- 🆕 [帳單辨識區塊重新設計] 整條可點擊的橫幅列（icon + 標題 + 說明 + 箭頭），
@@ -205,19 +212,19 @@
           <label for="expDesc">項目說明</label>
           <input type="text" id="expDesc" placeholder="例如：晚餐、租車費" data-input="clearInvalid" data-args='["$el"]'>
         </div>
-        <div class="field date-field">
-          <label for="expDate">日期</label>
-          <input type="date" id="expDate">
-        </div>
       </div>
       <div class="row">
-        <div class="field" style="max-width:160px;">
+        <div class="field field-amount" style="max-width:160px;">
           <label for="expAmount">金額</label>
           <input type="number" inputmode="decimal" id="expAmount" class="num" placeholder="0" step="0.01">
         </div>
-        <div class="field" style="max-width:130px;">
+        <div class="field field-currency" style="max-width:130px;">
           <label for="expCurrency">幣別</label>
           <select id="expCurrency"></select>
+        </div>
+        <div class="field date-field">
+          <label for="expDate">日期</label>
+          <input type="date" id="expDate">
         </div>
       </div>
       <div class="field" id="expBaseAmountField" hidden>
@@ -262,6 +269,7 @@
       </div>
       </div>
     </div>
+    </div>
 
     <div class="card">
       <h2 class="section-title">支出明細 <span class="n" id="expenseCount"></span>
@@ -279,8 +287,8 @@
   </div>
 
   <!-- ================= DEPOSITS ================= -->
-  <div class="panel" id="panel-deposits" data-panel="deposits">
-    <div class="card form-card" id="depositFormCard" data-write-only>
+  <div class="panel ledger-panel" id="panel-deposits" data-panel="deposits">
+    <div class="card form-card ledger-side" id="depositFormCard" data-write-only>
       <h2 class="section-title form-card-head">
         <button type="button" class="form-card-toggle" aria-expanded="true" aria-controls="depositFormBody" data-click="toggleFormCard" data-args='["depositFormCard"]'>
           <span id="depositFormTitle">新增一筆轉帳／預收款</span>
@@ -349,16 +357,16 @@
   </div>
 
   <!-- ================= SETTINGS ================= -->
-  <!-- 子分頁依「你想做什麼」分組：行程（清單與本身設定）／成員與分享／帳號／紀錄／進階備援。
+  <!-- 子分頁依「你想做什麼」分組：行程（清單與本身設定）／成員與分享／帳號／紀錄／備份與匯出。
        舊的子分頁名稱（members、rates、share、connect、discord、io）仍可傳給 showSettingsSub()，
        會自動切到新的分組並捲到對應卡片，見 js/state.js 的 SETTINGS_SUB_ALIASES。 -->
   <div class="panel" id="panel-settings" data-panel="settings" data-owner-only>
     <div class="settings-subnav" aria-label="設定分類">
       <button class="subtab-btn active" data-subtab="trip" data-click="showSettingsSub" data-args='["trip"]'><svg class="ic" aria-hidden="true"><use href="#i-luggage"/></svg>行程</button>
-      <button class="subtab-btn" data-subtab="people" data-click="showSettingsSub" data-args='["people"]'><svg class="ic" aria-hidden="true"><use href="#i-users"/></svg>成員與分享</button>
+      <button class="subtab-btn" data-subtab="people" data-click="showSettingsSub" data-args='["people"]'><svg class="ic" aria-hidden="true"><use href="#i-users"/></svg><span>成員<span class="lbl-long">與分享</span></span></button>
       <button class="subtab-btn" data-subtab="account" data-click="showSettingsSub" data-args='["account"]'><svg class="ic" aria-hidden="true"><use href="#i-user"/></svg>帳號</button>
       <button class="subtab-btn" data-subtab="history" data-click="showSettingsSub" data-args='["history"]'><svg class="ic" aria-hidden="true"><use href="#i-history"/></svg>紀錄</button>
-      <button class="subtab-btn" data-subtab="advanced" data-click="showSettingsSub" data-args='["advanced"]'><svg class="ic" aria-hidden="true"><use href="#i-tool"/></svg>進階</button>
+      <button class="subtab-btn" data-subtab="advanced" data-click="showSettingsSub" data-args='["advanced"]'><svg class="ic" aria-hidden="true"><use href="#i-tool"/></svg><span>備份<span class="lbl-long">與匯出</span></span></button>
     </div>
 
     <!-- ---------- 🧳 行程：切換／建立行程，以及這個行程本身的設定 ---------- -->
@@ -452,7 +460,7 @@
           <input type="text" id="newMemberName" placeholder="新成員名稱" style="max-width:180px;" aria-label="新成員名稱" data-enter="addMember">
           <button class="btn btn-primary" data-click="addMember">＋ 新增成員</button>
         </div>
-        <p class="hint">在這裡新增的成員一開始是「未連結」：可以照常記帳，但他本人要看到這個行程，需要用下方的邀請連結認領。</p>
+        <p class="hint">在這裡新增的成員一開始是「未連結」：可以照常記帳，但他本人要看到這個行程，需要用「邀請與分享」裡的邀請連結認領。</p>
       </div>
       <!-- 🆕 [行程連結] 邀請與分享：整張卡片由 js/tripLinks.js 依狀態繪出 -->
       <div class="card" id="tripLinksCard">
@@ -479,7 +487,7 @@
       </div>
     </div>
 
-    <!-- ---------- 🛠 進階：備份與匯入（js/importExport.js） ---------- -->
+    <!-- ---------- 🛠 備份與匯出：CSV、JSON 備份與匯入（js/importExport.js） ---------- -->
     <div class="subpanel" id="panel-advanced" data-subpanel="advanced">
       <div class="card">
         <h2 class="section-title">匯出試算表</h2>

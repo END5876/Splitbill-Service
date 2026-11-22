@@ -333,11 +333,11 @@
   @keyframes fade{from{opacity:0; transform:translateY(3px);} to{opacity:1; transform:none;}}
 
   .settings-subnav{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px;}
-  /* 手機上子分頁維持單行、可左右滑，不讓最後一顆單獨掉到第二行 */
+  /* 手機上五顆子分頁平分一行（標籤縮短：成員、備份），全部都看得到，不用左右滑 */
   @media (max-width:520px){
-    .settings-subnav{flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch; padding-bottom:2px;}
-    .settings-subnav::-webkit-scrollbar{display:none;}
-    .settings-subnav .subtab-btn{flex-shrink:0;}
+    .settings-subnav{display:grid; grid-template-columns:repeat(5, minmax(0,1fr)); gap:4px;}
+    .settings-subnav .subtab-btn{flex-direction:column; justify-content:center; gap:3px; padding:7px 2px; border-radius:12px; font-size:12px; min-width:0;}
+    .settings-subnav .lbl-long{display:none;}
   }
   .subtab-btn{
     font-family:'Noto Sans TC',sans-serif; font-weight:700; font-size:12.5px;
@@ -1310,6 +1310,51 @@
     main.wrap{padding-top:20px;}
     .kv-summary{grid-template-columns:repeat(4,1fr);}
     .card{padding:22px 24px;}
+  }
+
+  /* ═════════ 平板與桌機版面（ui-review 第 4 批）═════════
+     700～1023：摘要 4 欄、支出表單「金額＋幣別＋日期」同一列、長條圖與成員明細並排
+     ≥1024：版面放寬到 1120px；支出／轉帳左欄表單（捲動時固定）、右欄明細；
+            總覽左欄「你的狀態＋怎麼結清」、右欄摘要＋長條圖，成員明細在下方 */
+  @media (min-width:700px){
+    .kv-summary{grid-template-columns:repeat(4,1fr);}
+    .btn-block{max-width:320px;}
+  }
+  @media (min-width:700px) and (max-width:1023px){
+    #panel-overview.active{display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); column-gap:14px; align-items:start;}
+    #panel-overview .ov-main, #panel-overview .ov-side{display:contents;}
+    #panel-overview.active > *, #panel-overview .ov-main > *, #panel-overview .kv-summary{grid-column:1 / -1;}
+    #panel-overview .ov-bar{grid-column:1;}
+    #panel-overview .ov-members{grid-column:2;}
+    #panel-overview .member-detail-list{padding-top:12px;}
+
+    .form-card:not(.collapsed) #expenseFormBody{display:grid; grid-template-columns:minmax(0,1fr) 140px 180px; column-gap:12px;}
+    #expenseFormBody > *, #expenseFormBody .field:has(#expDesc){grid-column:1 / -1;}
+    #expenseFormBody > .row:nth-child(-n+2){display:contents;}
+    #expenseFormBody .row > .field{grid-column:auto; max-width:none !important; min-width:0;}
+  }
+  @media (min-width:1024px){
+    .wrap, .app-header-inner{max-width:1120px;}
+    .ledger-panel.active{display:grid; grid-template-columns:minmax(340px,400px) minmax(0,1fr); column-gap:20px; align-items:start;}
+    .ledger-panel > :not(.ledger-side){grid-column:2;}
+    /* 表單欄捲動時固定在頁首下方；比畫面高時自己捲動 */
+    .ledger-side{grid-column:1; position:sticky; top:calc(var(--header-h, 73px) + 16px); max-height:calc(100dvh - var(--header-h, 73px) - 32px); overflow-y:auto; overscroll-behavior:contain;}
+    .ledger-side > .card:last-child{margin-bottom:0;}
+    .ledger-side .btn-block{width:auto; flex:1 1 auto; max-width:none;} /* 「儲存」和「清空表單」同一行 */
+    body.share-readonly .ledger-panel.active{display:block;}
+
+    #panel-overview.active{display:grid; grid-template-columns:minmax(0,1.1fr) minmax(0,1fr); column-gap:18px; align-items:start;}
+    #panel-overview .ov-main{grid-column:1;}
+    #panel-overview .ov-side{grid-column:2;}
+    #panel-overview .ov-members{grid-column:1 / -1;}
+    #panel-overview .ov-side .kv-summary{grid-template-columns:repeat(2,1fr);}
+  }
+  /* 設定子分頁捲動時固定在頁首下方；「成員與分享」寬螢幕左右兩欄 */
+  @media (min-width:860px){
+    .settings-subnav{position:sticky; top:var(--header-h, 73px); z-index:20; margin:0 calc(-1 * var(--gutter)) 16px; padding:10px var(--gutter); background:var(--paper);}
+  }
+  @media (min-width:1100px){
+    #panel-people.active{display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); column-gap:14px; align-items:start;}
   }
 
   /* ═════════ 🆕 [行程獨立化] 帳號／邀請／Discord 綁定 ═════════ */
