@@ -224,7 +224,7 @@
       <div class="field" id="expBaseAmountField" hidden>
         <label for="expAmountInBase">實際花了多少 <span id="expBaseCurrencyLabel"></span>？（選填）</label>
         <input type="number" inputmode="decimal" id="expAmountInBase" class="num" placeholder="留白則依匯率自動換算" step="0.01">
-        <p class="hint">例如刷卡實際扣了多少。填了就用這個金額分帳，沒填就用匯率換算。</p>
+        <p class="hint">例如刷卡實際扣的金額，沒填就用匯率換算。</p>
       </div>
       <p class="hint" id="expBaseHint"></p>
 
@@ -291,7 +291,7 @@
         </button>
       </h2>
       <div class="form-card-body" id="depositFormBody">
-      <p class="hint" style="margin:0 0 12px;">轉帳：結算時 A 把錢轉給 B。預收：出發前先跟大家收團費、公基金。</p>
+      <p class="hint" style="margin:0 0 12px;">預收款＝出發前先向大家收的錢，例如團費。</p>
       <div class="row">
         <div class="field">
           <label for="depPayer">付款人（轉出的人）</label>
@@ -315,7 +315,7 @@
       <div class="field" id="depBaseAmountField" hidden>
         <label for="depAmountInBase">實際轉了多少 <span id="depBaseCurrencyLabel"></span>？（選填）</label>
         <input type="number" inputmode="decimal" id="depAmountInBase" class="num" placeholder="留白則依匯率自動換算" step="0.01">
-        <p class="hint">填了就用這個金額結算，沒填就用匯率換算。</p>
+        <p class="hint">沒填就用匯率換算。</p>
       </div>
       <p class="hint" id="depBaseHint"></p>
       <div class="row">
@@ -386,7 +386,6 @@
           <button class="btn btn-ghost btn-sm" id="btnRenameTrip" type="button" style="display:none;" data-click="renameSelectedTrip" data-loading="儲存中…">行程改名</button>
           <button class="btn btn-danger btn-sm trip-delete" id="btnDeleteTrip" type="button" style="display:none;" data-click="deleteSelectedTrip" data-loading="刪除中…">刪除這個行程</button>
         </div>
-        <p class="hint">從選單選一個行程就會直接開啟，也可以點頁首行程名稱旁的切換按鈕快速換行程。所有變更都會自動寫入雲端，頁首會顯示同步狀態；如果別人剛好也改過，兩邊的修改都會留下，衝突時才會問你。</p>
 
         <h3 class="section-subtitle" id="createTripHeading">建立新行程</h3>
         <div class="row">
@@ -416,14 +415,13 @@
         <div class="btn-row">
           <button class="btn btn-primary" data-click="createTripOnServer" data-loading="建立中…">＋ 建立行程</button>
         </div>
-        <p class="hint">你會是這個行程的建立者，也是第一位成員。之後可以到「成員與分享」邀請朋友，或在「行程」把它連到 Discord 伺服器。</p>
       </div>
 
       <div class="card" id="ratesCard">
         <h2 class="section-title">匯率</h2>
-        <p class="hint" style="margin-top:0;">記帳時會優先自動查詢即時匯率；這裡的數字是查不到時的備用值。每列表示「1 單位該幣別 ＝ 多少 <span id="baseLabel">TWD</span>」。</p>
+        <p class="hint" style="margin-top:0;">查不到即時匯率時，記帳會用這裡的匯率。</p>
         <table class="rate-table">
-          <thead><tr><th>幣別</th><th>1 單位等於多少結算幣別</th><th></th></tr></thead>
+          <thead><tr><th>幣別</th><th>1 單位等於多少 <span id="baseLabel">TWD</span></th><th></th></tr></thead>
           <tbody id="rateTableBody"></tbody>
         </table>
         <!-- 幣別搜尋選單：可以打國家、貨幣名稱或代碼；選到後自動帶入即時匯率（js/currencyPicker.js） -->
@@ -454,7 +452,7 @@
           <input type="text" id="newMemberName" placeholder="新成員名稱" style="max-width:180px;" aria-label="新成員名稱" data-enter="addMember">
           <button class="btn btn-primary" data-click="addMember">＋ 新增成員</button>
         </div>
-        <p class="hint">在這裡新增的成員一開始是「未連結」：可以照常記帳，但他本人要看到這個行程，需要用「邀請與分享」裡的邀請連結加入，再選「我是哪一位」。</p>
+        <p class="hint">新成員要用邀請連結加入後，本人才看得到這個行程。</p>
       </div>
       <!-- 🆕 [行程連結] 邀請與分享：整張卡片由 js/tripLinks.js 依狀態繪出 -->
       <div class="card" id="tripLinksCard">
@@ -476,7 +474,6 @@
     <div class="subpanel" id="panel-history" data-subpanel="history">
       <div class="card">
         <h2 class="section-title">操作紀錄</h2>
-        <p class="hint" style="margin-top:0;">每一次修改都會記下來：誰、什麼時候、改了什麼。刪錯或改錯的帳目可以單筆還原，也可以把整個行程回到某個時間點（最近 50 個版本）。行程建立者可以刪除單筆紀錄。</p>
         <div id="historyList"></div>
       </div>
     </div>
@@ -485,7 +482,6 @@
     <div class="subpanel" id="panel-advanced" data-subpanel="advanced">
       <div class="card">
         <h2 class="section-title">匯出試算表</h2>
-        <p class="hint" style="margin-top:0;">下載成 CSV 檔，可以用 Excel、Numbers 或 Google 試算表打開：每筆支出與轉帳一列、每位成員該收或該付多少，最後附上建議轉帳。</p>
         <div class="btn-row">
           <button class="btn btn-brass" type="button" data-click="downloadCsv">⬇ 下載 CSV 試算表</button>
         </div>
@@ -493,7 +489,7 @@
 
       <div class="card">
         <h2 class="section-title">下載備份</h2>
-        <p class="hint" style="margin-top:0;">行程的資料都存在雲端，平常不需要另外備份；想自己留一份，或要搬到別的地方時，可以下載成 JSON 檔。JSON 檔可以再匯入成新行程，CSV 不行。</p>
+        <p class="hint" style="margin-top:0;">JSON 檔可以再匯入成新行程。</p>
         <div class="btn-row">
           <button class="btn btn-ghost" type="button" data-click="downloadJson">⬇ 下載這個行程的 JSON</button>
           <button class="btn btn-ghost" type="button" data-click="copyJson">複製 JSON</button>
@@ -502,7 +498,7 @@
 
       <div class="card">
         <h2 class="section-title">匯入成新行程</h2>
-        <p class="hint" style="margin-top:0;">選擇之前下載的 JSON 檔（或直接貼上內容），會建立成一個<b>新的</b>雲端行程，不會動到目前開著的行程。匯入時會問你是裡面的哪一位成員。</p>
+        <p class="hint" style="margin-top:0;">會建立成新的行程，不會動到目前的行程。</p>
         <input type="file" id="fileInput" accept="application/json,.json" data-change="handleFileImport" data-args='["$event"]' aria-label="選擇 JSON 檔案">
         <textarea id="jsonInput" rows="6" placeholder="或把 JSON 內容貼在這裡…" style="margin-top:10px;" aria-label="貼上 JSON 內容"></textarea>
         <div class="btn-row">

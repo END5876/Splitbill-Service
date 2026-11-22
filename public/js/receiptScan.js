@@ -597,8 +597,8 @@ function renderReceiptWorkArea(){
   const curInTrip = detectedCur && trip.rates[detectedCur];
   const defaultCur = receiptState.currency || (curInTrip ? detectedCur : trip.baseCurrency);
   const currencyHint = (detectedCur && !curInTrip)
-    ? `<p class="hint" style="color:var(--debt);">偵測到帳單可能是 <b>${detectedCur}</b>，但行程裡還沒有這個幣別的匯率，請先到「設定 → 行程」的匯率新增，否則下面無法選擇它。</p>`
-    : (detectedCur ? `<p class="hint">已自動選擇偵測到的幣別 ${detectedCur}，辨識錯了可以在下面自行改選。</p>` : '');
+    ? `<p class="hint" style="color:var(--debt);">帳單可能是 <b>${detectedCur}</b>，行程還沒有這個幣別。請先到「設定 → 行程」新增匯率。</p>`
+    : (detectedCur ? `<p class="hint">已自動選 ${detectedCur}，不對的話可以改。</p>` : '');
 
   // 還沒選付款人時顯示「請選擇」，不要讓畫面看起來像已經選了第一位成員
   const payerOptions = `<option value="" ${receiptState.payerId?'':'selected'}>請選擇</option>` + trip.members.map(m=>`<option value="${m.id}" ${receiptState.payerId===m.id?'selected':''}>${escapeHtml(m.name)}</option>`).join('');
@@ -607,7 +607,7 @@ function renderReceiptWorkArea(){
     <div class="receipt-preview-row">
       <img class="receipt-thumb" src="${escapeHtml(receiptState.imageDataUrl || '')}" alt="帳單照片預覽">
       <div style="flex:1;">
-        <p class="hint" style="margin-top:0;">共 ${receiptState.items.length} 個項目。點選品項下方的人名即可認領（可多選＝一起分攤這項），服務費與訂金已自動歸入「共同分擔」。辨識錯誤都可以直接修改，或用下方「新增項目」補上漏掉的品項。${receiptState.items.some(it => it.nameTranslated) ? `<br>🌐 偵測到帳單為<b>${escapeHtml(receiptState.detectedLanguage)}</b>，品項下方已附上繁體中文翻譯供核對。` : ''}</p>
+        <p class="hint" style="margin-top:0;">共 ${receiptState.items.length} 個項目。點品項下方的人名分配（可多選＝一起分攤），辨識錯了可以直接改。</p>
         <div class="btn-row">
           <button type="button" class="btn btn-ghost btn-sm" data-click="receiptResetUpload">🔄 重新上傳照片</button>
           ${receiptSessionJoined ? '<button type="button" class="btn btn-danger btn-sm" data-click="abandonReceiptSession">🛑 放棄認領</button>' : ''}
@@ -621,7 +621,7 @@ function renderReceiptWorkArea(){
         <input type="number" inputmode="decimal" step="0.1" min="0" value="${Math.round(receiptState.serviceChargeRate*10000)/100}" data-change="receiptUpdateServiceChargeRate" data-args='["$value"]'>
       </div>
     </div>
-    <p class="hint" style="margin-top:-6px;">調整比例會自動套用到所有尚未手動改過金額的「品項」；雜費（如訂金）不受影響，已手動改過金額的品項也不會被覆寫。</p>
+    <p class="hint" style="margin-top:-6px;">只套用到沒有手動改過金額的品項。</p>
 
     <div class="field">
       <label>這頓誰有出席？（決定「共同分擔」要平均分給誰）</label>

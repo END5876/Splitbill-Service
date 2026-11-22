@@ -83,7 +83,7 @@ function renderAccountArea(){
       ${myNicknameHtml()}`;
   } else if (oauthEnabled){
     el.innerHTML = `
-      <p class="hint">登入後，就能建立自己的行程、邀請朋友一起記帳。只會讀取你的 ${loginProviderNames()} 名稱與頭像。</p>
+      <p class="hint">只會讀取你的 ${loginProviderNames()} 名稱與頭像。</p>
       <div class="btn-row">${loginButtonsHtml()}</div>`;
   } else {
     el.innerHTML = `<p class="hint">這個網站尚未開啟登入，只能用朋友傳來的連結開啟行程。</p>`;
@@ -105,20 +105,20 @@ function accountLinkHtml(){
   if (acc.discord && acc.line){
     return `
       <div class="account-link">
-        <div class="account-link-status"><span class="link-badge linked">Discord ✓</span><span class="link-badge linked">LINE ✓</span><span class="hint" style="margin:0;">Discord 和 LINE 都能登入這個帳號，看到的行程一樣。</span></div>
+        <div class="account-link-status"><span class="link-badge linked">Discord ✓</span><span class="link-badge linked">LINE ✓</span><span class="hint" style="margin:0;">兩種都能登入這個帳號。</span></div>
         <button class="btn btn-ghost btn-sm" type="button" data-click="unlinkAccount">停用 LINE 登入</button>
       </div>`;
   }
   if (acc.discord){
     return `
       <div class="account-link">
-        <p class="hint" style="margin:0;">加入 LINE 登入後，在手機上用 LINE 一鍵登入，也看得到你的行程。</p>
+        <p class="hint" style="margin:0;">之後在手機上可以用 LINE 一鍵登入。</p>
         <button class="btn btn-line btn-sm" type="button" ${act('click', 'linkAccount', 'line')}>加入 LINE 登入</button>
       </div>`;
   }
   return `
     <div class="account-link">
-      <p class="hint" style="margin:0;">加入 Discord 登入後，用 Discord 登入也看得到你的行程，還能在 Discord 群組裡直接記帳。</p>
+      <p class="hint" style="margin:0;">之後也能在 Discord 群組裡直接記帳。</p>
       <button class="btn btn-brass btn-sm" type="button" ${act('click', 'linkAccount', 'discord')}>加入 Discord 登入</button>
     </div>`;
 }
@@ -161,7 +161,7 @@ function myNicknameHtml(){
         <input type="text" id="myNicknameInput" maxlength="60" value="${escapeHtml(me.name)}" data-enter="saveMyNickname">
         <button class="btn btn-brass btn-sm" type="button" data-click="saveMyNickname">儲存</button>
       </div>
-      <p class="hint" style="margin-bottom:0;">其他成員在帳目、結算與 Discord 面板上看到的都是這個名字。</p>
+      <p class="hint" style="margin-bottom:0;">其他成員看到的是這個名字。</p>
     </div>`;
 }
 function saveMyNickname(){
@@ -235,15 +235,14 @@ function renderDiscordPanel(){
   if (trip.guildId){
     el.innerHTML = `
       <div class="discord-status on"><span class="dot"></span>已連到 Discord 伺服器 <code class="inline">${escapeHtml(trip.guildId)}</code></div>
-      <p class="hint">在那個伺服器輸入 <code class="inline">/splitbill panel</code> 就能用 Mousebot 的面板操作這個行程。已連結 Discord 的成員可以操作面板；尚未連結、或只用 LINE 的成員在 Discord 只會顯示名字。</p>
-      ${manage ? `<div class="btn-row"><button class="btn btn-danger btn-sm" type="button" data-click="detachFromDiscord" data-loading="處理中…">中斷與伺服器的連線</button></div>
-      <p class="hint">中斷後，Discord 面板就看不到這個行程了；網頁、邀請連結、免登入連結和帳目都不受影響，之後可以再連回來（也可以連到別的伺服器）。</p>` : ''}`;
+      <p class="hint">在那個伺服器輸入 <code class="inline">/splitbill panel</code> 就能記帳。</p>
+      ${manage ? `<div class="btn-row"><button class="btn btn-danger btn-sm" type="button" data-click="detachFromDiscord" data-loading="處理中…">中斷與伺服器的連線</button></div>` : ''}`;
     return;
   }
   const code = lastBindCode && lastBindCode.tripId === currentTripId && lastBindCode.expiresAt > Date.now() ? lastBindCode : null;
   el.innerHTML = `
     <div class="discord-status"><span class="dot"></span>還沒有連到 Discord 伺服器</div>
-    <p class="hint">連上後，伺服器裡的人可以用 Mousebot 的 <code class="inline">/splitbill panel</code> 記帳、結算，跟網頁即時同步。</p>
+    <p class="hint">連上後，伺服器裡的人可以用 <code class="inline">/splitbill panel</code> 記帳。</p>
     ${manage ? `
       <ol class="discord-steps">
         <li>按下方「產生連線碼」（10 分鐘內有效、只能用一次）</li>

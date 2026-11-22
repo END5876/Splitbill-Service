@@ -88,8 +88,8 @@ function renderInviteSection(){
   }
   const unlinked = trip.members.filter(m => !memberAccountId(m));
   const who = unlinked.length
-    ? `還有 ${unlinked.length} 位成員沒連結帳號（${unlinked.slice(0, 3).map(m => escapeHtml(m.name)).join('、')}${unlinked.length > 3 ? '…' : ''}）。傳給他們，登入後選「我是哪一位」就能一起記帳，過去的帳目都會保留。`
-    : '傳給朋友，他們登入後就能以新成員身分加入，一起記帳。';
+    ? `還有 ${unlinked.length} 位成員沒連結帳號（${unlinked.slice(0, 3).map(m => escapeHtml(m.name)).join('、')}${unlinked.length > 3 ? '…' : ''}），傳給他們選「我是哪一位」。`
+    : '傳給朋友，登入後就能加入一起記帳。';
   el.innerHTML = `
     <div class="tl-hero">
       <div class="tl-hero-ic" aria-hidden="true">🔑</div>
@@ -99,7 +99,7 @@ function renderInviteSection(){
       </div>
       <button class="btn btn-brass tl-hero-btn" type="button" data-click="copyInviteLink" data-loading="產生中…">複製邀請連結</button>
     </div>
-    ${canManageTrip() ? '' : '<p class="hint tl-foot">想讓朋友不登入也能看帳或記帳，可以請行程建立者建立免登入的連結。</p>'}`;
+    ${canManageTrip() ? '' : '<p class="hint tl-foot">想讓朋友不登入也能看帳，請行程建立者建立免登入連結。</p>'}`;
 }
 
 // 下半部：建立者的連結管理。只在狀態改變時重繪（裡面有輸入框）
@@ -114,7 +114,7 @@ function renderLinkManager(){
   let body;
   if (s.links === null && !s.error) body = '<p class="hint">讀取中…</p>';
   else if (s.error) body = `<p class="hint">連結清單沒有載入成功：${escapeHtml(s.error)}　<button type="button" class="link-btn" data-click="loadTripLinks">再試一次</button></p>`;
-  else if (!links.length && !s.composer) body = '<p class="hint tl-empty">還沒有任何連結。邀請朋友成為成員用上面的「複製邀請連結」；要給不想登入的人看帳或一起記帳，按「＋ 新增免登入連結」。</p>';
+  else if (!links.length && !s.composer) body = '<p class="hint tl-empty">還沒有免登入連結。</p>';
   else body = `<div class="tl-list">${sorted.map(l => linkRowHtml(l, l.token === inviteToken)).join('')}</div>`;
 
   el.innerHTML = `
@@ -192,7 +192,7 @@ function linkEditorHtml(l, d, isDefaultInvite){
         <button class="btn btn-ghost btn-sm" type="button" data-click="toggleLinkEditor" data-args='[null]'>取消</button>
         <button class="btn btn-danger btn-sm tl-revoke" type="button" ${act('click','revokeTripLink',l.token)}>撤銷連結</button>
       </div>
-      ${isDefaultInvite ? '<p class="hint tl-foot">這是預設的邀請連結。撤銷後舊網址立刻失效，下次有人複製邀請連結時會自動產生新的。</p>' : ''}
+      ${isDefaultInvite ? '<p class="hint tl-foot">撤銷後舊網址立刻失效，下次複製時會產生新的。</p>' : ''}
     </div>`;
 }
 

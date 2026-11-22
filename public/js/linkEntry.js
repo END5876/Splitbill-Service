@@ -133,7 +133,7 @@ function showNoAccessScreen(){
         <li><svg class="ic" aria-hidden="true"><use href="#i-chat"/></svg><div><b>群組裡也能記</b><span>在 Discord 伺服器裡直接用 Mousebot 記帳，跟網頁即時同步</span></div></li>
       </ul>
       <div class="no-access-login">${loginButtonsHtml()}</div>
-      <p class="no-access-note">只會讀取你的 ${loginProviderNames()} 名稱與頭像。<br>朋友傳了連結給你的話，直接點開那個連結即可。</p>    </div>
+      <p class="no-access-note">只會讀取你的 ${loginProviderNames()} 名稱與頭像。<br>朋友傳了連結的話，直接點開就好。</p>    </div>
   ` : `
     <div class="no-access-card">
       <svg class="no-access-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">

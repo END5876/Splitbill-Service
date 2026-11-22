@@ -332,7 +332,7 @@ function renderAll(){
   // rates tab
   document.getElementById('rateTableBody').innerHTML = Object.entries(trip.rates).sort().map(([code,rate])=>`
     <tr>
-      <td data-label="幣別"><span><b>${code}</b>${CURRENCY_BY_CODE[code]?` <span class="rate-cur-name">${escapeHtml(CURRENCY_BY_CODE[code].name)}</span>`:''}${code===trip.baseCurrency?' <span class="hint">（基準）</span>':''}</span></td>
+      <td data-label="幣別"><span><b>${code}</b>${CURRENCY_BY_CODE[code]?` <span class="rate-cur-name">${escapeHtml(CURRENCY_BY_CODE[code].name)}</span>`:''}${code===trip.baseCurrency?' <span class="hint">（結算用）</span>':''}</span></td>
       <td data-label="匯率"><input type="number" inputmode="decimal" step="0.0001" value="${rate}" ${code===trip.baseCurrency?'disabled':''} ${act('change','updateRate',code,'$value')}></td>
       <td data-label="">${code===trip.baseCurrency?'':`<button class="btn btn-danger btn-sm" ${act('click','removeRate',code)}>刪除</button>`}</td>
     </tr>`).join('');
