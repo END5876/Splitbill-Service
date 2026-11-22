@@ -89,8 +89,8 @@ function groupItemsByDate(items){
       currentKey = key;
       const label = key === todayKey ? '今天'
         : key === yestKey ? '昨天'
-        : d.getFullYear() === now.getFullYear() ? `${d.getMonth()+1}/${d.getDate()} · 週${WEEKDAY_LABELS[d.getDay()]}`
-        : `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} · 週${WEEKDAY_LABELS[d.getDay()]}`;
+        : d.getFullYear() === now.getFullYear() ? `${d.getMonth()+1}/${d.getDate()}（${WEEKDAY_LABELS[d.getDay()]}）`
+        : `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}（${WEEKDAY_LABELS[d.getDay()]}）`;
       currentGroup = { label, items: [], subtotal: 0 };
       groups.push(currentGroup);
     }

@@ -379,13 +379,15 @@ async function handleReceiptUpload(fileOrEvent){
 // 🆕 觸發列（icon＋標題＋說明＋箭頭）的預設內容抽成常數，receiptResetUpload()
 // 與初始 HTML（index.html 的 #receiptScanTriggerBody）共用同一段結構，
 // 避免兩處各自寫一份、之後改文案或版面要記得同步兩邊。
+// 觸控裝置不能拖曳檔案，改說「拍收據」；桌機說「上傳」並提醒可以拖進來
+const RECEIPT_IS_TOUCH = window.matchMedia && matchMedia('(hover: none)').matches;
 const RECEIPT_SCAN_TRIGGER_DEFAULT_HTML = `
-  <span class="receipt-scan-ic">🧾</span>
+  <span class="receipt-scan-ic"><svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg></span>
   <span class="receipt-scan-txt">
-    <span class="title">點擊上傳帳單照片</span>
-    <span class="sub">或把照片拖曳到這個頁面，放開即可自動辨識（僅接受圖片格式）</span>
-  </span>
-  <span class="receipt-scan-arrow" aria-hidden="true">→</span>`;
+    <span class="title">${RECEIPT_IS_TOUCH ? '拍收據，自動列出品項' : '上傳收據照片，自動列出品項'}</span>
+    <span class="sub">${RECEIPT_IS_TOUCH ? '也可以從相簿選照片' : '或直接把照片拖進這一頁'}</span>
+  </span>`;
+{ const body = document.getElementById('receiptScanTriggerBody'); if (body) body.innerHTML = RECEIPT_SCAN_TRIGGER_DEFAULT_HTML; }
 
 function receiptResetUpload(){
   receiptState = null;

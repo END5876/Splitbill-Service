@@ -204,13 +204,13 @@ function handleIncomingTripUpdate(rawPushedTrip){
   const hadLocalChanges = !!lastSyncedTripJSON && JSON.stringify(trip) !== lastSyncedTripJSON;
   const merged = mergeWithServer(pushedTrip);
   if (!merged){
-    toast('其他人剛更新了這個行程，但無法自動合併，請儘快儲存或重新整理頁面取得最新版本', 'error');
+    toast('其他人剛更新了這個行程，跟你畫面上的內容對不起來。請先儲存，或重新載入頁面看最新的版本。', 'error');
     return;
   }
   trip = merged;
   renderAll();
-  if (lastMergeConflicts) toast(`其他人剛更新了這個行程，其中 ${lastMergeConflicts} 筆跟你還沒儲存的修改衝突，暫時以你的版本為準`, 'error');
-  else toast(hadLocalChanges ? '已自動合併其他人剛剛的更新' : '其他人剛更新了這個行程，畫面已同步', 'info');
+  if (lastMergeConflicts) toast(`你和其他人同時改了 ${lastMergeConflicts} 筆，目前保留你的版本，其他人的修改可以在「紀錄」找回。`, 'error');
+  else toast(hadLocalChanges ? '已更新成最新內容，你還沒儲存的修改也保留著' : '其他人剛更新了這個行程，畫面已同步', 'info');
 }
 
 // 🆕 [即時同步] 行程被刪除時的處理：訪客模式下這個 token 本身也已經

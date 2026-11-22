@@ -1291,7 +1291,7 @@
     .add-rate-row input{flex:1 1 0; min-width:0; max-width:none !important;}
     .add-rate-row .btn{flex-basis:100%;}
     .add-rate-row .cur-picker{flex-basis:100%;}
-    .rate-cur-name{display:none;}
+    .rate-cur-name{display:block;} /* 手機上幣名換到代碼下一行，不藏起來 */
     /* 「輸入框＋按鈕」維持同一行，由輸入框縮放 */
     .inline-add-row{flex-wrap:nowrap;}
     .inline-add-row input{flex:1 1 auto; min-width:0; max-width:none !important;}

@@ -55,7 +55,7 @@ function discardLegacyApiKeyHash(){
   const hashParams = new URLSearchParams((location.hash || '').replace(/^#/, ''));
   if (!hashParams.has('apiKey')) return;
   history.replaceState(null, '', location.pathname + location.search);
-  toast('管理員金鑰書籤已經停用，請改用登入（Bot 擁有者登入後可以列出所有行程）', 'error');
+  toast('管理員金鑰書籤已經停用，請改用登入（管理員登入後可以列出所有行程）', 'error');
 }
 
 /* ===================== 全頁畫面的共用工具 ===================== */
@@ -130,7 +130,7 @@ function showNoAccessScreen(){
         <li><svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg><div><b>拍照辨識帳單</b><span>上傳收據，自動列出品項，大家點選自己吃了什麼</span></div></li>
         <li><svg class="ic" aria-hidden="true"><use href="#i-globe"/></svg><div><b>多幣別自動換算</b><span>出國刷卡、付現都能記，依即時匯率換算</span></div></li>
         <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><div><b>最少轉帳次數結清</b><span>算出誰該付誰多少，付完一鍵標記</span></div></li>
-        <li><svg class="ic" aria-hidden="true"><use href="#i-chat"/></svg><div><b>Discord 即時同步</b><span>綁定伺服器後，用 Mousebot 的 /splitbill panel 也能記帳</span></div></li>
+        <li><svg class="ic" aria-hidden="true"><use href="#i-chat"/></svg><div><b>群組裡也能記</b><span>在 Discord 伺服器裡直接用 Mousebot 記帳，跟網頁即時同步</span></div></li>
       </ul>
       <div class="no-access-login">${loginButtonsHtml()}</div>
       <p class="no-access-note">只會讀取你的 ${loginProviderNames()} 名稱與頭像。<br>朋友傳了連結給你的話，直接點開那個連結即可。</p>    </div>
@@ -209,7 +209,10 @@ function showJoinScreen(token, info){
   const el = document.getElementById('inviteScreen');
   el.style.display = 'block';
   const head = `<div class="ic">🧳</div><h1>${escapeHtml(info.tripName)}</h1>`;
-  const guestLabel = info.guest === 'write' ? '不登入，直接開啟（可編輯）' : '不登入，直接檢視';
+  // 已經登入的人不是「不登入」，而是「先不加入」
+  const guestLabel = currentUser
+    ? (info.guest === 'write' ? '先不加入，以訪客身分編輯' : '先看看，不加入')
+    : (info.guest === 'write' ? '不登入，直接開啟（可編輯）' : '不登入，直接檢視');
   // 連結同時開放訪客時，「先不要」改成「以訪客身分開啟」
   const secondary = info.guest !== 'none'
     ? `<button class="btn btn-ghost btn-sm" type="button" ${act('click','chooseGuestMode',token)}>${guestLabel}</button>`
@@ -223,7 +226,7 @@ function showJoinScreen(token, info){
         <div class="btn-row" style="justify-content:center;">
           ${oauthEnabled
             ? loginButtonsHtml('/#link=' + encodeURIComponent(token), '並加入')
-            : '<p class="hint">這個網站尚未開啟登入，請聯絡網站管理者。</p>'}
+            : '<p class="hint">這個網站還沒有開啟登入，請聯絡管理員。</p>'}
         </div>
         <div class="btn-row" style="justify-content:center; margin-top:14px;">${secondary}</div>
       </div>`;
@@ -242,8 +245,8 @@ function showJoinScreen(token, info){
       <p>你是下面哪一位？選了之後，這位成員過去的代墊與分攤紀錄都會連結到你的帳號（${escapeHtml(currentUser.name)}）。</p>
       <div class="invite-members">
         ${unlinked.map(m => `<button class="modal-list-item" type="button" ${act('click','confirmJoinClaim',token,m.id,'$el')}><div class="mli-title">我是「${escapeHtml(m.name)}」</div></button>`).join('')}
-      </div>` : '<p>名單上的成員都已經被認領了，你可以用新成員的身分加入。</p>'}
-      ${linked.length ? `<div class="hint" style="margin-top:8px;">已經有人認領：${linked.map(m => escapeHtml(m.name)).join('、')}</div>` : ''}
+      </div>` : '<p>名單上的成員都已經有人選了，你可以用新成員的身分加入。</p>'}
+      ${linked.length ? `<div class="hint" style="margin-top:8px;">已經有人選了：${linked.map(m => escapeHtml(m.name)).join('、')}</div>` : ''}
       ${unlinked.length ? `<button type="button" class="link-btn invite-new-toggle" data-click="revealInviteNewBlock" data-args='["$el"]'>都不是？以新成員身分加入</button>` : ''}
       <div class="invite-new" id="inviteNewBlock" ${unlinked.length ? 'hidden' : ''}>
         <div class="hint" style="margin:14px 0 6px;">以新成員身分加入：</div>
@@ -260,8 +263,8 @@ let joinMemberNames = new Map();
 async function confirmJoinClaim(token, memberId, btn){
   const name = joinMemberNames.get(memberId) || '這位成員';
   const ok = await confirmModal(
-    `確定你就是「${name}」嗎？確認後，「${name}」過去的代墊與分攤紀錄都會連結到你的帳號。`,
-    { title: '認領成員', confirmText: '是我，認領' }
+    `加入後，${name}之前的代墊和分攤都會算在你身上。選錯的話，要請行程建立者幫你改。`,
+    { title: `你是「${name}」嗎？`, confirmText: `我是${name}，加入`, cancelText: '選錯了' }
   );
   if (ok) await claimJoin(token, { memberId }, btn);
 }
@@ -279,7 +282,7 @@ function goHome(){
 }
 async function claimJoin(token, body, btn){
   if (body.newMemberName !== undefined && !String(body.newMemberName).trim()){
-    toast('請輸入你的名字', 'error'); return;
+    toast('請輸入你的名字。', 'error'); return;
   }
   const run = async ()=>{
     try{
@@ -290,16 +293,16 @@ async function claimJoin(token, body, btn){
       });
       const data = await res.json().catch(()=>({}));
       if (res.ok || (res.status === 409 && data.memberId)){
-        toast(res.ok ? '已加入行程！' : data.error, res.ok ? 'success' : 'info');
+        toast(res.ok ? '已加入行程' : data.error, res.ok ? 'success' : 'info');
         clearLinkToken();
         hideJoinScreen();
         await openTripAsMember(data.tripId);
         return;
       }
-      toast(data.error || ('HTTP ' + res.status), 'error');
+      toast(data.error || '沒有加入成功，請再試一次。', 'error');
       if (res.status === 409) applyEntry(await resolveEntry()); // 有人搶先認領了，重新整理名單
     }catch(err){
-      toast('加入失敗：' + err.message, 'error');
+      toast('沒有加入成功：' + err.message, 'error');
     }
   };
   if (btn) await withLoading(btn, '處理中…', run); else await run();

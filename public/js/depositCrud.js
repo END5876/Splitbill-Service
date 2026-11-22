@@ -33,8 +33,8 @@ function renderDepositHint(){
   if (!isForeign){ customInput.value = ''; hintEl.innerHTML = ''; return; }
   if (customInput.value.trim() !== ''){
     hintEl.innerHTML = Number.isFinite(customBase) && customBase > 0
-      ? `已採用手動指定的真實金額：<b>${fmtMoney(customBase, trip.baseCurrency)} ${trip.baseCurrency}</b>`
-      : `請輸入大於 0 的真實金額，或清空欄位以依匯率自動換算。`;
+      ? `會用你填的金額：<b>${fmtMoney(customBase, trip.baseCurrency)} ${trip.baseCurrency}</b>`
+      : `請輸入大於 0 的金額，或清空這一欄改用匯率換算。`;
   } else if (depositLiveRate && depositLiveRate.currency === currency){
     const base = round2(amount*depositLiveRate.rate);
     hintEl.innerHTML = `即時匯率 1 ${currency} = ${depositLiveRate.rate} ${trip.baseCurrency}，換算約為 <b>${fmtMoney(base, trip.baseCurrency)}</b>`;
@@ -78,18 +78,18 @@ function saveDeposit(){
   const currency = document.getElementById('depCurrency').value;
   const note = document.getElementById('depNote').value.trim();
   const dateStr = document.getElementById('depDate').value;
-  if (!payerId || !collectorId){ toast('請選擇付款人與收款人', 'error'); return false; }
-  if (payerId === collectorId){ toast('付款人與收款人不能是同一人', 'error'); return false; }
-  if (!(amount>0)){ toast('請輸入大於 0 的金額', 'error'); return false; }
+  if (!payerId || !collectorId){ toast('請選擇付款人和收款人。', 'error'); return false; }
+  if (payerId === collectorId){ toast('付款人和收款人不能是同一人。', 'error'); return false; }
+  if (!(amount>0)){ toast('請輸入大於 0 的金額。', 'error'); return false; }
   const customBaseRaw = document.getElementById('depAmountInBase').value.trim();
   const customBase = parseFloat(customBaseRaw);
   let amountInBase;
   if (currency !== trip.baseCurrency && customBaseRaw !== ''){
-    if (!(customBase > 0)){ toast('換算後真實金額要大於 0', 'error'); return false; }
+    if (!(customBase > 0)){ toast('實際金額要大於 0。', 'error'); return false; }
     amountInBase = round2(customBase);
   } else {
     const rate = resolveDepositRate(currency);
-    if (!(rate>0)){ toast(`查不到 ${currency} 的匯率，請到「設定 → 行程」手動新增匯率`, 'error'); return false; }
+    if (!(rate>0)){ toast(`查不到 ${currency} 的匯率，請到「設定 → 行程」自己輸入匯率。`, 'error'); return false; }
     amountInBase = round2(amount*rate);
   }
 
@@ -102,15 +102,15 @@ function saveDeposit(){
       editingDepositId = null;
       document.getElementById('depositFormTitle').textContent = '新增一筆轉帳／預收款';
       setFormCardEditing('depositFormCard', 'btnSaveDepositSync', 'btnResetDeposit', false);
-      toast('這筆轉帳已經被其他人刪除。表單內容還在，按「儲存」可以重新新增', 'error');
+      toast('這筆轉帳已經被其他人刪除。表單內容還在，按「記下這筆」可以重新新增。', 'error');
       return false;
     }
     Object.assign(saved, { payerId, collectorId, amount, currency, amountInBase, note, createdAt: applyDateToTimestamp(dateStr, saved.createdAt) });
-    toast('已更新轉帳紀錄', 'success');
+    toast('已儲存這筆轉帳的修改', 'success');
   } else {
     saved = { id: genId('dep'), payerId, collectorId, amount, currency, amountInBase, note, createdAt: applyDateToTimestamp(dateStr, Date.now()) };
     trip.deposits.push(saved);
-    toast('已新增轉帳紀錄', 'success');
+    toast(`已記下 ${memberName(payerId)} 付給 ${memberName(collectorId)} 的轉帳`, 'success');
   }
   resetDepositForm();
   renderAll();

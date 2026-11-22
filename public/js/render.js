@@ -48,23 +48,30 @@ function ledgerWho(memberId){
   return `${escapeHtml(memberName(memberId))}${me && me.id === memberId ? '<span class="you-tag">你</span>' : ''}`;
 }
 
-// 「應收 X／應付 X／打平」：正＝別人要給他，負＝他要給別人。who 是前綴（例如「你」），可留空。
+// 淨額的說法（跨產品用詞表）：數字不帶正負號，方向靠文字。
+// 說「你」：你可以拿回 X／你要付 X／你已經結清；說別人：可拿回 X／要付 X／已結清
+function netWords(net, you){
+  if (Math.abs(net) < 0.005) return you ? '你已經結清' : '已結清';
+  if (net > 0) return you ? '你可以拿回' : '可拿回';
+  return you ? '你要付' : '要付';
+}
+// 正＝別人要給他，負＝他要給別人。who＝'你' 時用「你…」的說法
 function netPhraseHtml(net, currency, who){
-  const prefix = who || '';
-  if (Math.abs(net) < 0.005) return `<span class="amt-zero">${prefix}打平</span>`;
+  const you = who === '你';
+  if (Math.abs(net) < 0.005) return `<span class="amt-zero">${netWords(net, you)}</span>`;
   const unit = currency ? ` ${currency}` : '';
-  return `<span class="${net > 0 ? 'amt-pos' : 'amt-neg'}">${prefix}${net > 0 ? '應收' : '應付'} <span class="num">${fmtMoneyCompact(Math.abs(net))}${unit}</span></span>`;
+  return `<span class="${net > 0 ? 'amt-pos' : 'amt-neg'}">${netWords(net, you)} <span class="num">${fmtMoneyCompact(Math.abs(net))}${unit}</span></span>`;
 }
 
-// 這筆支出對「我」的影響（先付 − 分攤），用這筆的幣別、不標單位——跟同一列右上的金額同幣別，
-// 對照起來最直覺；換算成基準幣別的數字放在展開後。我沒參與、或沒有連結成員時回傳空字串。
+// 這筆支出對「我」的影響（先付 − 分攤），用這筆的幣別並標出幣別（當天合計是結算幣別，不標會看錯）；
+// 換算成結算幣別的數字放在展開後。我沒參與、或沒有連結成員時回傳空字串。
 function ledgerMeHtml(e){
   const me = myTripMember();
   if (!me) return '';
   const paid = e.payers.filter(p=>p.userId===me.id).reduce((s,p)=>s+p.amount,0);
   const share = e.participants.filter(p=>p.userId===me.id).reduce((s,p)=>s+p.amount,0);
   if (!paid && !share) return '';
-  return netPhraseHtml(round2(paid - share), '', '你');
+  return netPhraseHtml(round2(paid - share), e.currency, '你');
 }
 
 // 原幣金額（整數不顯示 .00）
@@ -96,7 +103,7 @@ function renderExpenseSplit(e, evenShare){
   const rows = items.map(({ id, paid, share, net, numText })=>{
     const note = paid ? `<small>先付 ${fmtMoneyCompact(paid)}・${share ? `分攤 ${fmtMoneyCompact(share)}` : '不分攤'}</small>` : '';
     const cls = numText ? (net > 0 ? 'amt-pos' : 'amt-neg') : 'amt-zero';
-    const label = numText ? (net > 0 ? '應收' : '應付') : '打平';
+    const label = netWords(numText ? net : 0, false);
     return `<li><span class="split-name">${ledgerWho(id)}${note}</span><span class="split-net ${cls}"><span>${label}</span><span class="num">${numText}</span></span></li>`;
   }).join('');
   return `<div class="split-box"><div class="split-caption">${caption}</div><ul class="split-list" style="--num-w:${numWidth}ch">${rows}</ul></div>`;
@@ -275,8 +282,8 @@ function renderExpenseList(){
   document.getElementById('expenseList').innerHTML = filteredExpenses.length
     ? renderDateGroupedList(filteredExpenses, renderExpenseRow)
     : (allExpenses.length
-        ? emptyState('🔍', '沒有符合篩選條件的支出', '清除篩選 →', "clearExpenseFilter")
-        : emptyState('🧾', '還沒有任何支出', '新增第一筆 →', "startFirstExpense"));
+        ? emptyState('🔍', '沒有符合篩選條件的支出。', '清除篩選', "clearExpenseFilter")
+        : emptyState('🧾', '還沒有任何支出。', '記第一筆支出', "startFirstExpense"));
 }
 // 轉帳／預收清單，同上。
 function renderDepositList(){
@@ -297,8 +304,8 @@ function renderDepositList(){
   document.getElementById('depositList').innerHTML = filteredDeposits.length
     ? renderDateGroupedList(filteredDeposits, renderDepositRow)
     : (allDeposits.length
-        ? emptyState('🔍', '沒有符合篩選條件的轉帳／預收紀錄', '清除篩選 →', "clearDepositFilter")
-        : emptyState('💸', '還沒有任何轉帳／預收紀錄', '新增第一筆 →', "startFirstDeposit"));
+        ? emptyState('🔍', '沒有符合篩選條件的轉帳或預收款。', '清除篩選', "clearDepositFilter")
+        : emptyState('💸', '還沒有任何轉帳或預收款。', '記第一筆轉帳', "startFirstDeposit"));
 }
 
 function renderAll(){
@@ -320,7 +327,7 @@ function renderAll(){
         ${memberLinkBadgeHtml(m)}
         <button class="btn btn-danger btn-sm member-btn" ${act('click','removeMember',m.id)} title="刪除這位成員" aria-label="刪除">${ICON_TRASH}<span class="btn-label">刪除</span></button>
       </span>
-    </div>`).join('') || emptyState('👥', '尚未新增任何成員', '新增第一位成員 →', "focusNewMemberInput");
+    </div>`).join('') || emptyState('👥', '還沒有任何成員。', '新增成員', "focusNewMemberInput");
 
   // rates tab
   document.getElementById('rateTableBody').innerHTML = Object.entries(trip.rates).sort().map(([code,rate])=>`
@@ -360,6 +367,7 @@ function renderAll(){
   document.getElementById('kvDeposits').textContent = trip.deposits.length;
   const totalBase = round2(trip.expenses.reduce((s,e)=>s+e.amountInBase,0));
   document.getElementById('kvTotal').textContent = fmtMoney(totalBase, trip.baseCurrency);
+  document.querySelectorAll('.base-cur-name').forEach(el => { el.textContent = trip.baseCurrency; });
   document.getElementById('kvAvg').textContent = trip.members.length ? fmtMoney(round2(totalBase / trip.members.length), trip.baseCurrency) : '-';
 
   const net = calcNetBalances(trip);

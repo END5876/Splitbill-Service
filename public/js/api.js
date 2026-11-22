@@ -51,7 +51,11 @@ function canManageTrip(){
 async function apiJson(res){
   const body = await res.json().catch(()=>({}));
   if (!res.ok){
-    const err = new Error(body.error || ('HTTP ' + res.status));
+    // 伺服器沒有給說明時，依狀態碼給白話的主句；狀態碼只放句尾給查問題用
+    const fallback = res.status >= 500 ? '伺服器處理時出錯，請再試一次。'
+      : res.status === 429 ? '操作太頻繁了，請稍等一下再試。'
+        : `沒有完成，請再試一次。（錯誤代碼 ${res.status}）`;
+    const err = new Error(body.error || fallback);
     err.status = res.status; err.body = body;
     throw err;
   }
@@ -71,10 +75,14 @@ async function fetchLiveRate(from, to){
   try{
     const res = await fetch(utilityApiUrl(`fx-rate?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`));
     const body = await apiJson(res);
-    const entry = { rate: body.rate, asOf: body.asOf, fetchedAt: Date.now() };
+    const entry = { rate: body.rate, asOf: body.asOf, stale: !!body.stale, fetchedAt: Date.now() };
     liveRateCache[key] = entry;
+    fetchLiveRate.lastError = null;
     return entry;
   }catch(err){
+    // 失敗原因給幣別選單說明用：offline 沒網路／busy 查太頻繁／notfound 查不到這個幣別／error 其他
+    fetchLiveRate.lastError = navigator.onLine === false ? 'offline'
+      : err.status === 429 ? 'busy' : err.status === 404 ? 'notfound' : 'error';
     return null; // 由呼叫端自行退回使用手動設定的匯率，不擋住記帳
   }
 }
@@ -149,10 +157,10 @@ function showLoginResultFromUrl(){
   history.replaceState(history.state, '', u.pathname + u.search + u.hash);
   if (result === 'cancelled') toast('已取消登入', 'info');
   else if (result) toast('登入失敗，請稍後再試一次', 'error');
-  if (bind === 'done') toast('綁定完成，用 Discord 或 LINE 登入都看得到你的行程', 'success', { duration: 6000 });
-  else if (bind === 'already') toast('你的 Discord 和 LINE 帳號已經綁定了', 'info');
-  else if (bind === 'cancelled') toast('已取消綁定', 'info');
-  else if (bind === 'failed') toast('綁定失敗，請稍後再試一次', 'error');
+  if (bind === 'done') toast('完成了，現在用 Discord 或 LINE 登入都看得到你的行程', 'success', { duration: 6000 });
+  else if (bind === 'already') toast('你的 Discord 和 LINE 已經能登入同一個帳號了', 'info');
+  else if (bind === 'cancelled') toast('已取消，沒有變更', 'info');
+  else if (bind === 'failed') toast('沒有完成，請稍後再試一次', 'error');
   return bind === 'confirm';
 }
 
@@ -168,49 +176,49 @@ async function showAccountLinkConfirm(){
   try{
     pending = (await apiJson(await fetch('/api/account-link/pending', { headers: apiHeaders() }))).pending;
   }catch(e){ pending = null; }
-  if (!pending){ toast('這次綁定已經逾時，請重新綁定一次', 'error'); return; }
+  if (!pending){ toast('這次設定已經逾時，請再試一次', 'error'); return; }
   const NL = String.fromCharCode(10);
   const lines = pending.trips.map(t => {
     if (t.willUnlink){
-      return `・${t.name}（你的 Discord 帳號已經在這個行程裡，LINE 認領的「${t.memberName}」會變成未連結的成員，帳目不變）`;
+      return `・${t.name}（你的 Discord 帳號已經在這個行程裡，LINE 選的「${t.memberName}」會變成未連結的成員，帳目不變）`;
     }
     return `・${t.name}（${t.owner ? '你建立的' : `你是「${t.memberName}」`}）`;
   });
   const who = pending.aliasName ? `LINE 帳號「${pending.aliasName}」` : '這個 LINE 帳號';
   const ok = await confirmModal(
-    `${who}參與了 ${pending.trips.length} 個行程。綁定後，用 Discord 或 LINE 登入都看得到這些行程：${NL}${NL}${lines.join(NL)}`,
-    { title: '綁定 Discord 和 LINE 帳號？', confirmText: '綁定', cancelText: '取消' }
+    `${who}參與了 ${pending.trips.length} 個行程。完成後，用 Discord 或 LINE 登入都看得到這些行程：${NL}${NL}${lines.join(NL)}`,
+    { title: '讓 Discord 和 LINE 都能登入同一個帳號？', confirmText: '完成設定', cancelText: '取消' }
   );
   if (!ok){
     await fetch('/api/account-link/cancel', { method: 'POST', headers: apiHeaders() }).catch(()=>{});
-    toast('已取消綁定', 'info');
+    toast('已取消，沒有變更', 'info');
     return;
   }
   try{
     await apiJson(await fetch('/api/account-link/confirm', { method: 'POST', headers: apiHeaders() }));
-    toast('綁定完成，兩個帳號的行程都看得到了', 'success', { duration: 6000 });
+    toast('完成了，兩種登入都看得到你的行程', 'success', { duration: 6000 });
     await fetchMe();
     await refreshTripList({ silent: true }).catch(()=>{});
   }catch(err){
-    toast('綁定失敗：' + err.message, 'error');
+    toast('沒有完成：' + err.message, 'error');
   }
 }
 async function unlinkAccount(){
   const viaLine = currentUser && currentUser.provider === 'line';
   const ok = await confirmModal(
     viaLine
-      ? '你現在是用 LINE 登入。解除後，畫面上的行程會消失，要改用 Discord 登入才看得到。'
-      : '解除後，用 LINE 登入就看不到你的行程，要用 Discord 登入才看得到。',
-    { title: '解除 LINE 帳號綁定？', confirmText: '解除綁定', cancelText: '取消', danger: true }
+      ? '你現在是用 LINE 登入。停用後，畫面上的行程會消失，要改用 Discord 登入才看得到。'
+      : '停用後，用 LINE 登入就看不到你的行程，要用 Discord 登入才看得到。',
+    { title: '停用 LINE 登入？', confirmText: '停用 LINE 登入', cancelText: '取消', danger: true }
   );
   if (!ok) return;
   try{
     await apiJson(await fetch('/api/account-link', { method: 'DELETE', headers: apiHeaders() }));
-    toast('已解除綁定', 'success');
+    toast('已停用 LINE 登入', 'success');
     if (viaLine){ clearOwnerConnectionState(); location.reload(); return; }
     await fetchMe();
   }catch(err){
-    toast('解除綁定失敗：' + err.message, 'error');
+    toast('沒有停用成功：' + err.message, 'error');
   }
 }
 
@@ -248,7 +256,7 @@ function populateTripSelect(){
   const sel = document.getElementById('tripSelect');
   const prev = sel.value || currentTripId || '';
   sel.innerHTML = myTrips.length
-    ? myTrips.map(t=>`<option value="${escapeHtml(t.id)}">${escapeHtml(t.name)}${t.archived?'（已封存）':''}　·　${ROLE_LABELS[t.role]||''}${t.guildId?'　·　🤖 已綁定':''}</option>`).join('')
+    ? myTrips.map(t=>`<option value="${escapeHtml(t.id)}">${escapeHtml(t.name)}（${[ROLE_LABELS[t.role], t.archived ? '已封存' : ''].filter(Boolean).join('，')}）</option>`).join('')
     : '<option value="">（還沒有任何行程，先在下方建立一個）</option>';
   if (prev && myTrips.some(t=>t.id===prev)) sel.value = prev;
   updateDeleteTripButton();
@@ -296,7 +304,7 @@ async function createTripOnServer(){
   const name = nameInput.value.trim();
   const baseCurrency = (curInput.value.trim() || 'TWD').toUpperCase();
   if (!name){ toast('請輸入行程名稱', 'error'); nameInput.focus(); return; }
-  if (!/^[A-Z]{2,6}$/.test(baseCurrency)){ toast('基準幣別請輸入 2～6 個英文字母，例如 TWD、JPY', 'error'); return; }
+  if (!/^[A-Z]{2,6}$/.test(baseCurrency)){ toast('結算用的幣別請輸入 2～6 個英文字母，例如 TWD、JPY。', 'error'); return; }
   try{
     const res = await fetch('/api/trips', {
       method: 'POST',
@@ -383,7 +391,7 @@ async function deleteSelectedTrip(){
   if (!t) return;
   // 第一次確認：講清楚會失去什麼
   const ok = await confirmModal(
-    `行程裡所有的支出、轉帳、成員和操作紀錄都會一起刪除，所有成員都會看不到這個行程，Discord 伺服器的綁定和分享連結也會失效。
+    `行程裡所有的支出、轉帳、成員和操作紀錄都會一起刪除，所有成員都會看不到這個行程，和 Discord 伺服器的連線、邀請連結、免登入連結也會失效。
 
 刪除後無法復原。想留一份的話，請先開啟這個行程，到「設定 → 備份與匯出」下載 JSON 備份。`,
     { title: `刪除行程「${t.name}」？`, confirmText: '繼續刪除', cancelText: '取消', danger: true }

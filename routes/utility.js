@@ -42,7 +42,7 @@ module.exports = function createUtilityRouter(ctx) {
     const who = utilityCaller(req, res, null);
     if (!who) return;
     if (who !== 'service' && !fxLimiter.take(who).ok) {
-      return res.status(429).json({ error: '查詢匯率太頻繁了，請稍後再試' });
+      return res.status(429).json({ error: '查詢匯率太頻繁了，請過一分鐘再試，或自己輸入匯率。' });
     }
     const from = String(req.query.from || '').trim().toUpperCase();
     const to = String(req.query.to || '').trim().toUpperCase();
@@ -54,16 +54,16 @@ module.exports = function createUtilityRouter(ctx) {
       const { rates, asOf, stale } = await getFxRatesFor(from);
       const rate = Object.prototype.hasOwnProperty.call(rates, to) ? rates[to] : undefined;
       if (typeof rate !== 'number') {
-        return res.status(404).json({ error: `查不到 ${from} 兌 ${to} 的即時匯率，請到「設定 → 行程」手動新增匯率` });
+        return res.status(404).json({ error: `查不到 ${from} 換 ${to} 的匯率，請到「設定 → 行程」自己輸入匯率。` });
       }
       // stale：即時匯率服務暫時連不上，這是 7 天內抓到的舊匯率（asOf 是它的時間），可能過時
       res.json(stale ? { rate, asOf, source: 'open.er-api.com', stale: true } : { rate, asOf, source: 'open.er-api.com' });
     } catch (err) {
       if (err && err.message === 'unsupported-code') {
-        return res.status(404).json({ error: `查不到 ${from} 的即時匯率，請到「設定 → 行程」手動新增匯率` });
+        return res.status(404).json({ error: `查不到 ${from} 的匯率，請到「設定 → 行程」自己輸入匯率。` });
       }
       // 外部服務的錯誤細節只寫進 log（lib/fxRates.js），不回傳給呼叫端
-      res.status(502).json({ error: '查詢即時匯率失敗，請稍後再試或改用手動設定的匯率' });
+      res.status(502).json({ error: '即時匯率暫時查不到，請稍後再試，或改用自己輸入的匯率。' });
     }
   });
 

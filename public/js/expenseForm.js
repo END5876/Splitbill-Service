@@ -286,8 +286,8 @@ function renderExpenseHint(){
     hintHtml = '';
   } else if (customInput.value.trim() !== ''){
     hintHtml = Number.isFinite(customBase) && customBase > 0
-      ? `已採用手動指定的真實金額：<b>${fmtMoney(customBase, trip.baseCurrency)} ${trip.baseCurrency}</b>`
-      : `請輸入大於 0 的真實金額，或清空欄位以依匯率自動換算。`;
+      ? `會用你填的金額：<b>${fmtMoney(customBase, trip.baseCurrency)} ${trip.baseCurrency}</b>`
+      : `請輸入大於 0 的金額，或清空這一欄改用匯率換算。`;
   } else if (expenseLiveRate && expenseLiveRate.currency === currency){
     rate = expenseLiveRate.rate;
     const base = round2(amount*rate);

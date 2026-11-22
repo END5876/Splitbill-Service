@@ -67,7 +67,7 @@
       <!-- 行程名稱只顯示；改名一律在「設定 → 行程 → 我的行程」 -->
       <h1 class="trip-title" id="tripName"></h1>
       <button class="header-icon-btn" id="tripSwitchBtn" type="button" data-click="openTripSwitcher" aria-label="切換行程" title="切換行程" style="display:none;"><svg class="ic" aria-hidden="true"><use href="#i-switch"/></svg></button>
-      <span class="header-currency" id="baseCurrencyLabel" title="基準幣別於建立行程時決定，之後無法更改"></span>
+      <span class="header-currency" id="baseCurrencyLabel" title="結算用的幣別，建立行程時決定，之後不能改"></span>
       <!-- 同步狀態：已同步／儲存中／未儲存（點擊重試）／未開啟行程／唯讀，見 js/tripSync.js 的 renderSyncStatus() -->
       <button class="sync-status" id="syncStatus" type="button" data-click="onSyncStatusClick" data-state="offline">
         <span class="sync-dot" aria-hidden="true"></span><span class="sync-label">未開啟行程</span>
@@ -136,7 +136,7 @@
 
     <div class="ov-side">
     <div class="kv-summary">
-      <div class="kv-card"><div class="k">總花費（基準幣）</div><div class="v" id="kvTotal">0</div></div>
+      <div class="kv-card"><div class="k">總花費（<span class="base-cur-name">結算幣別</span>）</div><div class="v" id="kvTotal">0</div></div>
       <div class="kv-card"><div class="k">每人平均</div><div class="v" id="kvAvg">0</div></div>
       <div class="kv-card"><div class="k">支出筆數</div><div class="v" id="kvExpenses">0</div></div>
       <div class="kv-card"><div class="k">轉帳筆數</div><div class="v" id="kvDeposits">0</div></div>
@@ -145,16 +145,11 @@
     <div class="receipt ov-bar" style="margin-bottom:14px;">
       <div class="receipt-head">
         <div>
-          <div class="t1">收支淨額一覽</div>
-          <div class="t2">正值＝應收回　·　負值＝需補交</div>
+          <div class="t1">每個人要付或可拿回多少</div>
         </div>
         <div class="stamp" id="stampBadge">待結算</div>
       </div>
       <div class="bar-chart-wrap">
-        <div class="bar-chart-legend">
-          <span><span class="swatch" style="background:var(--credit)"></span>應收回</span>
-          <span><span class="swatch" style="background:var(--debt)"></span>需補交</span>
-        </div>
         <div id="balanceBarChart"></div>
       </div>
     </div>
@@ -186,10 +181,9 @@
         <span class="receipt-scan-trigger-body" id="receiptScanTriggerBody">
           <span class="receipt-scan-ic"><svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg></span>
           <span class="receipt-scan-txt">
-            <span class="title">點擊上傳帳單照片</span>
-            <span class="sub">或把照片拖曳到這個頁面，放開即可自動辨識（僅接受圖片格式）</span>
+            <span class="title">上傳收據照片，自動列出品項</span>
+            <span class="sub">或直接把照片拖進這一頁</span>
           </span>
-          <span class="receipt-scan-arrow" aria-hidden="true">→</span>
         </span>
         <input type="file" id="receiptFileInput" accept="image/*" data-change="handleReceiptUpload" data-args='["$event"]'>
       </label>
@@ -228,9 +222,9 @@
         </div>
       </div>
       <div class="field" id="expBaseAmountField" hidden>
-        <label for="expAmountInBase">換算後真實金額（<span id="expBaseCurrencyLabel"></span>，選填）</label>
+        <label for="expAmountInBase">實際花了多少 <span id="expBaseCurrencyLabel"></span>？（選填）</label>
         <input type="number" inputmode="decimal" id="expAmountInBase" class="num" placeholder="留白則依匯率自動換算" step="0.01">
-        <p class="hint">若實際扣款金額和匯率換算的結果不同，可以直接填入正確金額，分帳會以這裡填寫的基準幣別金額計算。</p>
+        <p class="hint">例如刷卡實際扣了多少。填了就用這個金額分帳，沒填就用匯率換算。</p>
       </div>
       <p class="hint" id="expBaseHint"></p>
 
@@ -264,7 +258,7 @@
       </div>
 
       <div class="btn-row">
-        <button class="btn btn-brass btn-block" id="btnSaveExpenseSync" data-click="saveExpenseAndSync" data-loading="儲存中…">儲存</button>
+        <button class="btn btn-brass btn-block" id="btnSaveExpenseSync" data-click="saveExpenseAndSync" data-loading="儲存中…">記下這筆</button>
         <button class="btn btn-ghost" id="btnResetExpense" data-click="resetExpenseForm">清空表單</button>
       </div>
       </div>
@@ -319,9 +313,9 @@
         </div>
       </div>
       <div class="field" id="depBaseAmountField" hidden>
-        <label for="depAmountInBase">換算後真實金額（<span id="depBaseCurrencyLabel"></span>，選填）</label>
+        <label for="depAmountInBase">實際轉了多少 <span id="depBaseCurrencyLabel"></span>？（選填）</label>
         <input type="number" inputmode="decimal" id="depAmountInBase" class="num" placeholder="留白則依匯率自動換算" step="0.01">
-        <p class="hint">若實際轉帳金額和匯率換算的結果不同，可以直接填入正確金額，結算會以這裡填寫的基準幣別金額計算。</p>
+        <p class="hint">填了就用這個金額結算，沒填就用匯率換算。</p>
       </div>
       <p class="hint" id="depBaseHint"></p>
       <div class="row">
@@ -335,7 +329,7 @@
         </div>
       </div>
       <div class="btn-row">
-        <button class="btn btn-brass btn-block" id="btnSaveDepositSync" data-click="saveDepositAndSync" data-loading="儲存中…">儲存</button>
+        <button class="btn btn-brass btn-block" id="btnSaveDepositSync" data-click="saveDepositAndSync" data-loading="儲存中…">記下這筆</button>
         <button class="btn btn-ghost" id="btnResetDeposit" data-click="resetDepositForm">清空表單</button>
       </div>
       </div>
@@ -392,7 +386,7 @@
           <button class="btn btn-ghost btn-sm" id="btnRenameTrip" type="button" style="display:none;" data-click="renameSelectedTrip" data-loading="儲存中…">行程改名</button>
           <button class="btn btn-danger btn-sm trip-delete" id="btnDeleteTrip" type="button" style="display:none;" data-click="deleteSelectedTrip" data-loading="刪除中…">刪除這個行程</button>
         </div>
-        <p class="hint">從選單選一個行程就會直接開啟，也可以點頁首行程名稱旁的切換按鈕快速換行程。所有變更都會自動寫入雲端，頁首會顯示同步狀態；如果別人剛好也改過，會先自動合併，無法合併時才會詢問你。</p>
+        <p class="hint">從選單選一個行程就會直接開啟，也可以點頁首行程名稱旁的切換按鈕快速換行程。所有變更都會自動寫入雲端，頁首會顯示同步狀態；如果別人剛好也改過，兩邊的修改都會留下，衝突時才會問你。</p>
 
         <h3 class="section-subtitle" id="createTripHeading">建立新行程</h3>
         <div class="row">
@@ -401,7 +395,7 @@
             <input type="text" id="newTripName" maxlength="60" placeholder="例如：沖繩三天兩夜">
           </div>
           <div class="field" style="max-width:180px;">
-            <label for="newTripCurrency">基準幣別（建立後無法更改）</label>
+            <label for="newTripCurrency">結算用的幣別（建立後不能改）</label>
             <select id="newTripCurrency">
               <option value="TWD" selected>TWD 新台幣</option>
               <option value="JPY">JPY 日圓</option>
@@ -422,14 +416,14 @@
         <div class="btn-row">
           <button class="btn btn-primary" data-click="createTripOnServer" data-loading="建立中…">＋ 建立行程</button>
         </div>
-        <p class="hint">你會是這個行程的建立者，也是第一位成員。之後可以到「成員與分享」邀請朋友，或到「行程」綁定 Discord 伺服器。</p>
+        <p class="hint">你會是這個行程的建立者，也是第一位成員。之後可以到「成員與分享」邀請朋友，或在「行程」把它連到 Discord 伺服器。</p>
       </div>
 
       <div class="card" id="ratesCard">
         <h2 class="section-title">匯率</h2>
         <p class="hint" style="margin-top:0;">記帳時會優先自動查詢即時匯率；這裡的數字是查不到時的備用值。每列表示「1 單位該幣別 ＝ 多少 <span id="baseLabel">TWD</span>」。</p>
         <table class="rate-table">
-          <thead><tr><th>幣別</th><th>1 單位 ＝ 多少基準幣</th><th></th></tr></thead>
+          <thead><tr><th>幣別</th><th>1 單位等於多少結算幣別</th><th></th></tr></thead>
           <tbody id="rateTableBody"></tbody>
         </table>
         <!-- 幣別搜尋選單：可以打國家、貨幣名稱或代碼；選到後自動帶入即時匯率（js/currencyPicker.js） -->
@@ -439,14 +433,14 @@
             <ul class="cur-list" id="newRateCurrencyList" role="listbox" aria-label="幣別" hidden></ul>
           </div>
           <input type="number" inputmode="decimal" id="newRateValue" placeholder="匯率" step="0.0001" style="max-width:120px;" aria-label="匯率">
-          <button class="btn btn-primary" data-click="addRate">＋ 新增幣別</button>
+          <button class="btn btn-primary" id="addRateBtn" data-click="addRate">＋ 新增幣別</button>
         </div>
         <p class="hint cur-hint" id="newRateHint" aria-live="polite"></p>
       </div>
 
       <!-- 🆕 [行程獨立化] 綁定到 Discord 伺服器（內容由 js/account.js 的 renderDiscordPanel 產生） -->
       <div class="card" id="discordCard">
-        <h2 class="section-title">Discord 伺服器綁定</h2>
+        <h2 class="section-title">連到 Discord 伺服器</h2>
         <div id="discordPanelBody"></div>
       </div>
     </div>
@@ -460,7 +454,7 @@
           <input type="text" id="newMemberName" placeholder="新成員名稱" style="max-width:180px;" aria-label="新成員名稱" data-enter="addMember">
           <button class="btn btn-primary" data-click="addMember">＋ 新增成員</button>
         </div>
-        <p class="hint">在這裡新增的成員一開始是「未連結」：可以照常記帳，但他本人要看到這個行程，需要用「邀請與分享」裡的邀請連結認領。</p>
+        <p class="hint">在這裡新增的成員一開始是「未連結」：可以照常記帳，但他本人要看到這個行程，需要用「邀請與分享」裡的邀請連結加入，再選「我是哪一位」。</p>
       </div>
       <!-- 🆕 [行程連結] 邀請與分享：整張卡片由 js/tripLinks.js 依狀態繪出 -->
       <div class="card" id="tripLinksCard">

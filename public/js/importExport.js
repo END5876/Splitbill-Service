@@ -76,7 +76,7 @@ function buildTripCsv(t){
   const rows = [];
 
   rows.push(['行程', t.name]);
-  rows.push(['基準幣別', base]);
+  rows.push(['結算用的幣別', base]);
   rows.push(['匯出時間', csvDate(Date.now())]);
   rows.push([]);
   rows.push(['類型', '日期', '項目／備註', '金額', '幣別', `換算（${base}）`, '付款人', '分攤／收款人',
@@ -107,7 +107,7 @@ function buildTripCsv(t){
     }
     for (const id of memberIds) totals[id] = round2(totals[id] + effect[id]);
   }
-  rows.push(['合計（正數＝應收，負數＝應付）', '', '', '', '', '', '', '', ...memberIds.map(id => totals[id])]);
+  rows.push(['合計（正數＝可拿回，負數＝要付）', '', '', '', '', '', '', '', ...memberIds.map(id => totals[id])]);
 
   rows.push([]);
   rows.push(['建議轉帳']);

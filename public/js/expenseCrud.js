@@ -45,35 +45,35 @@ function saveExpense(){
   if (!description){
     descEl.setAttribute('aria-invalid', 'true');
     descEl.focus();
-    toast('請填寫項目說明，之後查帳才認得出這筆是什麼', 'error');
+    toast('請填寫項目說明，之後查帳才認得出這筆是什麼。', 'error');
     return false;
   }
   const dateStr = document.getElementById('expDate').value;
   const amount = parseFloat(document.getElementById('expAmount').value);
   const currency = document.getElementById('expCurrency').value;
-  if (!(amount>0)){ toast('請輸入大於 0 的金額', 'error'); return false; }
+  if (!(amount>0)){ toast('請輸入大於 0 的金額。', 'error'); return false; }
   const customBaseRaw = document.getElementById('expAmountInBase').value.trim();
   const customBase = parseFloat(customBaseRaw);
   let amountInBase;
   if (currency !== trip.baseCurrency && customBaseRaw !== ''){
-    if (!(customBase > 0)){ toast('換算後真實金額要大於 0', 'error'); return false; }
+    if (!(customBase > 0)){ toast('實際金額要大於 0。', 'error'); return false; }
     amountInBase = round2(customBase);
   } else {
     const rate = resolveExpenseRate(currency);
-    if (!(rate>0)){ toast(`查不到 ${currency} 的匯率，請到「設定 → 行程」手動新增匯率`, 'error'); return false; }
+    if (!(rate>0)){ toast(`查不到 ${currency} 的匯率，請到「設定 → 行程」自己輸入匯率。`, 'error'); return false; }
     amountInBase = round2(amount*rate);
   }
 
   const payers = readChipValues('payer').filter(p=>p.amount>0 || document.querySelector(`#payerChips .chip[data-id="${p.userId}"]`).classList.contains('checked'));
   const participants = readChipValues('participant');
 
-  if (!payers.length){ toast('請至少勾選一位代墊付款人', 'error'); return false; }
-  if (!participants.length){ toast('請至少勾選一位分攤成員', 'error'); return false; }
+  if (!payers.length){ toast('請至少勾選一位先付錢的人。', 'error'); return false; }
+  if (!participants.length){ toast('請至少勾選一位要分攤的人。', 'error'); return false; }
 
   const payerSum = round2(payers.reduce((s,p)=>s+p.amount,0));
-  if (round2(Math.abs(payerSum-amount)) > 0.01){ toast(`代墊金額加起來是 ${payerSum}，跟總金額 ${amount} 不一樣，請調整後再儲存`, 'error'); return false; }
+  if (round2(Math.abs(payerSum-amount)) > 0.01){ toast(`代墊金額加起來是 ${payerSum}，跟總金額 ${amount} 不一樣，請調整後再記下。`, 'error'); return false; }
   const partSum = round2(participants.reduce((s,p)=>s+p.amount,0));
-  if (round2(Math.abs(partSum-amount)) > 0.01){ toast(`分攤金額加起來是 ${partSum}，跟總金額 ${amount} 不一樣，請調整後再儲存`, 'error'); return false; }
+  if (round2(Math.abs(partSum-amount)) > 0.01){ toast(`分攤金額加起來是 ${partSum}，跟總金額 ${amount} 不一樣，請調整後再記下。`, 'error'); return false; }
 
   let saved;
   if (editingExpenseId){
@@ -84,18 +84,18 @@ function saveExpense(){
       editingExpenseId = null;
       document.getElementById('expenseFormTitle').textContent = '新增一筆支出';
       setFormCardEditing('expenseFormCard', 'btnSaveExpenseSync', 'btnResetExpense', false);
-      toast('這筆支出已經被其他人刪除。表單內容還在，按「儲存」可以重新新增', 'error');
+      toast('這筆支出已經被其他人刪除。表單內容還在，按「記下這筆」可以重新新增。', 'error');
       return false;
     }
     Object.assign(saved, { description, amount, currency, amountInBase, payers, participants, createdAt: applyDateToTimestamp(dateStr, saved.createdAt) });
-    toast('已更新支出', 'success');
+    toast(`已儲存「${description}」的修改`, 'success');
   } else {
     saved = {
       id: genId('exp'), description, amount, currency, amountInBase,
       payers, participants, createdAt: applyDateToTimestamp(dateStr, Date.now()), createdBy: 'web-ui'
     };
     trip.expenses.push(saved);
-    toast('已新增支出', 'success');
+    toast(`已記下「${description}」`, 'success');
   }
   resetExpenseForm();
   renderAll();

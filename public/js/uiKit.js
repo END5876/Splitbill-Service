@@ -286,7 +286,8 @@ function toggleFormCard(cardId){
 function setFormCardEditing(cardId, saveBtnId, resetBtnId, editing){
   const card = document.getElementById(cardId);
   if (card) card.classList.toggle('editing', editing);
-  setButtonLabel(document.getElementById(saveBtnId), editing ? '更新' : '儲存');
+  // 新增叫「記下這筆」、編輯叫「儲存修改」：按鈕和完成提示用同一個說法
+  setButtonLabel(document.getElementById(saveBtnId), editing ? '儲存修改' : '記下這筆');
   setButtonLabel(document.getElementById(resetBtnId), editing ? '取消編輯' : '清空表單');
   if (editing) setFormCardOpen(cardId, true);
 }

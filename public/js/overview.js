@@ -125,8 +125,8 @@ async function markTransferPaid(fromId, toId){
   const amount = round2(t.amount);
   const base = trip.baseCurrency;
   const ok = await confirmModal(
-    `確認「${memberName(fromId)}」已經轉 ${fmtMoney(amount, base)} ${base} 給「${memberName(toId)}」了嗎？會新增一筆轉帳紀錄，結算結果也會跟著更新。`,
-    { title: '標記為已付款？', confirmText: '標記已付款', cancelText: '取消' }
+    '會新增一筆轉帳，結算結果也會跟著更新。',
+    { title: `${memberName(fromId)}已經付給${memberName(toId)} ${fmtMoney(amount, base)} ${base} 了嗎？`, confirmText: '標記已付', cancelText: '還沒付' }
   );
   if (!ok) return;
   const dep = {
@@ -135,7 +135,7 @@ async function markTransferPaid(fromId, toId){
   };
   trip.deposits.push(dep);
   renderAll();
-  toast(`已記錄：${memberName(fromId)} → ${memberName(toId)} ${fmtMoney(amount, base)} ${base}`, 'success');
+  toast(`已標記已付：${memberName(fromId)}付給${memberName(toId)} ${fmtMoney(amount, base)} ${base}`, 'success');
   if (currentTripId || shareMode) await syncEntry('deposits', dep.id, dep);
 }
 
@@ -151,14 +151,14 @@ function renderMyStatusCard(net){
   const base = trip.baseCurrency;
   const v = round2(net[me.id] || 0);
   const mine = lastTransferTx.filter(t => t.from === me.id || t.to === me.id);
-  const headline = v < -0.01 ? `你還需要付 <b>${fmtMoneyCompact(-v)}</b> ${base}`
-    : v > 0.01 ? `大家還欠你 <b>${fmtMoneyCompact(v)}</b> ${base}`
+  const headline = v < -0.01 ? `你要付 <b>${fmtMoneyCompact(-v)}</b> ${base}`
+    : v > 0.01 ? `你可以拿回 <b>${fmtMoneyCompact(v)}</b> ${base}`
     : '你已經結清了 🎉';
   const rows = mine.map(t => {
     const paying = t.from === me.id;
     const who = paying
       ? `<span class="settle-party"><span class="settle-verb lead">付給</span><span class="settle-name">${escapeHtml(memberName(t.to))}</span></span>`
-      : `<span class="settle-party"><span class="settle-name">${escapeHtml(memberName(t.from))}</span><span class="settle-verb">應付你</span></span>`;
+      : `<span class="settle-party"><span class="settle-name">${escapeHtml(memberName(t.from))}</span><span class="settle-verb">要付給你</span></span>`;
     return settleRowHtml(t, who, t.amount, base, true);
   }).join('');
   el.innerHTML = `
@@ -179,7 +179,7 @@ function renderBalanceBarChart(net) {
   const el = document.getElementById('balanceBarChart');
   if (!el) return;
   if (!trip.members.length) {
-    el.innerHTML = emptyState('👥', '尚未新增成員，先到「設定 → 成員與分享」加人吧', '前往新增成員 →',
+    el.innerHTML = emptyState('👥', '還沒有成員。先到「設定 → 成員與分享」加人。', '新增成員',
       "goAddMember");
     return;
   }
@@ -191,9 +191,8 @@ function renderBalanceBarChart(net) {
     const v = vals[idx];
     const pct = Math.min(Math.abs(v) / maxAbs * 46, 46); // 最多佔軌道寬度的 46%（留中線）
     const cls = v > 0.01 ? 'pos' : (v < -0.01 ? 'neg' : 'zero');
-    const valLabel = v > 0.01 ? `+${fmtMoney(v, trip.baseCurrency)}`
-                   : v < -0.01 ? `${fmtMoney(v, trip.baseCurrency)}`
-                   : '結清';
+    // 數字不帶正負號，方向用文字（顏色只是輔助）
+    const valLabel = Math.abs(v) <= 0.01 ? '已結清' : `${netWords(v, false)} ${fmtMoney(Math.abs(v), trip.baseCurrency)}`;
     const barHtml = v > 0.01
       ? `<div class="bar-fill-pos" style="width:${pct}%"></div>`
       : v < -0.01
@@ -205,7 +204,7 @@ function renderBalanceBarChart(net) {
         <div class="bar-axis"></div>
         ${barHtml}
       </div>
-      <div class="bar-val ${cls}">${valLabel} <span style="font-size:9.5px;opacity:.7">${trip.baseCurrency}</span></div>
+      <div class="bar-val ${cls}">${valLabel}${Math.abs(v) > 0.01 ? ` <span style="font-size:9.5px;opacity:.7">${trip.baseCurrency}</span>` : ''}</div>
     </div>`;
   }).join('');
 }
@@ -324,9 +323,7 @@ function renderMemberDetails(net) {
   el.innerHTML = trip.members.map(m => {
     const v = round2(net[m.id] || 0);
     const netCls = v > 0.01 ? 'pos' : (v < -0.01 ? 'neg' : 'zero');
-    const netLabel = v > 0.01 ? `+${fmtMoney(v, trip.baseCurrency)} ${trip.baseCurrency}`
-                   : v < -0.01 ? `${fmtMoney(v, trip.baseCurrency)} ${trip.baseCurrency}`
-                   : '已結清';
+    const netLabel = Math.abs(v) <= 0.01 ? '已結清' : `${netWords(v, false)} ${fmtMoney(Math.abs(v), trip.baseCurrency)} ${trip.baseCurrency}`;
     const ld = ledger[m.id];
     const hasData = ld.paid.length || ld.share.length || ld.transferIn.length || ld.transferOut.length;
 
@@ -355,8 +352,8 @@ function renderMemberDetails(net) {
          <div style="border-top:1.5px solid var(--card-line);margin-top:8px;padding-top:4px;">
            ${summaryRows}
            <div class="detail-summary-row" style="border-top:1px dashed var(--card-line);margin-top:4px;padding-top:8px;">
-             <span class="label" style="font-weight:700;">${v > 0.01 ? '大家還欠他' : v < -0.01 ? '他還需要付' : '淨額'}</span>
-             <span class="val ${netCls}" style="font-size:14px;">${v < -0.01 ? `${fmtMoney(-v, trip.baseCurrency)} ${trip.baseCurrency}` : netLabel}</span>
+             <span class="label" style="font-weight:700;">${Math.abs(v) <= 0.01 ? '已結清' : netWords(v, false)}</span>
+             <span class="val ${netCls}" style="font-size:14px;">${Math.abs(v) > 0.01 ? `${fmtMoney(Math.abs(v), trip.baseCurrency)} ${trip.baseCurrency}` : ''}</span>
            </div>
          </div>`
       : '<p class="hint" style="padding:8px 0 4px;">尚無任何記帳紀錄。</p>';

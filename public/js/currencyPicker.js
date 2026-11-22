@@ -118,6 +118,19 @@ function searchCurrencies(query){
   return scored.sort((a, b) => a.score - b.score).map(x => x.c);
 }
 
+// 「新增幣別」按鈕：選到已經設定過的幣別時改叫「更新匯率」
+function setAddRateLabel(update){
+  const btn = document.getElementById('addRateBtn');
+  if (btn) btn.textContent = update ? '更新匯率' : '＋ 新增幣別';
+}
+// 匯率的時間：「11/21 09:00」；沒有時間或格式不對時回傳空字串
+function rateAsOfText(asOf){
+  const d = asOf ? new Date(typeof asOf === 'number' && asOf < 1e12 ? asOf * 1000 : asOf) : null;
+  if (!d || isNaN(d)) return '';
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getMonth() + 1}/${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
 // 把使用者打的字解析成幣別代碼：已從清單選取 > 名稱／代碼完全相同 > 合法的自訂代碼
 function resolveTypedCurrency(input){
   if (input.dataset.code) return input.dataset.code;
@@ -129,7 +142,7 @@ function resolveTypedCurrency(input){
   if (byName) return byName[0];
   const hits = searchCurrencies(raw);
   if (hits.length === 1) return hits[0].code;
-  return /^[A-Z][A-Z0-9]{1,9}$/.test(up) ? up : '';
+  return /^[A-Z]{3,4}$/.test(up) ? up : ''; // 自訂代碼只接受 3～4 個英文字母（ISO 貨幣代碼，以及 USDT 這類），擋掉 KOREAN 這種打錯的字
 }
 
 (function initCurrencyPicker(){
@@ -165,20 +178,22 @@ function resolveTypedCurrency(input){
   }
   function open(){
     const q = input.value.trim();
-    const hits = searchCurrencies(q).slice(0, 40);
+    const all = searchCurrencies(q);
+    const hits = all.slice(0, 40);
     options = hits.map(c => ({ code: c.code, label: `${c.flag} ${c.name}`, has: trip && trip.rates && trip.rates[c.code] != null }));
     const up = q.toUpperCase();
-    if (!hits.length && /^[A-Z][A-Z0-9]{1,9}$/.test(up)){
-      options.push({ code: up, label: `使用代碼「${up}」`, custom: true });
+    if (!hits.length && /^[A-Z]{3,4}$/.test(up)){
+      options.push({ code: up, label: `清單裡沒有，直接使用貨幣代碼 ${up}`, custom: true });
     }
+    const more = all.length - hits.length;
     list.innerHTML = options.length
       ? options.map((o, i) => `
           <li role="option" id="curOpt${i}" data-idx="${i}" class="cur-opt">
             <span class="cur-opt-name">${escapeHtml(o.label)}</span>
             ${o.has ? '<span class="cur-opt-has">已設定</span>' : ''}
             ${o.custom ? '' : `<span class="cur-opt-code">${escapeHtml(o.code)}</span>`}
-          </li>`).join('')
-      : '<li class="cur-opt-empty">找不到符合的幣別，可以改打貨幣代碼，例如 XAF</li>';
+          </li>`).join('') + (more > 0 ? `<li class="cur-opt-empty">還有 ${more} 種幣別，輸入國家或貨幣名稱就找得到。</li>` : '')
+      : `<li class="cur-opt-empty">找不到「${escapeHtml(q)}」。請改打國家名稱（例如「捷克」），或三個字母的貨幣代碼（例如 CZK）。</li>`;
     list.hidden = false;
     input.setAttribute('aria-expanded', 'true');
     highlight(options.length ? 0 : -1);
@@ -190,17 +205,29 @@ function resolveTypedCurrency(input){
     input.dataset.code = opt.code;
     const base = trip.baseCurrency;
     const seq = ++lookupSeq;
+    // 已經設定過的幣別：按鈕改成「更新匯率」，說明會從多少改成多少
+    const old = trip.rates[opt.code];
+    const btnLabel = old != null ? '更新匯率' : '新增幣別';
+    setAddRateLabel(old != null);
     valInput.value = '';
     valInput.placeholder = '查詢中…';
     setHint(`正在查詢 1 ${opt.code} ＝ 多少 ${base}…`, 'loading');
     const live = await fetchLiveRate(opt.code, base);
     if (seq !== lookupSeq) return;
     valInput.placeholder = '匯率';
+    const change = (v) => old != null ? `${currencyLabel(opt.code)} 目前是 ${old}，按「更新匯率」會改成 ${v}。` : `確認後按「${btnLabel}」。`;
     if (live && live.rate > 0){
       valInput.value = String(parseFloat(live.rate.toPrecision(6)));
-      setHint(`已帶入即時匯率：1 ${opt.code} ＝ ${valInput.value} ${base}。確認後按「新增幣別」。`, 'ok');
+      const when = rateAsOfText(live.asOf);
+      setHint(live.stale
+        ? `即時匯率暫時查不到，先帶入${when || '之前查到'}的匯率：1 ${opt.code} ＝ ${valInput.value} ${base}。${change(valInput.value)}`
+        : `已帶入${when ? ` ${when} 的` : '即時'}匯率：1 ${opt.code} ＝ ${valInput.value} ${base}。${change(valInput.value)}`, live.stale ? 'error' : 'ok');
     } else {
-      setHint(`查不到 ${opt.code} 的即時匯率，請自己輸入匯率（1 ${opt.code} ＝ 多少 ${base}）。`, 'error');
+      const why = fetchLiveRate.lastError;
+      setHint(why === 'offline' ? `目前沒有網路，查不到匯率。請自己輸入：1 ${opt.code} ＝ 多少 ${base}。`
+        : why === 'busy' ? '查詢太頻繁了，請過一分鐘再選一次，或自己輸入匯率。'
+          : why === 'notfound' ? `查不到 ${opt.code} 的匯率。請確認代碼，或自己輸入：1 ${opt.code} ＝ 多少 ${base}。`
+            : `即時匯率暫時查不到，請自己輸入：1 ${opt.code} ＝ 多少 ${base}。`, 'error');
       valInput.focus();
     }
   }
@@ -214,6 +241,7 @@ function resolveTypedCurrency(input){
   input.addEventListener('input', () => {
     delete input.dataset.code;
     lookupSeq++;
+    setAddRateLabel(false);
     setHint('', '');
     open();
   });
@@ -243,7 +271,9 @@ function resolveTypedCurrency(input){
     lookupSeq++;
     input.value = '';
     delete input.dataset.code;
+    valInput.value = '';
     valInput.placeholder = '匯率';
+    setAddRateLabel(false);
     setHint('', '');
     close();
   };

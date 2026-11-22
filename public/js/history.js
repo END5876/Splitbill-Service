@@ -84,7 +84,7 @@ function historyTimeLabel(ts){
 function historyDayLabel(ts){
   const d = new Date(ts);
   const week = '日一二三四五六'[d.getDay()];
-  return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} · 週${week}`;
+  return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}（${week}）`;
 }
 function historyFieldValue(field, v){
   if (v === undefined || v === null || v === '') return '（空白）';
@@ -100,10 +100,10 @@ function describeChange(c){
   switch (c.type){
     case 'trip.create': return { text: `建立了行程 ${b(c.label)}` };
     case 'trip.rename': return { text: `把行程名稱從 ${b(c.from)} 改成 ${b(c.to)}` };
-    case 'trip.baseCurrency': return { text: `把基準幣別從 ${t(c.from)} 改成 ${t(c.to)}` };
+    case 'trip.baseCurrency': return { text: `把結算用的幣別從 ${t(c.from)} 改成 ${t(c.to)}` };
     case 'trip.archive': return { text: c.to ? '封存了行程' : '取消封存行程' };
-    case 'trip.bind': return { text: '把行程綁定到 Discord 伺服器' };
-    case 'trip.unbind': return { text: '解除了 Discord 伺服器綁定' };
+    case 'trip.bind': return { text: '把行程連到 Discord 伺服器' };
+    case 'trip.unbind': return { text: '中斷了與 Discord 伺服器的連線' };
     case 'rate.add': return { text: `新增匯率 ${b(c.code)} ＝ ${t(c.to)}` };
     case 'rate.change': return { text: `把 ${b(c.code)} 的匯率從 ${t(c.from)} 改成 ${t(c.to)}` };
     case 'rate.remove': return { text: `刪除了 ${b(c.code)} 的匯率` };
@@ -112,7 +112,7 @@ function describeChange(c){
     case 'member.rename': return { text: `把成員 ${b(c.from)} 改名為 ${b(c.to)}` };
     case 'member.link': return { text: `${b(c.label)} 連結了帳號` };
     case 'member.unlink': return { text: `${b(c.label)} 解除了帳號連結` };
-    case 'member.account': return { text: `${b(c.label)} 綁定了 LINE 與 Discord 帳號` };
+    case 'member.account': return { text: `${b(c.label)} 現在可以用 LINE 或 Discord 登入` };
     case 'more': return { text: `…以及另外 ${c.count} 項變動` };
   }
   const m = /^(expense|deposit)\.(add|edit|remove)$/.exec(c.type);
@@ -142,8 +142,8 @@ function historyReasonHtml(item){
   const r = item.reason;
   if (!r) return '';
   if (r.type === 'restore-entry') return '<span class="hist-badge">還原</span>';
-  if (r.type === 'account-merge') return '<span class="hist-badge">帳號綁定</span>';
-  if (r.type === 'restore-revision') return `<span class="hist-badge">回到 ${escapeHtml(historyDayLabel(r.from).split(' ')[0])} ${escapeHtml(historyTimeLabel(r.from))} 的版本</span>`;
+  if (r.type === 'account-merge') return '<span class="hist-badge">LINE 和 Discord 互通</span>';
+  if (r.type === 'restore-revision') return `<span class="hist-badge">回到 ${escapeHtml(historyDayLabel(r.from).split('（')[0])} ${escapeHtml(historyTimeLabel(r.from))} 的版本</span>`;
   return '';
 }
 

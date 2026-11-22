@@ -19,9 +19,9 @@ async function copyLinkUrl(token, okMessage){
   const url = buildLinkUrl(token);
   try{
     await navigator.clipboard.writeText(url);
-    toast(okMessage || '已複製連結，貼給朋友即可（請勿公開分享）', 'success');
+    toast(okMessage || '已複製連結，傳給朋友就好（請不要公開張貼）', 'success');
   }catch(e){
-    toast('複製失敗，這是連結網址（請手動複製）：' + url, 'error');
+    toast('沒辦法自動複製，請手動複製這個網址：' + url, 'error');
   }
 }
 
@@ -42,7 +42,7 @@ function linkIcon(l){
 }
 function linkDefaultName(l){
   if (l.guest === 'none') return '邀請連結';
-  return l.guest === 'write' ? '免登入記帳連結' : '看帳連結';
+  return l.guest === 'write' ? '免登入連結（一起記帳）' : '免登入連結（看帳）';
 }
 function linkIsExpired(l){ return !!l.expiresAt && l.expiresAt < Date.now(); }
 function linkExpiryText(l){
@@ -113,7 +113,7 @@ function renderLinkManager(){
   const inviteToken = defaultInviteToken(links);
   let body;
   if (s.links === null && !s.error) body = '<p class="hint">讀取中…</p>';
-  else if (s.error) body = `<p class="hint">讀取連結失敗：${escapeHtml(s.error)}　<button type="button" class="link-btn" data-click="loadTripLinks">重試</button></p>`;
+  else if (s.error) body = `<p class="hint">連結清單沒有載入成功：${escapeHtml(s.error)}　<button type="button" class="link-btn" data-click="loadTripLinks">再試一次</button></p>`;
   else if (!links.length && !s.composer) body = '<p class="hint tl-empty">還沒有任何連結。邀請朋友成為成員用上面的「複製邀請連結」；要給不想登入的人看帳或一起記帳，按「＋ 新增免登入連結」。</p>';
   else body = `<div class="tl-list">${sorted.map(l => linkRowHtml(l, l.token === inviteToken)).join('')}</div>`;
 
@@ -142,7 +142,7 @@ function linkRowHtml(l, isDefaultInvite){
       <div class="tl-row-main">
         <div class="tl-row-ic" aria-hidden="true">${linkIcon(l)}</div>
         <div class="tl-row-text">
-          <div class="tl-row-title">${escapeHtml(l.label || linkDefaultName(l))}${isDefaultInvite ? '<span class="tl-badge" title="成員按「複製邀請連結」時用的就是這一條">成員共用</span>' : ''}</div>
+          <div class="tl-row-title">${escapeHtml(l.label || linkDefaultName(l))}${isDefaultInvite ? '<span class="tl-badge" title="成員按「複製邀請連結」時用的就是這一條">預設邀請連結</span>' : ''}</div>
           <div class="tl-tags">${linkTagsHtml(l)}</div>
         </div>
         <div class="tl-row-actions">
@@ -166,7 +166,7 @@ function setLinkComposerLabel(value){ tripLinksState.composer.label = value; }
 function linkSummaryText(guest, join){
   if (guest === 'none' && !join) return '⚠️ 兩項都關掉的話，這條連結就沒有用途了。';
   const parts = [];
-  if (guest !== 'none') parts.push(guest === 'write' ? '不登入就能看帳、記帳' : '不登入就能看帳');
+  if (guest !== 'none') parts.push(guest === 'write' ? '拿到網址的任何人，不用登入就能新增、修改、刪除帳目' : '拿到網址的任何人，不用登入就能看帳');
   if (join) parts.push('登入後可以加入成為成員');
   return '點開後：' + parts.join('；') + '。';
 }
@@ -192,7 +192,7 @@ function linkEditorHtml(l, d, isDefaultInvite){
         <button class="btn btn-ghost btn-sm" type="button" data-click="toggleLinkEditor" data-args='[null]'>取消</button>
         <button class="btn btn-danger btn-sm tl-revoke" type="button" ${act('click','revokeTripLink',l.token)}>撤銷連結</button>
       </div>
-      ${isDefaultInvite ? '<p class="hint tl-foot">這是成員共用的邀請連結。撤銷後舊網址立刻失效，下次有人複製邀請連結時會自動產生新的。</p>' : ''}
+      ${isDefaultInvite ? '<p class="hint tl-foot">這是預設的邀請連結。撤銷後舊網址立刻失效，下次有人複製邀請連結時會自動產生新的。</p>' : ''}
     </div>`;
 }
 
@@ -257,7 +257,7 @@ async function copyInviteLink(){
     await copyLinkUrl(token, '已複製邀請連結，傳給還沒加入的朋友即可（請不要公開張貼）');
     if (canManageTrip()) loadTripLinks(); // 第一次邀請時會自動建立一條，讓清單同步
   }catch(err){
-    toast('取得邀請連結失敗：' + err.message, 'error');
+    toast('沒有取得邀請連結：' + err.message, 'error');
   }
 }
 
@@ -292,9 +292,11 @@ async function createTripLink(){
     tripLinksState.composer = null;
     tripLinksState.links = (tripLinksState.links || []).concat(link);
     renderLinkManager();
-    await copyLinkUrl(link.token, '已建立並複製連結，貼給朋友即可（請勿公開分享）');
+    await copyLinkUrl(link.token, p.guest === 'write'
+      ? '已建立並複製連結。拿到網址的人不用登入就能改帳，請只傳給信任的人。'
+      : '已建立並複製連結，傳給朋友就好（請不要公開張貼）');
   }catch(err){
-    toast('建立連結失敗：' + err.message, 'error');
+    toast('沒有建立連結：' + err.message, 'error');
   }
 }
 
@@ -324,7 +326,7 @@ async function saveLinkEdit(){
     renderLinkManager();
     toast('已更新連結設定', 'success');
   }catch(err){
-    toast('修改連結失敗：' + err.message, 'error');
+    toast('沒有更新連結設定：' + err.message, 'error');
   }
 }
 

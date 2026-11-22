@@ -105,21 +105,21 @@ function accountLinkHtml(){
   if (acc.discord && acc.line){
     return `
       <div class="account-link">
-        <div class="account-link-status"><span class="link-badge linked">Discord ✓</span><span class="link-badge linked">LINE ✓</span><span class="hint" style="margin:0;">已綁定，用 Discord 或 LINE 登入都會看到你的行程</span></div>
-        <button class="btn btn-ghost btn-sm" type="button" data-click="unlinkAccount">解除綁定</button>
+        <div class="account-link-status"><span class="link-badge linked">Discord ✓</span><span class="link-badge linked">LINE ✓</span><span class="hint" style="margin:0;">Discord 和 LINE 都能登入這個帳號，看到的行程一樣。</span></div>
+        <button class="btn btn-ghost btn-sm" type="button" data-click="unlinkAccount">停用 LINE 登入</button>
       </div>`;
   }
   if (acc.discord){
     return `
       <div class="account-link">
-        <p class="hint" style="margin:0;">綁定 LINE 帳號後，在手機上用 LINE 一鍵登入，也看得到你的行程。</p>
-        <button class="btn btn-line btn-sm" type="button" ${act('click', 'linkAccount', 'line')}>綁定 LINE 帳號</button>
+        <p class="hint" style="margin:0;">加入 LINE 登入後，在手機上用 LINE 一鍵登入，也看得到你的行程。</p>
+        <button class="btn btn-line btn-sm" type="button" ${act('click', 'linkAccount', 'line')}>加入 LINE 登入</button>
       </div>`;
   }
   return `
     <div class="account-link">
-      <p class="hint" style="margin:0;">綁定 Discord 帳號後，用 Discord 登入也看得到你的行程，還能在 Discord 用 Mousebot 的 /splitbill panel 記帳。</p>
-      <button class="btn btn-brass btn-sm" type="button" ${act('click', 'linkAccount', 'discord')}>綁定 Discord 帳號</button>
+      <p class="hint" style="margin:0;">加入 Discord 登入後，用 Discord 登入也看得到你的行程，還能在 Discord 群組裡直接記帳。</p>
+      <button class="btn btn-brass btn-sm" type="button" ${act('click', 'linkAccount', 'discord')}>加入 Discord 登入</button>
     </div>`;
 }
 
@@ -130,7 +130,7 @@ async function openTripSwitcher(){
   const items = myTrips.map(t => ({
     value: t.id,
     title: t.name + (t.id === currentTripId ? '（目前開啟）' : ''),
-    sub: [ROLE_LABELS[t.role], t.archived ? '已封存' : '', t.guildId ? '🤖 已綁定 Discord' : ''].filter(Boolean).join(' · ')
+    sub: [ROLE_LABELS[t.role], t.archived ? '已封存' : '', t.guildId ? '已連到 Discord 伺服器' : ''].filter(Boolean).join('，')
   }));
   items.push({ value: '__new__', title: '＋ 建立新行程…' });
   const picked = await pickModal('切換行程', items);
@@ -188,7 +188,7 @@ function memberLinkBadgeHtml(m){
   const via = m.lineId ? 'LINE' : 'Discord';
   const badge = linked
     ? `<span class="link-badge linked" title="已連結 ${via} 帳號">🔗${isMe ? ' 你' : ''}</span>`
-    : `<span class="link-badge" title="尚未連結帳號：可以用邀請連結讓本人認領">未連結</span>`;
+    : `<span class="link-badge" title="還沒有連結帳號：本人用邀請連結加入，選「我是哪一位」就會連結">未連結</span>`;
   const btn = canUnlink
     ? `<button class="btn btn-ghost btn-sm member-btn" type="button" ${act('click','unlinkMember',m.id)} title="解除這位成員與 ${via} 帳號的連結" aria-label="解除連結">${ICON_UNLINK}<span class="btn-label">解除連結</span></button>`
     : '';
@@ -201,7 +201,7 @@ async function unlinkMember(memberId){
   const ok = await confirmModal(
     isMe
       ? '解除後，你就看不到這個行程了（除非你是建立者）。帳目都會保留。'
-      : `解除後，他就看不到這個行程了。帳目都會保留，之後可以用邀請連結重新認領。`,
+      : `解除後，他就看不到這個行程了。帳目都會保留，之後本人可以用邀請連結再選一次「我是哪一位」。`,
     { title: `解除「${m.name}」的帳號連結？`, confirmText:'解除連結', cancelText:'取消', danger:true }
   );
   if (!ok) return;
@@ -216,7 +216,7 @@ async function unlinkMember(memberId){
       await refreshTripList({ silent: true }).catch(()=>{});
     }
   }catch(err){
-    toast('解除連結失敗：' + err.message, 'error');
+    toast('沒有解除連結：' + err.message, 'error');
   }
 }
 
@@ -234,20 +234,20 @@ function renderDiscordPanel(){
   const manage = canManageTrip();
   if (trip.guildId){
     el.innerHTML = `
-      <div class="discord-status on"><span class="dot"></span>已綁定到 Discord 伺服器 <code class="inline">${escapeHtml(trip.guildId)}</code></div>
+      <div class="discord-status on"><span class="dot"></span>已連到 Discord 伺服器 <code class="inline">${escapeHtml(trip.guildId)}</code></div>
       <p class="hint">在那個伺服器輸入 <code class="inline">/splitbill panel</code> 就能用 Mousebot 的面板操作這個行程。已連結 Discord 的成員可以操作面板；尚未連結、或只用 LINE 的成員在 Discord 只會顯示名字。</p>
-      ${manage ? `<div class="btn-row"><button class="btn btn-danger btn-sm" type="button" data-click="detachFromDiscord" data-loading="處理中…">解除綁定</button></div>
-      <p class="hint">解除綁定後 Discord 面板就看不到這個行程了；網頁、分享連結與帳目都不受影響，之後可以重新綁定（也可以綁到別的伺服器）。</p>` : ''}`;
+      ${manage ? `<div class="btn-row"><button class="btn btn-danger btn-sm" type="button" data-click="detachFromDiscord" data-loading="處理中…">中斷與伺服器的連線</button></div>
+      <p class="hint">中斷後，Discord 面板就看不到這個行程了；網頁、邀請連結、免登入連結和帳目都不受影響，之後可以再連回來（也可以連到別的伺服器）。</p>` : ''}`;
     return;
   }
   const code = lastBindCode && lastBindCode.tripId === currentTripId && lastBindCode.expiresAt > Date.now() ? lastBindCode : null;
   el.innerHTML = `
-    <div class="discord-status"><span class="dot"></span>尚未綁定任何 Discord 伺服器</div>
-    <p class="hint">綁定後，伺服器裡的人可以用 Mousebot 的 <code class="inline">/splitbill panel</code> 記帳、結算，跟網頁即時同步。</p>
+    <div class="discord-status"><span class="dot"></span>還沒有連到 Discord 伺服器</div>
+    <p class="hint">連上後，伺服器裡的人可以用 Mousebot 的 <code class="inline">/splitbill panel</code> 記帳、結算，跟網頁即時同步。</p>
     ${manage ? `
       <ol class="discord-steps">
-        <li>按下方「產生綁定碼」（10 分鐘內有效、只能用一次）</li>
-        <li>到要綁定的伺服器，輸入顯示的指令（要由你本人執行）</li>
+        <li>按下方「產生連線碼」（10 分鐘內有效、只能用一次）</li>
+        <li>到要連線的伺服器，輸入顯示的指令（要由你本人執行）</li>
       </ol>
       ${code ? `
         <div class="bind-code-box">
@@ -258,8 +258,8 @@ function renderDiscordPanel(){
             <button class="btn btn-brass btn-sm" type="button" data-click="copyBindCommand">複製指令</button>
           </div>
         </div>` : ''}
-      <div class="btn-row"><button class="btn ${code ? 'btn-ghost' : 'btn-brass'}" type="button" data-click="generateBindCode" data-loading="產生中…">${code ? '重新產生綁定碼' : '產生綁定碼'}</button></div>
-    ` : '<p class="hint">只有行程建立者可以把行程綁定到 Discord 伺服器。</p>'}`;
+      <div class="btn-row"><button class="btn ${code ? 'btn-ghost' : 'btn-brass'}" type="button" data-click="generateBindCode" data-loading="產生中…">${code ? '重新產生連線碼' : '產生連線碼'}</button></div>
+    ` : '<p class="hint">只有行程建立者可以把行程連到 Discord 伺服器。</p>'}`;
   if (code){
     const tick = ()=>{
       const left = Math.max(0, code.expiresAt - Date.now());
@@ -278,20 +278,20 @@ async function generateBindCode(){
     lastBindCode = Object.assign({ tripId: currentTripId }, body);
     renderDiscordPanel();
   }catch(err){
-    toast('產生綁定碼失敗：' + err.message, 'error');
+    toast('沒有產生連線碼：' + err.message, 'error');
   }
 }
 async function copyBindCommand(){
   if (!lastBindCode) return;
   try{
     await navigator.clipboard.writeText(lastBindCode.command);
-    toast('已複製指令，到 Discord 伺服器貼上送出即可', 'success');
+    toast('已複製指令，到 Discord 伺服器貼上送出就好', 'success');
   }catch(e){
-    toast('複製失敗，請手動輸入：' + lastBindCode.command, 'error');
+    toast('沒辦法自動複製，請長按上方的指令複製。', 'error');
   }
 }
 async function detachFromDiscord(){
-  const ok = await confirmModal('解除後，Discord 的 /splitbill panel 就看不到這個行程了。網頁和帳目不受影響，之後可以重新綁定。', { title:'解除 Discord 伺服器綁定？', confirmText:'解除綁定', cancelText:'取消', danger:true });
+  const ok = await confirmModal('中斷後，Discord 的 /splitbill panel 就看不到這個行程了。網頁和帳目不受影響，之後可以再連回來。', { title:'中斷與 Discord 伺服器的連線？', confirmText:'中斷連線', cancelText:'取消', danger:true });
   if (!ok) return;
   try{
     const body = await apiJson(await fetch(tripApiUrl('/detach'), { method: 'POST', headers: apiHeaders() }));
@@ -299,8 +299,8 @@ async function detachFromDiscord(){
     lastBindCode = null;
     renderDiscordPanel();
     refreshTripList({ silent: true }).catch(()=>{});
-    toast('已解除綁定', 'success');
+    toast('已中斷與伺服器的連線', 'success');
   }catch(err){
-    toast('解除綁定失敗：' + err.message, 'error');
+    toast('沒有中斷成功：' + err.message, 'error');
   }
 }
