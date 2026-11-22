@@ -50,6 +50,7 @@ function closeModal(){
   activeModal = null;
   document.getElementById('modalRoot').innerHTML = '';
   if (!m) return;
+  dropLayer('modal');
   document.removeEventListener('keydown', m.onKey, true);
   if (m.prevFocus && m.prevFocus.isConnected && typeof m.prevFocus.focus === 'function') m.prevFocus.focus();
 }
@@ -77,6 +78,8 @@ function mountModal(boxHtml, opts){
   document.addEventListener('keydown', onKey, true);
   overlay.addEventListener('click', (e)=>{ if (e.target === overlay) dismiss(); });
   activeModal = { dismiss, onKey, prevFocus };
+  // 返回鍵先關對話框（等同按取消）
+  pushLayer('modal', ()=>{ if (activeModal) activeModal.dismiss(); });
   return box;
 }
 function modalTitleHtml(title){

@@ -18,6 +18,7 @@ async function loadTripFromApi(opts){
     resetListFilters();
     resetOverviewSectionCurrencyState();
     if (!opts.quiet) toast(`已載入「${trip.name}」（成員 ${trip.members.length} 人、支出 ${trip.expenses.length} 筆）`, 'success');
+    restorePendingEntries(); // 上次沒存到的帳目放回畫面，接著自動補存
     if (currentSettingsSub === 'people') renderTripLinksPanel();
     if (currentSettingsSub === 'trip') renderDiscordPanel();
     saveOwnerConnectionState();
@@ -94,7 +95,7 @@ function renderSyncStatus(){
 function onSyncStatusClick(){
   const state = document.getElementById('syncStatus').dataset.state;
   if (state === 'offline'){ showMainTab('settings'); showSettingsSub('account'); }
-  else if (state === 'error') saveTripToApi();
+  else if (state === 'error'){ saveTripToApi(); flushPendingEntries(true); }
   else toast(document.getElementById('syncStatus').title, 'info');
 }
 
@@ -359,7 +360,80 @@ function applyEntryToBase(kind, id, entry, updatedAt){
   lastSyncedTripJSON = JSON.stringify(repairTrip(base));
 }
 // entry 為 null 代表刪除；opts.restore：這是從「紀錄」還原的（只影響操作紀錄上的說明）
+/* ===================== 還沒存到的帳目 ===================== */
+// 新增支出／轉帳時剛好沒網路：這筆先存在這台手機上（localStorage），頁首常駐提示，
+// 連上網路、重新打開行程或按「再試一次」時自動補送。帳目 id 是前端產生的，伺服器用 PUT 依 id 寫入，
+// 重送也不會變成兩筆。只處理「新增」：修改、刪除舊帳目要連上網路才能做。
+const PENDING_KEY = 'splitbill-pending-entries';
+let pendingFlushing = false;
+function readPendingEntries(){
+  try{ const v = JSON.parse(localStorage.getItem(PENDING_KEY) || '[]'); return Array.isArray(v) ? v : []; }catch(e){ return []; }
+}
+function writePendingEntries(list){
+  try{ localStorage.setItem(PENDING_KEY, JSON.stringify(list)); return true; }catch(e){ return false; }
+}
+function pendingScope(){ return shareMode ? `share:${shareMode.token}` : currentTripId; }
+function pendingForCurrentTrip(){
+  const scope = pendingScope();
+  return scope ? readPendingEntries().filter(p => p.scope === scope) : [];
+}
+function addPendingEntry(kind, id, entry){
+  const scope = pendingScope();
+  if (!scope) return false;
+  const list = readPendingEntries().filter(p => !(p.scope === scope && p.kind === kind && p.id === id));
+  list.push({ scope, kind, id, entry, at: Date.now() });
+  const ok = writePendingEntries(list);
+  renderPendingBanner();
+  return ok;
+}
+function removePendingEntry(kind, id){
+  const scope = pendingScope();
+  const list = readPendingEntries();
+  const next = list.filter(p => !(p.scope === scope && p.kind === kind && p.id === id));
+  if (next.length !== list.length) writePendingEntries(next);
+  renderPendingBanner();
+}
+function renderPendingBanner(){
+  const el = document.getElementById('pendingBanner');
+  if (!el) return;
+  const n = pendingForCurrentTrip().length;
+  el.hidden = !n;
+  if (n) document.getElementById('pendingText').textContent = navigator.onLine === false
+    ? `有 ${n} 筆還沒存到，存在這台手機上。連上網路後會自動補存。`
+    : `有 ${n} 筆還沒存到，存在這台手機上。正在等伺服器回應，也可以按「再試一次」。`;
+}
+// 開啟行程後：還沒存到的帳目放回畫面（伺服器那份還沒有），再試著補存
+function restorePendingEntries(){
+  const pending = pendingForCurrentTrip();
+  for (const p of pending){
+    if (!Array.isArray(trip[p.kind])) continue;
+    if (!trip[p.kind].some(x => x.id === p.id)) trip[p.kind].push(p.entry);
+  }
+  renderPendingBanner();
+  if (pending.length){ renderAll(); flushPendingEntries(false); }
+}
+async function flushPendingEntries(manual){
+  if (pendingFlushing) return;
+  const pending = pendingForCurrentTrip();
+  if (!pending.length) return;
+  if (navigator.onLine === false){ if (manual) toast('目前沒有網路，連上後會自動補存', 'info'); return; }
+  pendingFlushing = true;
+  try{
+    for (const p of pending){
+      const entry = trip[p.kind] && trip[p.kind].find(x => x.id === p.id) || p.entry;
+      const ok = await syncEntry(p.kind, p.id, entry, { fromQueue: true });
+      // 還是連不上：剩下的等下次（被伺服器拒絕的那筆 syncEntry 已經移除，繼續送下一筆）
+      if (!ok && pendingForCurrentTrip().some(x => x.kind === p.kind && x.id === p.id)) break;
+    }
+  } finally {
+    pendingFlushing = false;
+    renderPendingBanner();
+  }
+  if (!pendingForCurrentTrip().length && pending.length) toast(`已補存 ${pending.length} 筆帳目`, 'success');
+}
+
 async function syncEntry(kind, id, entry, opts){
+  opts = opts || {};
   if ((!currentTripId && !shareMode) || (shareMode && shareMode.permission !== 'write')){
     return saveTripToApi(); // 沒開雲端行程／唯讀：沿用整包儲存的提示訊息
   }
@@ -386,12 +460,28 @@ async function syncEntry(kind, id, entry, opts){
       await refreshTripFromServer();
     }
     ok = true;
-    toast('已儲存', 'success');
+    removePendingEntry(kind, id);
+    if (!opts.fromQueue) toast('已儲存', 'success');
     renderAll();
     // 這次只送了一筆；同時還有別的本地修改（例如記帳時順手更新的匯率）就補一次整包儲存
     if (lastSyncedTripJSON && JSON.stringify(trip) !== lastSyncedTripJSON) scheduleCloudSave(0);
   }catch(err){
-    toast('儲存失敗：' + err.message + '（點頁首的「未儲存」可以重試）', 'error');
+    // 沒有網路或伺服器沒回應：新增的帳目先存在這台手機上，之後自動補存
+    const unreachable = !err.status || err.status >= 500;
+    // 伺服器明確拒絕（4xx：權限、行程不存在、格式不對）：重送也不會成功，從待補存清單拿掉並說明
+    if (!unreachable && opts.fromQueue){
+      removePendingEntry(kind, id);
+      toast(`有 1 筆存在這台手機上的帳目沒辦法補存：${err.message}`, 'error', { duration: 8000 });
+    }
+    if (unreachable && entry && opts.isNew && addPendingEntry(kind, id, entry)){
+      toast(navigator.onLine === false
+        ? '目前沒有網路。這筆先存在這台手機上，連上網路後會自動補存。'
+        : '伺服器沒有回應。這筆先存在這台手機上，稍後會自動補存。', 'info', { duration: 6000 });
+    } else if (!opts.fromQueue){
+      toast(unreachable
+        ? '沒有存到：連不上伺服器。連上網路後，點頁首的「未儲存」再試一次。'
+        : `沒有存到：${err.message}`, 'error');
+    }
   }finally{
     syncSaving--;
     syncFailed = !ok;

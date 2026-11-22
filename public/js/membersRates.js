@@ -42,13 +42,34 @@ async function removeMember(id){
     idx = trip.members.findIndex(x=>x.id===id);
     if (idx === -1) return;
   }
-  const used = trip.expenses.some(e=>e.payers.some(p=>p.userId===id)||e.participants.some(s=>s.userId===id))
-            || trip.deposits.some(d=>d.payerId===id||d.collectorId===id);
+  // 有帳目的成員：刪掉後他的金額不會算進結算，其他人的要付／可拿回會跟著變，先講清楚再刪
+  const nExp = trip.expenses.filter(e=>e.payers.some(p=>p.userId===id)||e.participants.some(s=>s.userId===id)).length;
+  const nDep = trip.deposits.filter(d=>d.payerId===id||d.collectorId===id).length;
+  if (nExp || nDep){
+    const name = trip.members[idx].name;
+    const where = [nExp ? `${nExp} 筆支出` : '', nDep ? `${nDep} 筆轉帳` : ''].filter(Boolean).join('、');
+    const ok = await confirmModal(
+      `${name}在 ${where}裡。刪除後這些金額不會算進結算，其他人的要付、可拿回金額會跟著改變。`,
+      { title: `刪除成員「${name}」？`, confirmText:'仍要刪除', cancelText:'先查看他的帳目', danger:true }
+    );
+    if (!ok){
+      // 「先查看他的帳目」：有支出就到支出頁，只有轉帳就到轉帳頁，只列出有他的那些
+      const tab = nExp ? 'expenses' : 'deposits';
+      const input = document.getElementById(nExp ? 'expenseFilterText' : 'depositFilterText');
+      if (input) input.value = '';
+      if (nExp){ expenseFilterText = ''; expenseFilterMemberIds = new Set([id]); }
+      else { depositFilterText = ''; depositFilterMemberIds = new Set([id]); }
+      showMainTab(tab);
+      return;
+    }
+    idx = trip.members.findIndex(x=>x.id===id);
+    if (idx === -1) return;
+  }
   const [removed] = trip.members.splice(idx,1);
   renderAll();
   scheduleCloudSave();
   toastUndo(
-    used ? `已刪除成員「${removed.name}」（他仍出現在部分支出／轉帳紀錄中）` : `已刪除成員「${removed.name}」`,
+    `已刪除成員「${removed.name}」`,
     ()=>{ trip.members.splice(idx,0,removed); renderAll(); scheduleCloudSave(); }
   );
 }

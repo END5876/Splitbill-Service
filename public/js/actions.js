@@ -27,7 +27,7 @@ const UI_ACTIONS = new Set([
   'createTripLink', 'createTripOnServer', 'deleteDeposit', 'deleteExpense', 'deleteSelectedTrip', 'detachFromDiscord',
   'downloadCsv', 'downloadJson', 'editDeposit', 'editExpense', 'equalFillChips', 'finalizeReceiptExpense',
   'focusNewMemberInput', 'generateBindCode', 'historyDeleteItem', 'historyRestoreChange', 'historyRestoreRevision',
-  'loadHistory', 'loadMoreHistory', 'goAddMember', 'goHome', 'handleFileImport',
+  'loadHistory', 'loadMoreHistory', 'goAddMember', 'goHome', 'handleFileImport', 'retryConnection', 'flushPendingEntries',
   'handleReceiptUpload', 'importJsonAsNewTrip', 'joinReceiptSession', 'leaveJoinScreen',
   'linkAccount', 'loadTripFromApi', 'loadTripLinks', 'loginWithDiscord', 'loginWithLine', 'logout', 'markTransferPaid',
   'onChipToggle', 'onDebtCurrencyChange', 'onDebtViewChange', 'onDepositFilterChange',

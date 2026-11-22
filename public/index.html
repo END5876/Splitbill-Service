@@ -74,6 +74,11 @@
     </div>
   </div>
 </header>
+<!-- 沒存到雲端的帳目：常駐提示，補存成功才消失（js/tripSync.js 的 renderPendingBanner） -->
+<div class="pending-banner" id="pendingBanner" role="status" aria-live="polite" hidden>
+  <span id="pendingText"></span>
+  <button class="btn btn-ghost btn-sm" type="button" data-click="flushPendingEntries" data-args='[true]'>再試一次</button>
+</div>
 
 <nav class="top-nav wrap" id="topNav">
   <button class="nav-btn active" data-tab="overview" data-click="showMainTab" data-args='["overview"]'><svg class="ic" aria-hidden="true"><use href="#i-overview"/></svg>總覽結算</button>
@@ -501,6 +506,7 @@
 </nav>
 
 <script src="js/helpers.js"></script>
+<script src="js/backStack.js"></script>
 <script src="js/actions.js"></script>
 <script src="js/theme.js"></script>
 <script src="js/tripModel.js"></script>

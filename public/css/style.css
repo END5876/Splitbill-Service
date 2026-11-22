@@ -252,6 +252,14 @@
     background:var(--paper); align-items:center; justify-content:center;
   }
   #noAccessScreen.visible{ display:flex; }
+  /* 還沒存到雲端的帳目：頁首下方的常駐提示，補存成功才消失 */
+  .pending-banner{
+    display:flex; align-items:center; justify-content:center; gap:6px 12px; flex-wrap:wrap;
+    padding:8px 16px; font-size:13.5px; font-weight:600; text-align:center;
+    background:color-mix(in srgb, var(--brass) 16%, var(--card)); color:var(--ink);
+    border-bottom:1px solid color-mix(in srgb, var(--brass) 35%, var(--card-line));
+  }
+  .pending-banner[hidden]{ display:none; }
   .no-access-card{
     text-align:center; padding:44px 32px 40px; max-width:420px; width:90%;
     background:var(--card); border:1px solid var(--card-line);

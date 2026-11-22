@@ -42,6 +42,9 @@ const SETTINGS_SUB_ALIASES = {
   io:       { sub: 'advanced', anchor: null },
 };
 function showMainTab(tab){
+  // 返回鍵：在總覽以外的分頁按返回，先回總覽，再按一次才離開 App
+  if (tab === 'overview') dropLayer('tab');
+  else pushLayer('tab', ()=>showMainTab('overview'));
   document.querySelectorAll('#topNav .nav-btn, #bottomNav .nav-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
   document.querySelectorAll('.panel[data-panel]').forEach(p=>p.classList.toggle('active', p.dataset.panel===tab));
   if (tab === 'settings') showSettingsSub(currentSettingsSub);

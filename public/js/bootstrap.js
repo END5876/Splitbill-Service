@@ -18,6 +18,7 @@ renderAll();
 async function resolveEntry(){
   const token = takeLinkTokenFromUrl() || getPersistedLinkToken();
   await fetchMe();
+  if (meUnreachable) return { kind: 'offline' };
   if (!token) return { kind: 'home' };
 
   let info;
@@ -49,6 +50,9 @@ async function applyEntry(entry){
       return;
     case 'error':
       showLinkError(entry.message);
+      return;
+    case 'offline':
+      showOfflineScreen();
       return;
     default:
       await bootstrapHome();
@@ -86,6 +90,22 @@ async function openTripAsMember(tripId){
   if (isConnected()) showMainTab('overview');
   else { showMainTab('settings'); showSettingsSub('connect'); }
 }
+
+// 返回鍵：填到一半的支出／轉帳表單，按返回先問要不要放棄（js/backStack.js）
+guardFormOnBack({
+  formId: 'expenseFormCard', layer: 'expenseForm', isDirty: isExpenseFormDirty, reset: resetExpenseForm,
+  title: '放棄這筆支出？', message: '剛剛填的內容還沒儲存，離開後就不見了。',
+});
+guardFormOnBack({
+  formId: 'depositFormCard', layer: 'depositForm', isDirty: isDepositFormDirty, reset: resetDepositForm,
+  title: '放棄這筆轉帳？', message: '剛剛填的內容還沒儲存，離開後就不見了。',
+});
+// 還有東西沒存到（存檔失敗、正在送出、表單填到一半）時，關掉或重新整理前先提醒
+window.addEventListener('beforeunload', (e) => {
+  if (syncFailed || syncSaving > 0 || isExpenseFormDirty() || isDepositFormDirty()){ e.preventDefault(); e.returnValue = ''; }
+});
+// 連上網路後自動補存還沒存到的帳目
+window.addEventListener('online', () => flushPendingEntries(false));
 
 (async function init(){
   const bindConfirm = showLoginResultFromUrl();

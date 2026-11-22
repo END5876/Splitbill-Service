@@ -88,6 +88,34 @@ function showLinkError(message){
   el.style.display = 'block';
 }
 
+// 連不上伺服器時的全頁畫面（取代登入畫面，免得看起來像被登出）。
+// 連上網路（online 事件）或伺服器恢復（每 30 秒探測一次）就自動重新載入
+let offlineProbeTimer = 0;
+function showOfflineScreen(){
+  const noNet = navigator.onLine === false;
+  const el = document.getElementById('noAccessScreen');
+  el.innerHTML = `
+    <div class="no-access-card">
+      <div class="no-access-brand">裊器分帳</div>
+      <h1>${noNet ? '目前沒有網路' : '暫時連不上分帳'}</h1>
+      <div class="no-access-divider"></div>
+      <p>${noNet ? '連上網路後會自動載入你的行程。' : '伺服器可能正在更新。恢復後會自動載入你的行程。'}</p>
+      <div class="no-access-login"><button class="btn btn-primary" type="button" data-click="retryConnection">重新連線</button></div>
+    </div>`;
+  el.classList.add('visible');
+  setMainUiVisible(false);
+  window.addEventListener('online', retryConnection, { once: true });
+  clearInterval(offlineProbeTimer);
+  offlineProbeTimer = setInterval(async () => {
+    if (navigator.onLine === false) return;
+    try{ const r = await fetch('/api/me', { credentials: 'same-origin' }); if (r.status < 500) retryConnection(); }catch(e){ /* 還連不上 */ }
+  }, 30 * 1000);
+}
+function retryConnection(){
+  clearInterval(offlineProbeTimer);
+  location.reload();
+}
+
 // 🆕 [Discord 登入] 沒有登入、也不是從連結進來時顯示的全頁畫面。
 // 有開啟登入（Discord／LINE）時提供登入按鈕；沒有的話維持原本「請索取分享連結」的說明。
 function showNoAccessScreen(){
@@ -142,6 +170,7 @@ async function initGuestMode(token){
     trip = repairTrip(data.trip);
     lastSyncedTripJSON = JSON.stringify(trip);
     shareMode = { token, permission: data.permission === 'write' ? 'write' : 'read' };
+    restorePendingEntries(); // 上次沒存到的帳目放回畫面，接著自動補存
     applyGuestModeUI();
     editingExpenseId = null; editingDepositId = null;
     expandedExpenseIds.clear(); expandedDepositIds.clear();

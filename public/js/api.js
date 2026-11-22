@@ -80,7 +80,11 @@ async function fetchLiveRate(from, to){
 }
 
 /* ===================== 身分 ===================== */
+// 連不上伺服器（沒有網路、伺服器沒回應或 5xx）時不能當成「沒登入」：
+// 不然會顯示登入畫面，看起來像被登出，點登入又因為沒網路失敗
+let meUnreachable = false;
 async function fetchMe(){
+  meUnreachable = false;
   try{
     const res = await fetch('/api/me', { credentials: 'same-origin' });
     const body = await apiJson(res);
@@ -89,6 +93,7 @@ async function fetchMe(){
     loginProviders = body.providers || { discord: oauthEnabled, line: false };
   }catch(e){
     currentUser = null;
+    meUnreachable = !e.status || e.status >= 500;
   }
   renderAccountArea();
   return currentUser;

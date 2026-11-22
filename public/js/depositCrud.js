@@ -54,7 +54,13 @@ document.getElementById('depPayer').addEventListener('change', ()=>syncDepositPa
 document.getElementById('depCollector').addEventListener('change', ()=>syncDepositPartyOptions());
 document.getElementById('depCurrency').addEventListener('change', ()=>{ document.getElementById('depAmountInBase').value = ''; renderDepositHint(); refreshDepositLiveRate(); });
 
+// 表單填了東西但還沒儲存（返回鍵、關閉頁面前提醒用）
+function isDepositFormDirty(){
+  const amt = document.getElementById('depAmount'), note = document.getElementById('depNote');
+  return !!((amt && amt.value) || (note && note.value.trim()));
+}
 function resetDepositForm(){
+  if (typeof dropLayer === 'function') dropLayer('depositForm');
   editingDepositId = null;
   document.getElementById('depositFormTitle').textContent = '新增一筆轉帳／預收款';
   setFormCardEditing('depositFormCard', 'btnSaveDepositSync', 'btnResetDeposit', false);
@@ -111,8 +117,9 @@ function saveDeposit(){
   return saved;
 }
 async function saveDepositAndSync(){
+  const isNew = !editingDepositId;
   const saved = saveDeposit();
-  if (saved) await syncEntry('deposits', saved.id, saved);
+  if (saved) await syncEntry('deposits', saved.id, saved, { isNew });
 }
 function editDeposit(id){
   const dep = trip.deposits.find(d=>d.id===id);

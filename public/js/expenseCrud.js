@@ -19,6 +19,7 @@ function hasUnsavedExpenseFormContent(){
 }
 
 function resetExpenseForm(){
+  if (typeof dropLayer === 'function') dropLayer('expenseForm');
   editingExpenseId = null;
   participantsDirty = false;
   document.getElementById('expenseFormTitle').textContent = '新增一筆支出';
@@ -102,8 +103,14 @@ function saveExpense(){
 }
 // 只把這一筆送到伺服器（見 js/tripSync.js 的 syncEntry）
 async function saveExpenseAndSync(){
+  const isNew = !editingExpenseId;
   const saved = saveExpense();
-  if (saved) await syncEntry('expenses', saved.id, saved);
+  if (saved) await syncEntry('expenses', saved.id, saved, { isNew });
+}
+// 表單填了東西但還沒儲存（返回鍵、關閉頁面前提醒用）
+function isExpenseFormDirty(){
+  const desc = document.getElementById('expDesc'), amt = document.getElementById('expAmount');
+  return !!((desc && desc.value.trim()) || (amt && amt.value));
 }
 function editExpense(id){
   const exp = trip.expenses.find(e=>e.id===id);
