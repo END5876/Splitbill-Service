@@ -105,7 +105,7 @@ function accountLinkHtml(){
   if (acc.discord && acc.line){
     return `
       <div class="account-link">
-        <div class="account-link-status"><span class="link-badge linked">Discord ✓</span><span class="link-badge linked">LINE ✓</span><span class="hint" style="margin:0;">兩種都能登入這個帳號。</span></div>
+        <div class="account-link-status"><span class="link-badge linked">${icon('check')} Discord</span><span class="link-badge linked">${icon('check')} LINE</span><span class="hint" style="margin:0;">兩種都能登入這個帳號。</span></div>
         <button class="btn btn-ghost btn-sm" type="button" data-click="unlinkAccount">停用 LINE 登入</button>
       </div>`;
   }
@@ -187,7 +187,7 @@ function memberLinkBadgeHtml(m){
   const canUnlink = linked && (canManageTrip() || isMe);
   const via = m.lineId ? 'LINE' : 'Discord';
   const badge = linked
-    ? `<span class="link-badge linked" title="已連結 ${via} 帳號">🔗${isMe ? ' 你' : ''}</span>`
+    ? `<span class="link-badge linked" title="已連結 ${via} 帳號">${icon('link')}${isMe ? ' 你' : ''}</span>`
     : `<span class="link-badge" title="還沒有連結帳號：本人用邀請連結加入，選「我是哪一位」就會連結">未連結</span>`;
   const btn = canUnlink
     ? `<button class="btn btn-ghost btn-sm member-btn" type="button" ${act('click','unlinkMember',m.id)} title="解除這位成員與 ${via} 帳號的連結" aria-label="解除連結">${ICON_UNLINK}<span class="btn-label">解除連結</span></button>`

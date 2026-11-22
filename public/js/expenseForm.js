@@ -296,7 +296,7 @@ function renderExpenseHint(){
     rate = trip.rates[currency];
     if (rate){
       const base = round2(amount*rate);
-      hintHtml = `⏳ 查詢即時匯率中…暫用手動設定的匯率換算約為 <b>${fmtMoney(base, trip.baseCurrency)}</b>`;
+      hintHtml = `${icon('clock')} 查詢即時匯率中…暫用手動設定的匯率換算約為 <b>${fmtMoney(base, trip.baseCurrency)}</b>`;
     } else {
       hintHtml = `幣別 ${currency} 尚無匯率資料，正在查詢即時匯率…如果查不到，請到「設定 → 行程」的匯率手動新增。`;
     }

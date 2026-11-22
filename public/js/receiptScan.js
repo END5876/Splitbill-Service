@@ -86,7 +86,7 @@ function renderReceiptSessionBanner(){
     zone.style.display = '';
     zone.innerHTML = `
       <div class="receipt-session-banner">
-        <span>📡 有人正在進行帳單辨識認領中，加入即可立刻同步、一起點選品項</span>
+        <span>${icon('users')} 有人正在進行帳單辨識認領中，加入即可立刻同步、一起點選品項</span>
         <button type="button" class="btn btn-brass btn-sm" data-click="joinReceiptSession" data-loading="加入中…">加入認領</button>
       </div>`;
   } else {
@@ -542,7 +542,7 @@ function buildReceiptSummaryHtml(){
   return `<div class="receipt-summary" id="receiptSummaryBox">
     ${rows}
     <div class="receipt-summary-row total"><span>總金額</span><span>${fmtMoney(grandTotal, trip.baseCurrency)}</span></div>
-    ${unclaimedCount ? `<p class="hint" style="color:var(--debt);">⚠️ 還有 ${unclaimedCount} 個項目尚未認領</p>` : ''}
+    ${unclaimedCount ? `<p class="hint" style="color:var(--debt);">${icon('alert')} 還有 ${unclaimedCount} 個項目尚未認領</p>` : ''}
   </div>`;
 }
 
@@ -568,7 +568,7 @@ function renderReceiptWorkArea(){
     // 🆕 語言辨識 + 翻譯：品項名稱若有繁中翻譯（代表帳單原文不是中文），
     // 在輸入框下方附上一行「原文＋翻譯」同時顯示，方便核對辨識是否正確。
     const translationHint = item.nameTranslated
-      ? `<p class="hint" style="margin-top:6px;">🌐 翻譯：<b>${escapeHtml(item.nameTranslated)}</b></p>`
+      ? `<p class="hint" style="margin-top:6px;">${icon('globe')} 翻譯：<b>${escapeHtml(item.nameTranslated)}</b></p>`
       : '';
     return `
     <div class="receipt-item-row ${item.type==='fee'?'fee':''} ${unclaimed?'unclaimed':''}">
@@ -576,12 +576,12 @@ function renderReceiptWorkArea(){
         <button type="button" class="receipt-type-badge ${item.type==='fee'?'fee':''}" ${act('click','receiptToggleItemType',item.id)} title="點一下切換品項／雜費分類">${item.type==='fee'?'雜費':'品項'} ⇄</button>
         <input type="text" value="${escapeHtml(item.name)}" placeholder="品項名稱" ${act('change','receiptUpdateField',item.id,'name','$value')}>
         <input type="number" inputmode="decimal" class="num amt-input" value="${item.price}" step="0.01" ${act('change','receiptUpdateField',item.id,'price','$value')}>
-        <button type="button" class="btn btn-ghost btn-sm" ${act('click','receiptRemoveItem',item.id)} title="刪除這個項目">✕</button>
+        <button type="button" class="btn btn-ghost btn-sm" ${act('click','receiptRemoveItem',item.id)} title="刪除這個項目" aria-label="刪除這個項目">${icon('x')}</button>
       </div>
       ${translationHint}
       <div class="receipt-claim-chips">
         ${memberChipsHtml(item)}
-        <button type="button" class="claim-chip shared ${isShared?'on':''}" ${act('click','receiptSetShared',item.id)}>🤝 共同分擔</button>
+        <button type="button" class="claim-chip shared ${isShared?'on':''}" ${act('click','receiptSetShared',item.id)}>${icon('users')} 共同分擔</button>
       </div>
       ${serviceChargeHint}
       ${unclaimed ? '<p class="hint" style="color:var(--debt); margin-top:6px;">尚未認領——請點選人名或「共同分擔」</p>' : ''}
@@ -609,8 +609,8 @@ function renderReceiptWorkArea(){
       <div style="flex:1;">
         <p class="hint" style="margin-top:0;">共 ${receiptState.items.length} 個項目。點品項下方的人名分配（可多選＝一起分攤），辨識錯了可以直接改。</p>
         <div class="btn-row">
-          <button type="button" class="btn btn-ghost btn-sm" data-click="receiptResetUpload">🔄 重新上傳照片</button>
-          ${receiptSessionJoined ? '<button type="button" class="btn btn-danger btn-sm" data-click="abandonReceiptSession">🛑 放棄認領</button>' : ''}
+          <button type="button" class="btn btn-ghost btn-sm" data-click="receiptResetUpload">${icon('refresh')} 重新上傳照片</button>
+          ${receiptSessionJoined ? `<button type="button" class="btn btn-danger btn-sm" data-click="abandonReceiptSession">${icon('stop')} 放棄認領</button>` : ''}
         </div>
       </div>
     </div>

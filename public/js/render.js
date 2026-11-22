@@ -282,8 +282,8 @@ function renderExpenseList(){
   document.getElementById('expenseList').innerHTML = filteredExpenses.length
     ? renderDateGroupedList(filteredExpenses, renderExpenseRow)
     : (allExpenses.length
-        ? emptyState('🔍', '沒有符合篩選條件的支出。', '清除篩選', "clearExpenseFilter")
-        : emptyState('🧾', '還沒有任何支出。', '記第一筆支出', "startFirstExpense"));
+        ? emptyState(icon('search'), '沒有符合篩選條件的支出。', '清除篩選', "clearExpenseFilter")
+        : emptyState(icon('receipt'), '還沒有任何支出。', '記第一筆支出', "startFirstExpense"));
 }
 // 轉帳／預收清單，同上。
 function renderDepositList(){
@@ -304,8 +304,8 @@ function renderDepositList(){
   document.getElementById('depositList').innerHTML = filteredDeposits.length
     ? renderDateGroupedList(filteredDeposits, renderDepositRow)
     : (allDeposits.length
-        ? emptyState('🔍', '沒有符合篩選條件的轉帳或預收款。', '清除篩選', "clearDepositFilter")
-        : emptyState('💸', '還沒有任何轉帳或預收款。', '記第一筆轉帳', "startFirstDeposit"));
+        ? emptyState(icon('search'), '沒有符合篩選條件的轉帳或預收款。', '清除篩選', "clearDepositFilter")
+        : emptyState(icon('transfer'), '還沒有任何轉帳或預收款。', '記第一筆轉帳', "startFirstDeposit"));
 }
 
 function renderAll(){
@@ -321,13 +321,13 @@ function renderAll(){
   document.getElementById('memberCount').textContent = `(${trip.members.length})`;
   document.getElementById('memberList').innerHTML = trip.members.map(m=>`
     <div class="member-tag">
-      <span class="dot"></span>
+      ${memberAvatarHtml(m)}
       <input type="text" value="${escapeHtml(m.name)}" ${act('change','renameMember',m.id,'$value')}>
       <span class="member-actions">
         ${memberLinkBadgeHtml(m)}
         <button class="btn btn-danger btn-sm member-btn" ${act('click','removeMember',m.id)} title="刪除這位成員" aria-label="刪除">${ICON_TRASH}<span class="btn-label">刪除</span></button>
       </span>
-    </div>`).join('') || emptyState('👥', '還沒有任何成員。', '新增成員', "focusNewMemberInput");
+    </div>`).join('') || emptyState(icon('users'), '還沒有任何成員。', '新增成員', "focusNewMemberInput");
 
   // rates tab
   document.getElementById('rateTableBody').innerHTML = Object.entries(trip.rates).sort().map(([code,rate])=>`

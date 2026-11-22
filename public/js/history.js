@@ -75,7 +75,7 @@ async function loadHistory(more){
 function loadMoreHistory(){ return loadHistory(true); }
 
 /* ---------------- 畫面 ---------------- */
-const HISTORY_ACTOR_ICON = { user: '👤', bot: '🤖', guest: '🔗', admin: '🛠', system: '⚙️' };
+const HISTORY_ACTOR_ICON = { user: icon('user'), bot: icon('robot'), guest: icon('link'), admin: icon('tool'), system: icon('settings') };
 
 function historyTimeLabel(ts){
   const d = new Date(ts);

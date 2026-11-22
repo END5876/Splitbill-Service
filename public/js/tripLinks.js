@@ -29,16 +29,16 @@ async function copyLinkUrl(token, okMessage){
 // 「新增連結」只做免登入的連結：邀請成員一律用上方的「複製邀請連結」（成員共用的那條）。
 // 之後還是可以在每條連結的「設定」裡個別調整，例如改成不開放訪客、只能登入加入。
 const LINK_PRESETS = [
-  { id: 'read',   icon: '👀', title: '給人看帳',     sub: '不用登入就能看，不能修改',                 guest: 'read',  join: false, days: 7 },
-  { id: 'write',  icon: '✏️', title: '免登入一起記帳', sub: '不用登入就能新增、修改、刪除',             guest: 'write', join: false, days: 7 },
+  { id: 'read',   icon: 'eye', title: '給人看帳',     sub: '不用登入就能看，不能修改',                 guest: 'read',  join: false, days: 7 },
+  { id: 'write',  icon: 'pencil', title: '免登入一起記帳', sub: '不用登入就能新增、修改、刪除',             guest: 'write', join: false, days: 7 },
 ];
 const LINK_GUEST_LABELS = { none: '不開放', read: '唯讀', write: '可編輯' };
 const LINK_EXPIRY_CHOICES = [ { days: 1, label: '1 天' }, { days: 7, label: '7 天' }, { days: 30, label: '30 天' }, { days: 0, label: '永久' } ];
 
 function linkIcon(l){
-  if (l.guest === 'write') return '✏️';
-  if (l.guest === 'read') return '👀';
-  return '🔑';
+  if (l.guest === 'write') return icon('pencil');
+  if (l.guest === 'read') return icon('eye');
+  return icon('key');
 }
 function linkDefaultName(l){
   if (l.guest === 'none') return '邀請連結';
@@ -92,7 +92,7 @@ function renderInviteSection(){
     : '傳給朋友，登入後就能加入一起記帳。';
   el.innerHTML = `
     <div class="tl-hero">
-      <div class="tl-hero-ic" aria-hidden="true">🔑</div>
+      <div class="tl-hero-ic" aria-hidden="true">${icon('key')}</div>
       <div class="tl-hero-text">
         <div class="tl-hero-title">邀請朋友加入</div>
         <p class="tl-hero-sub">${who}</p>
@@ -164,7 +164,7 @@ function setLinkEditLabel(value){ tripLinksState.editing.label = value; }
 function setLinkComposerJoin(checked){ tripLinksState.composer.join = checked; renderLinkManager(); }
 function setLinkComposerLabel(value){ tripLinksState.composer.label = value; }
 function linkSummaryText(guest, join){
-  if (guest === 'none' && !join) return '⚠️ 兩項都關掉的話，這條連結就沒有用途了。';
+  if (guest === 'none' && !join) return '兩項都關掉的話，這條連結就沒有用途了。';
   const parts = [];
   if (guest !== 'none') parts.push(guest === 'write' ? '拿到網址的任何人，不用登入就能新增、修改、刪除帳目' : '拿到網址的任何人，不用登入就能看帳');
   if (join) parts.push('登入後可以加入成為成員');
@@ -204,7 +204,7 @@ function linkComposerHtml(c){
       <div class="tl-presets" role="radiogroup" aria-label="連結用途">
         ${LINK_PRESETS.map(p => `
           <button type="button" role="radio" aria-checked="${p.id === c.preset}" class="tl-preset ${p.id === c.preset ? 'on' : ''}" ${act('click','pickLinkPreset',p.id)}>
-            <span class="tl-preset-ic" aria-hidden="true">${p.icon}</span>
+            <span class="tl-preset-ic" aria-hidden="true">${icon(p.icon)}</span>
             <span class="tl-preset-title">${p.title}</span>
             <span class="tl-preset-sub">${p.sub}</span>
           </button>`).join('')}

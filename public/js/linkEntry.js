@@ -77,7 +77,7 @@ function showLinkError(message){
   setMainUiVisible(false);
   const el = document.getElementById('shareErrorScreen');
   el.innerHTML = `
-    <div class="ic">😕</div>
+    <div class="ic">${icon('alert')}</div>
     <h1>這個連結打不開</h1>
     <p>${escapeHtml(message)}</p>
     <p style="margin-top:14px;">可以請給你連結的人再傳一組新的給你。</p>
@@ -98,7 +98,6 @@ function showOfflineScreen(){
     <div class="no-access-card">
       <div class="no-access-brand">裊器分帳</div>
       <h1>${noNet ? '目前沒有網路' : '暫時連不上分帳'}</h1>
-      <div class="no-access-divider"></div>
       <p>${noNet ? '連上網路後會自動載入你的行程。' : '伺服器可能正在更新。恢復後會自動載入你的行程。'}</p>
       <div class="no-access-login"><button class="btn btn-primary" type="button" data-click="retryConnection">重新連線</button></div>
     </div>`;
@@ -124,7 +123,6 @@ function showNoAccessScreen(){
     <div class="no-access-card">
       <div class="no-access-brand">裊器分帳</div>
       <h1>跟朋友一起記帳、結算</h1>
-      <div class="no-access-divider"></div>
       <p>旅行、聚餐、合租的花費，記下來就自動算好誰該付誰多少。</p>
       <ul class="landing-features">
         <li><svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg><div><b>拍照辨識帳單</b><span>上傳收據，自動列出品項，大家點選自己吃了什麼</span></div></li>
@@ -141,7 +139,6 @@ function showNoAccessScreen(){
         <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
       </svg>
       <h1>需要行程連結</h1>
-      <div class="no-access-divider"></div>
       <p>請跟行程的建立者要一組連結，<br>點開就能看到行程。</p>
     </div>
   `;
@@ -208,7 +205,7 @@ function showJoinScreen(token, info){
   setMainUiVisible(false);
   const el = document.getElementById('inviteScreen');
   el.style.display = 'block';
-  const head = `<div class="ic">🧳</div><h1>${escapeHtml(info.tripName)}</h1>`;
+  const head = `<div class="ic">${icon('luggage')}</div><h1>${escapeHtml(info.tripName)}</h1>`;
   // 已經登入的人不是「不登入」，而是「先不加入」
   const guestLabel = currentUser
     ? (info.guest === 'write' ? '先不加入，以訪客身分編輯' : '先看看，不加入')

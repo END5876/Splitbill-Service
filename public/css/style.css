@@ -25,6 +25,7 @@
     --safe-l: env(safe-area-inset-left, 0px);
     --safe-r: env(safe-area-inset-right, 0px);
     --gutter: 14px; /* 頁面左右留白（桌面 20px） */
+    --r-sm: 6px; --r-md: 10px; --r-lg: 14px; /* 圓角三階：徽章與小元件／按鈕、輸入框、列／卡片與對話框 */
     --bottomnav-h: 62px;
     --focus-ring: 0 0 0 3px color-mix(in srgb, var(--brass) 35%, transparent);
     /* 🆕 [下拉選單深色模式] 讓瀏覽器原生繪製的表單控制項（select 選單展開
@@ -144,7 +145,7 @@
   }
   /* 放在 overflow:hidden 圓角區塊裡的整列按鈕：焦點框往內縮，才不會被區塊裁掉 */
   .ledger-entry-row:focus-visible, .member-detail-head:focus-visible, .settle-paid-link:focus-visible{
-    outline:2px solid var(--brass); outline-offset:-3px; border-radius:10px;
+    outline:2px solid var(--brass); outline-offset:-3px; border-radius:var(--r-md);
   }
 
   /* ---------- Sticky app header ---------- */
@@ -172,7 +173,7 @@
   #tripName.is-empty{color:var(--on-dark-faint); font-weight:500;}
   .header-currency{
     background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.22);
-    color:var(--on-dark); padding:6px 8px; border-radius:8px; font-size:12.5px;
+    color:var(--on-dark); padding:6px 8px; border-radius:var(--r-md); font-size:13px;
     font-family:'IBM Plex Mono',monospace; flex-shrink:0;
     white-space:nowrap; display:inline-flex; align-items:center;
   }
@@ -188,7 +189,7 @@
      不需要另外引用 --surface 之類會隨主題翻轉的變數。 */
   .theme-toggle-btn{
     background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.22);
-    color:var(--on-dark); width:34px; height:34px; border-radius:8px;
+    color:var(--on-dark); width:34px; height:34px; border-radius:var(--r-md);
     display:flex; align-items:center; justify-content:center;
     font-size:16px; line-height:1; cursor:pointer; flex-shrink:0; padding:0;
   }
@@ -198,15 +199,15 @@
   /* 頁首小圖示按鈕（切換行程），跟深色模式切換鈕同一套固定深色頁首配色 */
   .header-icon-btn{
     background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.22);
-    color:var(--on-dark); width:34px; height:34px; border-radius:8px; flex-shrink:0; padding:0;
-    font-size:15px; line-height:1; cursor:pointer;
+    color:var(--on-dark); width:34px; height:34px; border-radius:var(--r-md); flex-shrink:0; padding:0;
+    font-size:14.5px; line-height:1; cursor:pointer;
   }
   .header-icon-btn:hover{background:rgba(255,255,255,0.16);}
 
   /* 頁首同步狀態：圓點顏色表示狀態；窄螢幕只留圓點，但「未儲存」「唯讀」一定顯示文字 */
   .sync-status{
     display:inline-flex; align-items:center; gap:6px; flex-shrink:0;
-    height:34px; padding:0 10px; border-radius:8px; cursor:pointer;
+    height:34px; padding:0 10px; border-radius:var(--r-md); cursor:pointer;
     background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.22);
     color:var(--on-dark-muted); font-family:'Noto Sans TC',sans-serif; font-size:12px; font-weight:500; white-space:nowrap;
   }
@@ -245,9 +246,9 @@
   .share-error-screen{
     max-width:420px; margin:18vh auto 0; text-align:center; padding:0 20px;
   }
-  .share-error-screen .ic{font-size:44px; margin-bottom:14px;}
-  .share-error-screen h1{font-family:'Noto Serif TC',serif; font-size:19px; margin:0 0 10px;}
-  .share-error-screen p{color:var(--ink-soft); font-size:14px; line-height:1.7; margin:0;}
+  .share-error-screen > .ic{font-size:40px; line-height:1; margin-bottom:14px; color:var(--ink-soft);}
+  .share-error-screen h1{font-family:'Noto Serif TC',serif; font-size:20px; margin:0 0 10px;}
+  .share-error-screen p{color:var(--ink-soft); font-size:14.5px; line-height:1.7; margin:0;}
 
   /* 無權限阻擋頁 */
   #noAccessScreen{
@@ -258,7 +259,7 @@
   /* 還沒存到雲端的帳目：頁首下方的常駐提示，補存成功才消失 */
   .pending-banner{
     display:flex; align-items:center; justify-content:center; gap:6px 12px; flex-wrap:wrap;
-    padding:8px 16px; font-size:13.5px; font-weight:600; text-align:center;
+    padding:8px 16px; font-size:13px; font-weight:600; text-align:center;
     background:color-mix(in srgb, var(--brass) 16%, var(--card)); color:var(--ink);
     border-bottom:1px solid color-mix(in srgb, var(--brass) 35%, var(--card-line));
   }
@@ -277,18 +278,14 @@
     color:var(--ink); margin:0 0 12px; letter-spacing:.01em;
   }
   .no-access-card p{
-    color:var(--ink-soft); font-size:14px; line-height:1.75; margin:0;
+    color:var(--ink-soft); font-size:14.5px; line-height:1.75; margin:0;
   }
   /* 登陸頁功能重點：第一次來的人一眼看懂這是什麼 */
   .landing-features{list-style:none; margin:20px 0 0; padding:0; text-align:left; display:flex; flex-direction:column; gap:12px;}
   .landing-features li{display:flex; gap:12px; align-items:flex-start;}
   .landing-features .ic{width:20px; height:20px; color:var(--brass); margin-top:2px;}
-  .landing-features b{display:block; font-size:14px; color:var(--ink);}
-  .landing-features span{display:block; font-size:12.5px; color:var(--ink-soft); line-height:1.6;}
-  .no-access-divider{
-    width:32px; height:2px; background:var(--brass-soft);
-    margin:20px auto;
-  }
+  .landing-features b{display:block; font-size:14.5px; color:var(--ink);}
+  .landing-features span{display:block; font-size:13px; color:var(--ink-soft); line-height:1.6;}
 
   /* ---------- Top tabs (desktop) ---------- */
   .top-nav{display:none; gap:2px; margin-top:22px; border-bottom:2px solid var(--card-line);}
@@ -313,7 +310,7 @@
   .bottom-nav .nav-btn{
     flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
     gap:2px; background:none; border:none; cursor:pointer;
-    padding:9px 2px 7px; color:var(--ink-soft); font-size:10.5px;
+    padding:9px 2px 7px; color:var(--ink-soft); font-size:11.5px;
     font-family:'Noto Sans TC',sans-serif; font-weight:500;
     min-height:var(--bottomnav-h);
   }
@@ -336,11 +333,11 @@
   /* 手機上五顆子分頁平分一行（標籤縮短：成員、備份），全部都看得到，不用左右滑 */
   @media (max-width:520px){
     .settings-subnav{display:grid; grid-template-columns:repeat(5, minmax(0,1fr)); gap:4px;}
-    .settings-subnav .subtab-btn{flex-direction:column; justify-content:center; gap:3px; padding:7px 2px; border-radius:12px; font-size:12px; min-width:0;}
+    .settings-subnav .subtab-btn{flex-direction:column; justify-content:center; gap:3px; padding:7px 2px; border-radius:var(--r-lg); font-size:12px; min-width:0;}
     .settings-subnav .lbl-long{display:none;}
   }
   .subtab-btn{
-    font-family:'Noto Sans TC',sans-serif; font-weight:700; font-size:12.5px;
+    font-family:'Noto Sans TC',sans-serif; font-weight:700; font-size:13px;
     background:var(--card); border:1px solid var(--card-line); border-radius:20px;
     padding:8px 14px; cursor:pointer; color:var(--ink-soft);
     display:inline-flex; align-items:center; gap:6px;
@@ -356,18 +353,18 @@
     font-family:'Noto Serif TC',serif; font-weight:700; font-size:14.5px;
     margin:20px 0 10px; display:flex; align-items:center; gap:8px;
   }
-  h3.section-subtitle .n{font-family:'IBM Plex Mono',monospace; color:var(--brass); font-size:12.5px;}
+  h3.section-subtitle .n{font-family:'IBM Plex Mono',monospace; color:var(--brass); font-size:13px;}
   h2.section-title .n{font-family:'IBM Plex Mono',monospace; color:var(--brass); font-size:13px;}
 
   .card{
     scroll-margin-top:76px; /* 捲到卡片時不要被固定的頁首蓋住 */
-    background:var(--card); border:1px solid var(--card-line); border-radius:12px;
+    background:var(--card); border:1px solid var(--card-line); border-radius:var(--r-lg);
     padding:16px 16px; box-shadow:var(--shadow); margin-bottom:14px;
   }
 
   /* ---------- Forms ---------- */
   .field{margin-bottom:12px;}
-  .field label{display:block; font-size:12.5px; color:var(--ink-soft); margin-bottom:5px; font-weight:500;}
+  .field label{display:block; font-size:13px; color:var(--ink-soft); margin-bottom:5px; font-weight:500;}
   /* 🆕 [成員膠囊重新設計] 欄位標題列：左邊問題文字、右邊「已選 N 人」計數
      與全選／清除快捷連結，兩端對齊。只用在有 chip-select 的欄位（誰代墊／
      誰分攤），沒有這個結構的一般欄位不受影響。 */
@@ -408,7 +405,7 @@
   .form-card-body{ margin-top:12px; }
   .form-card.collapsed .form-card-body{ display:none; }
   .form-card-badge{
-    display:none; font-family:'Noto Sans TC',sans-serif; font-size:11px; font-weight:700;
+    display:none; font-family:'Noto Sans TC',sans-serif; font-size:11.5px; font-weight:700;
     color:var(--on-brass); background:var(--brass-bg); padding:2px 8px; border-radius:20px;
   }
   .form-card.editing{ border-color:var(--brass-bg); box-shadow:inset 4px 0 0 var(--brass-bg), var(--shadow); }
@@ -417,7 +414,7 @@
   .row > .field{flex:1; min-width:130px;}
   input[type=text], input[type=number], input[type=password], input[type=date], select, textarea{
     width:100%; border:1px solid var(--card-line); background:var(--surface);
-    padding:11px 12px; border-radius:8px; font-size:15px;
+    padding:11px 12px; border-radius:var(--r-md); font-size:14.5px;
     font-family:'Noto Sans TC',sans-serif; color:var(--ink);
   }
   /* 🆕 [下拉選單深色模式] color-scheme 屬性（見 :root 區塊）在部分瀏覽器
@@ -430,7 +427,7 @@
   select option{ background-color:var(--card); color:var(--ink); }
   input:focus, select:focus, textarea:focus{border-color:var(--brass);}
   input:focus-visible, select:focus-visible, textarea:focus-visible{outline:2px solid var(--brass); outline-offset:1px;}
-  textarea{font-family:'IBM Plex Mono',monospace; font-size:12.5px; resize:vertical;}
+  textarea{font-family:'IBM Plex Mono',monospace; font-size:13px; resize:vertical;}
   /* iPhone Safari 在輸入框字級小於 16px 時，點進去會自動放大整個頁面；觸控裝置一律 16px 避免放大 */
   @media (hover:none) and (pointer:coarse){
     input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]), select, textarea,
@@ -452,8 +449,8 @@
      danger = 破壞性操作（刪除）
   */
   .btn{
-    font-family:'Noto Sans TC',sans-serif; font-weight:700; font-size:14px;
-    border:none; border-radius:9px; padding:11px 18px; cursor:pointer;
+    font-family:'Noto Sans TC',sans-serif; font-weight:700; font-size:14.5px;
+    border:none; border-radius:var(--r-md); padding:11px 18px; cursor:pointer;
     transition:transform .1s, background .15s, opacity .15s; min-height:44px;
     display:inline-flex; align-items:center; justify-content:center; gap:7px;
     white-space:nowrap;
@@ -468,9 +465,9 @@
   .btn-ghost:hover{border-color:var(--ink-soft); color:var(--ink);}
   .btn-danger{background:transparent; color:var(--debt); border:1px solid var(--debt-bg);}
   .btn-danger:hover{background:var(--debt-bg);}
-  .btn-sm{padding:7px 12px; font-size:12.5px; min-height:34px; border-radius:7px;}
+  .btn-sm{padding:7px 12px; font-size:13px; min-height:34px; border-radius:var(--r-sm);}
   .btn-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:6px;}
-  .check-row{display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14px; color:var(--ink); user-select:none;}
+  .check-row{display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14.5px; color:var(--ink); user-select:none;}
   .check-row input[type=checkbox]{width:18px; height:18px; flex-shrink:0; margin:0; accent-color:var(--brass);}
   .btn-block{width:100%;}
 
@@ -508,7 +505,7 @@
     position:relative;
     display:grid; grid-template-columns:minmax(0,1fr) 96px; align-items:center;
     min-height:46px; padding-right:7px;
-    border:1.5px solid var(--card-line); border-radius:10px; background:var(--surface);
+    border:1.5px solid var(--card-line); border-radius:var(--r-md); background:var(--surface);
     transition:border-color .15s, background .15s;
   }
   .chip:hover{border-color:var(--brass-soft);}
@@ -530,7 +527,7 @@
     position:absolute; top:-6px; right:-6px;
     width:16px; height:16px; border-radius:50%;
     background:var(--brass-bg); color:var(--on-brass);
-    font-size:9px; line-height:16px; text-align:center;
+    font-size:11px; line-height:16px; text-align:center;
     box-shadow:var(--shadow-sm);
     pointer-events:none;
   }
@@ -542,7 +539,7 @@
   /* 原生 checkbox 視覺隱藏但保留互動（鍵盤/讀屏），改由 .chip-box 呈現勾選狀態 */
   .chip-checkbox{position:absolute; opacity:0; width:1px; height:1px; margin:0; pointer-events:none;}
   .chip-box{
-    width:18px; height:18px; flex-shrink:0; position:relative; border-radius:5px;
+    width:18px; height:18px; flex-shrink:0; position:relative; border-radius:var(--r-sm);
     border:1.5px solid var(--ink-soft); background:var(--surface);
     transition:background .15s, border-color .15s, box-shadow .15s;
   }
@@ -555,14 +552,14 @@
   .chip-checkbox:checked ~ .chip-box::after{transform:rotate(45deg) scale(1);}
   .chip-checkbox:focus-visible ~ .chip-box{box-shadow:var(--focus-ring);}
   .chip-label{
-    flex:1; min-width:0; font-size:13.5px; line-height:1.3;
+    flex:1; min-width:0; font-size:13px; line-height:1.3;
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
   /* 金額欄位：跟全站 input 一致的實線框＋圓角；未勾選時變成「幽靈槽位」
      （虛線、淡化、disabled），寬度全程不變，不會跳動、左右永遠對齊。 */
   .chip .amt{
     width:100%; height:32px; margin:0;
-    border:1px solid var(--card-line); border-radius:7px; background:var(--card);
+    border:1px solid var(--card-line); border-radius:var(--r-sm); background:var(--card);
     font-family:'IBM Plex Mono',monospace; font-size:16px; /* ≥16px 避免 iOS 聚焦時自動縮放頁面 */
     text-align:right; padding:0 8px; color:var(--ink);
     transition:opacity .15s, border-color .15s, background .15s;
@@ -576,7 +573,7 @@
   .chip .amt[type=number]{-moz-appearance:textfield; appearance:textfield;}
   @media (min-width:860px){
     .chip{min-height:44px;}
-    .chip .amt{font-size:13.5px; height:30px;}
+    .chip .amt{font-size:13px; height:30px;}
   }
 
   /* ---------- 帳單照片辨識 ---------- */
@@ -586,15 +583,15 @@
      其他地方仍引用，不影響行為。 */
   .receipt-upload{
     display: block; /* 加入這行修正破圖問題 */
-    border:2px dashed var(--card-line); border-radius:12px; padding:22px 16px;
+    border:2px dashed var(--card-line); border-radius:var(--r-lg); padding:22px 16px;
     text-align:center; cursor:pointer; background:var(--surface);
   }
   .receipt-upload:hover{border-color:var(--brass-soft);}
-  .receipt-upload .ic{font-size:28px; margin-bottom:6px;}
+  .receipt-upload .ic{font-size:26px; margin-bottom:6px;}
   .receipt-upload input[type=file]{display:none;}
   .receipt-scan-trigger{
     display:block; width:100%; cursor:pointer; text-align:left;
-    border:1.5px dashed var(--brass-soft); border-radius:12px;
+    border:1.5px dashed var(--brass-soft); border-radius:var(--r-lg);
     background:var(--surface); padding:14px 16px;
     transition:border-color .15s, background .15s, transform .1s;
   }
@@ -606,20 +603,20 @@
     display:flex; align-items:center; gap:14px;
   }
   .receipt-scan-ic{
-    width:46px; height:46px; flex-shrink:0; border-radius:11px;
+    width:46px; height:46px; flex-shrink:0; border-radius:var(--r-md);
     display:flex; align-items:center; justify-content:center;
-    font-size:22px; background:var(--brass-tint); color:var(--brass);
+    font-size:20px; background:var(--brass-tint); color:var(--brass);
   }
   .receipt-scan-ic .ic{width:24px; height:24px;}
   .receipt-scan-txt{flex:1; min-width:0;}
   .receipt-scan-txt .title{
-    display:block; font-weight:700; font-size:15px; color:var(--ink);
+    display:block; font-weight:700; font-size:14.5px; color:var(--ink);
   }
   .receipt-scan-txt .sub{
     display:block; font-size:12px; color:var(--ink-soft); margin-top:3px; line-height:1.55;
   }
   .receipt-scan-arrow{
-    font-size:19px; color:var(--brass); flex-shrink:0;
+    font-size:20px; color:var(--brass); flex-shrink:0;
     font-family:'IBM Plex Mono',monospace;
   }
   /* 🆕 拖曳帳單照片到「支出記帳」分頁時，短暫蓋在整個畫面上的提示遮罩。
@@ -634,28 +631,28 @@
   .receipt-drop-overlay-inner{
     font-family:'Noto Serif TC',serif; font-weight:700; font-size:20px;
     color:var(--on-brass); background:color-mix(in srgb, var(--brass-bg) 92%, transparent);
-    padding:20px 32px; border-radius:16px; border:2px dashed color-mix(in srgb, var(--on-brass) 60%, transparent);
+    padding:20px 32px; border-radius:var(--r-lg); border:2px dashed color-mix(in srgb, var(--on-brass) 60%, transparent);
     text-align:center;
   }
   .receipt-preview-row{display:flex; gap:12px; align-items:flex-start; margin-bottom:12px;}
   .receipt-thumb{
-    width:88px; height:88px; object-fit:cover; border-radius:10px;
+    width:88px; height:88px; object-fit:cover; border-radius:var(--r-md);
     border:1px solid var(--card-line); flex-shrink:0;
   }
 
   /* 🆕 [多人協作] 「有人正在辨識帳單中」提示列 */
   .receipt-session-banner{
     display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
-    font-size:13.5px;
+    font-size:13px;
   }
 
   .receipt-item-row{
-    border:1.5px solid var(--card-line); border-radius:10px; padding:12px; margin-bottom:10px; background:var(--surface);
+    border:1.5px solid var(--card-line); border-radius:var(--r-md); padding:12px; margin-bottom:10px; background:var(--surface);
   }
   .receipt-item-row.fee{background:var(--fee-bg); border-color:var(--brass-soft);}
   .receipt-item-row.unclaimed{border-color:var(--debt);}
   .receipt-item-head{display:flex; align-items:center; gap:8px; margin-bottom:8px; flex-wrap:wrap;}
-  .receipt-item-head input[type=text]{flex:1; min-width:100px; font-weight:700; font-size:14px; border:none; background:transparent; padding:2px;}
+  .receipt-item-head input[type=text]{flex:1; min-width:100px; font-weight:700; font-size:14.5px; border:none; background:transparent; padding:2px;}
   .receipt-item-head input[type=text]:focus-visible{outline:2px solid var(--brass-soft); border-radius:4px;}
   .receipt-item-head .amt-input{width:90px; flex-shrink:0;}
   .receipt-item-head .btn{flex-shrink:0;}
@@ -667,7 +664,7 @@
     .receipt-item-head .btn-sm{padding:7px 10px;}
   }
   .receipt-type-badge{
-    font-family:'IBM Plex Mono',monospace; font-size:10.5px; padding:3px 7px; border-radius:5px;
+    font-family:'IBM Plex Mono',monospace; font-size:11.5px; padding:3px 7px; border-radius:var(--r-sm);
     background:var(--chip-bg); color:var(--ink-soft); flex-shrink:0;
     border:none; cursor:pointer;
   }
@@ -676,7 +673,7 @@
   .receipt-type-badge.fee:hover{background:var(--fee-badge-bg-hover);}
   .receipt-claim-chips{display:flex; flex-wrap:wrap; gap:6px;}
   .claim-chip{
-    font-size:12.5px; padding:6px 11px; border-radius:10px; cursor:pointer;
+    font-size:13px; padding:6px 11px; border-radius:var(--r-md); cursor:pointer;
     border:1.5px solid var(--card-line); background:var(--surface); color:var(--ink-soft);
     transition:border-color .15s, background .15s, color .15s;
   }
@@ -693,11 +690,11 @@
   .claim-chip.shared{border-color:var(--credit); }
   .claim-chip.shared.on{background:var(--credit-bg); border-color:var(--credit); color:var(--credit);}
   .receipt-summary{
-    background:var(--card); border:1px dashed var(--card-line); border-radius:10px;
+    background:var(--card); border:1px dashed var(--card-line); border-radius:var(--r-md);
     padding:12px 14px; margin:14px 0; font-size:13px;
   }
   .receipt-summary-row{display:flex; justify-content:space-between; padding:4px 0; font-family:'IBM Plex Mono',monospace;}
-  .receipt-summary-row.total{border-top:1px dashed var(--card-line); margin-top:4px; padding-top:8px; font-weight:700; font-size:14px;}
+  .receipt-summary-row.total{border-top:1px dashed var(--card-line); margin-top:4px; padding-top:8px; font-weight:700; font-size:14.5px;}
 
   /* ---------- Toast system (統一取代原本分散的 msg 區塊) ---------- */
   #toastStack{
@@ -710,9 +707,9 @@
     pointer-events:auto;
     max-width:480px; width:100%;
     background:var(--emphasis); color:var(--on-emphasis);
-    border-radius:10px; padding:12px 14px;
+    border-radius:var(--r-md); padding:12px 14px;
     display:flex; align-items:center; gap:10px;
-    font-size:13.5px; line-height:1.5;
+    font-size:13px; line-height:1.5;
     box-shadow:0 8px 24px rgba(0,0,0,0.25);
     animation:toast-in .18s ease;
   }
@@ -723,13 +720,13 @@
   .toast.error{background:var(--debt-solid); color:#fff;}
   .toast-close{
     display:inline-grid; place-items:center; flex-shrink:0; width:30px; height:30px; margin:-6px -8px -6px 0;
-    background:none; border:none; color:inherit; border-radius:7px; cursor:pointer;
+    background:none; border:none; color:inherit; border-radius:var(--r-sm); cursor:pointer;
   }
   .toast-close:hover{background:color-mix(in srgb, currentColor 18%, transparent);}
   .toast-close .ic{width:16px; height:16px;}
   .toast .undo-btn{
     background:color-mix(in srgb, currentColor 12%, transparent); border:none; color:inherit;
-    font-weight:700; font-size:12.5px; padding:6px 11px; border-radius:7px;
+    font-weight:700; font-size:13px; padding:6px 11px; border-radius:var(--r-sm);
     cursor:pointer; flex-shrink:0;
   }
   .toast .undo-btn:hover{background:color-mix(in srgb, currentColor 22%, transparent);}
@@ -761,29 +758,29 @@
   @keyframes overlay-in{from{opacity:0;} to{opacity:1;}}
   .modal-box{
     background:var(--card); width:100%; max-width:460px;
-    border-radius:16px 16px 0 0; padding:22px 20px calc(20px + var(--safe-b));
+    border-radius:var(--r-lg) var(--r-lg) 0 0; padding:22px 20px calc(20px + var(--safe-b));
     box-shadow:0 -8px 30px rgba(0,0,0,0.3);
     animation:modal-in .2s ease;
     max-height:82dvh; overflow-y:auto;
   }
   @keyframes modal-in{from{transform:translateY(24px); opacity:0;} to{transform:none; opacity:1;}}
   .modal-title{font-family:'Noto Serif TC',serif; font-weight:700; font-size:17px; margin:0 0 10px;}
-  .modal-body{font-size:14px; color:var(--ink-soft); line-height:1.65; margin-bottom:18px; white-space:pre-line;}
+  .modal-body{font-size:14.5px; color:var(--ink-soft); line-height:1.65; margin-bottom:18px; white-space:pre-line;}
   .modal-actions{display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;}
   .modal-list{display:flex; flex-direction:column; gap:8px; margin-bottom:6px;}
   .modal-list-item{
     text-align:left; width:100%; background:var(--surface); border:1.5px solid var(--card-line);
-    border-radius:10px; padding:12px 14px; cursor:pointer; font-family:inherit; font-size:14px; color:var(--ink);
+    border-radius:var(--r-md); padding:12px 14px; cursor:pointer; font-family:inherit; font-size:14.5px; color:var(--ink);
   }
   .modal-list-item:hover{border-color:var(--brass-bg); background:var(--brass-tint);}
   .modal-list-item .mli-title{font-weight:700;}
   .modal-list-item .mli-sub{font-size:12px; color:var(--ink-soft); margin-top:3px; font-family:'IBM Plex Mono',monospace;}
   @media (min-width:640px){
     .modal-overlay{align-items:center;}
-    .modal-box{border-radius:16px;}
+    .modal-box{border-radius:var(--r-lg);}
   }
 
-  .msg{font-size:13px; padding:10px 12px; border-radius:8px; margin:10px 0; display:none; line-height:1.5;}
+  .msg{font-size:13px; padding:10px 12px; border-radius:var(--r-md); margin:10px 0; display:none; line-height:1.5;}
   .msg.show{display:block;}
   .msg.err{background:var(--debt-bg); color:var(--debt);}
   .msg.ok{background:var(--credit-bg); color:var(--credit);}
@@ -796,14 +793,14 @@
   .ledger-row:last-child{border-bottom:none;}
   .ledger-main{flex:1; min-width:0;}
   .ledger-title{font-weight:700; font-size:14.5px; overflow-wrap:anywhere;}
-  .ledger-sub{font-size:12.5px; color:var(--ink-soft); margin-top:3px; line-height:1.65;}
-  .ledger-amt{font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:15px; white-space:nowrap;}
+  .ledger-sub{font-size:13px; color:var(--ink-soft); margin-top:3px; line-height:1.65;}
+  .ledger-amt{font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:14.5px; white-space:nowrap;}
   /* 🆕 [時間資訊] 支出／轉帳明細列的時間戳記：比一般說明文字更淡一階，
      用等寬字體呼應介面其他數字/代碼類文字（金額、幣別代碼）的視覺語言，
      讓它讀起來像「後設資訊」而不是內容本身。 */
   .ledger-time{
     font-family:'IBM Plex Mono',monospace;
-    font-size:11px;
+    font-size:11.5px;
     color:var(--ink-soft);
     opacity:.85;
   }
@@ -824,7 +821,7 @@
 
   /* --- 搜尋／篩選工具列 --- */
   .ledger-toolbar{
-    background:var(--chip-bg); border-radius:10px;
+    background:var(--chip-bg); border-radius:var(--r-md);
     padding:10px 12px; margin-bottom:12px;
   }
   .ledger-search-wrap{ position:relative; }
@@ -841,7 +838,7 @@
     opacity:.6; pointer-events:none;
   }
   input.ledger-search{
-    width:100%; padding:9px 34px 9px 30px; font-size:13.5px;
+    width:100%; padding:9px 34px 9px 30px; font-size:13px;
     background:var(--surface);
   }
   .ledger-search-clear{
@@ -864,7 +861,7 @@
   /* 目前登入者在名字後面的「你」標記 */
   .you-tag{
     display:inline-block; margin-left:4px; padding:0 5px; border-radius:4px;
-    font-size:10.5px; font-weight:700; line-height:16px; vertical-align:1px;
+    font-size:11.5px; font-weight:700; line-height:16px; vertical-align:1px;
     background:var(--brass-tint); color:var(--brass);
   }
   /* 應收／應付的文字顏色（明細列「你應收 X」、展開清單的每位成員） */
@@ -882,7 +879,7 @@
   .ledger-day-date{ font-size:13px; font-weight:700; letter-spacing:.03em; }
   .ledger-day-sum{ font:12px 'IBM Plex Mono',monospace; color:var(--ink-soft); white-space:nowrap; }
   .ledger-day-box{
-    background:var(--surface); border:1px solid var(--card-line); border-radius:12px; overflow:hidden;
+    background:var(--surface); border:1px solid var(--card-line); border-radius:var(--r-lg); overflow:hidden;
   }
 
   /* --- 條目列：收合時固定兩行、左右對齊——「項目｜金額」與「誰付的（轉帳是備註）｜你應收或應付」。
@@ -899,14 +896,14 @@
     background:none; border:none; width:100%; text-align:left; font:inherit; color:inherit;
   }
   .ledger-entry-title{
-    font-weight:700; font-size:15px; line-height:1.4;
+    font-weight:700; font-size:14.5px; line-height:1.4;
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
   .ledger-entry-row:hover .ledger-entry-title{ color:var(--brass); }
   .ledger-entry-arrow{ color:var(--ink-soft); font-weight:400; margin:0 6px; }
   .ledger-entry-amt{ text-align:right; white-space:nowrap; font:600 15px/1.4 'IBM Plex Mono',monospace; }
-  .ledger-entry-amt .cur{ font-size:10.5px; color:var(--ink-soft); font-weight:500; margin-left:4px; }
-  .ledger-entry-sub{ font-size:12.5px; color:var(--ink-soft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ledger-entry-amt .cur{ font-size:12px; opacity:.9; color:var(--ink-soft); font-weight:500; margin-left:4px; }
+  .ledger-entry-sub{ font-size:13px; color:var(--ink-soft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .ledger-entry-sub .muted{ font-style:italic; opacity:.75; }
   /* 轉帳列：付款人與收款人各自截斷，箭頭與「你」標記不縮 */
   .ledger-transfer{ display:flex; align-items:baseline; min-width:0; }
@@ -919,19 +916,19 @@
   /* 展開後改回一般文字排列，名字很長時箭頭跟著文字換行，不會單獨掉到一行 */
   .ledger-entry.open .ledger-transfer{ display:block; }
   .ledger-entry.open .ledger-party{ display:inline; }
-  .ledger-entry-me{ text-align:right; font-size:12.5px; font-weight:700; white-space:nowrap; }
+  .ledger-entry-me{ text-align:right; font-size:13px; font-weight:700; white-space:nowrap; }
   .ledger-entry-me .num{ font-family:'IBM Plex Mono',monospace; }
   .ledger-entry-detail{ padding:0 14px 14px; }
-  .ledger-entry-facts{ font-size:12.5px; color:var(--ink-soft); margin-bottom:10px; }
+  .ledger-entry-facts{ font-size:13px; color:var(--ink-soft); margin-bottom:10px; }
   .ledger-entry-facts .sep{ opacity:.5; margin:0 4px; }
   .ledger-entry-detail .ledger-actions{ margin-top:12px; }
 
   /* 展開明細：一個小框，上方一句「怎麼分」，底下每位成員一行（名字｜這筆應收／應付），見 render.js 的 renderExpenseSplit() */
-  .split-box{ max-width:480px; background:var(--card); border:1px solid var(--card-line); border-radius:10px; }
-  .split-caption{ padding:9px 12px; font-size:12.5px; color:var(--ink-soft); border-bottom:1px solid var(--card-line); }
+  .split-box{ max-width:480px; background:var(--card); border:1px solid var(--card-line); border-radius:var(--r-md); }
+  .split-caption{ padding:9px 12px; font-size:13px; color:var(--ink-soft); border-bottom:1px solid var(--card-line); }
   .split-caption b{ font-family:'IBM Plex Mono',monospace; font-weight:600; color:var(--ink); }
   .split-list{ list-style:none; margin:0; padding:0; }
-  .split-list li{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; padding:8px 12px; font-size:13.5px; }
+  .split-list li{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; padding:8px 12px; font-size:13px; }
   .split-list li + li{ border-top:1px dashed var(--card-line); }
   .split-name{ min-width:0; overflow-wrap:anywhere; }
   .split-name small{ display:block; margin-top:1px; font:11.5px 'IBM Plex Mono',monospace; color:var(--ink-soft); }
@@ -948,19 +945,27 @@
   .empty-state{
     text-align:center; padding:30px 16px; color:var(--ink-soft);
   }
-  .empty-state .ic{font-size:30px; margin-bottom:8px; opacity:.7;}
-  .empty-state p{font-size:13.5px; margin:0 0 12px;}
+  .empty-state > .ic{font-size:26px; line-height:1; margin-bottom:8px; opacity:.5;}
+  .empty-state p{font-size:13px; margin:0 0 12px;}
 
   /* ---------- Member tags ---------- */
   /* 用等寬欄位的 grid：每張卡片寬度一致，標籤長短（例如「🔗 你」）不會把同列的卡片推歪 */
   .member-list{display:grid; grid-template-columns:repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap:10px;}
   .member-tag{
     display:flex; align-items:center; gap:8px; min-width:0;
-    background:var(--surface); border:1px solid var(--card-line); border-radius:10px;
+    background:var(--surface); border:1px solid var(--card-line); border-radius:var(--r-md);
     padding:8px 10px 8px 12px;
   }
-  .member-tag .dot{width:9px; height:9px; border-radius:50%; background:var(--brass-soft); flex-shrink:0;}
-  .member-tag input{border:none; background:transparent; font-size:14px; flex:1 1 auto; width:auto; min-width:0; padding:2px;}
+  /* 成員字首頭像（helpers.js memberAvatarHtml）：同一個人在每個地方同一個顏色 */
+  .mav{
+    --mav-h:212; flex:none; display:inline-grid; place-items:center; width:24px; height:24px; border-radius:50%;
+    background:hsl(var(--mav-h) 34% 88%); color:hsl(var(--mav-h) 40% 26%);
+    font:700 12px/1 'Noto Sans TC',sans-serif; margin-right:8px; vertical-align:middle;
+  }
+  :root[data-theme="dark"] .mav{ background:hsl(var(--mav-h) 22% 30%); color:hsl(var(--mav-h) 45% 88%); }
+  .member-tag .mav{ margin-right:2px; }
+  .settle-who .mav{ width:18px; height:18px; font-size:11px; margin-right:5px; align-self:center; }
+  .member-tag input{border:none; background:transparent; font-size:14.5px; flex:1 1 auto; width:auto; min-width:0; padding:2px;}
   .member-tag .member-actions{display:flex; align-items:center; gap:8px; flex-shrink:0;}
   .member-btn .btn-ic{display:none; flex-shrink:0;}
   /* 較窄的手機（文字按鈕會把名字擠掉）：按鈕只顯示圖示，間距也收緊 */
@@ -981,7 +986,7 @@
 
   /* ---------- Overview / receipt ---------- */
   .receipt{
-    background:var(--card); border:1px solid var(--card-line); border-radius:12px;
+    background:var(--card); border:1px solid var(--card-line); border-radius:var(--r-lg);
     box-shadow:var(--shadow); position:relative; overflow:hidden;
   }
   .receipt-head{
@@ -989,25 +994,42 @@
     display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;
   }
   .receipt-head .t1{font-family:'Noto Serif TC',serif; font-weight:700; font-size:16px;}
-  .receipt-head .t2{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-soft);}
+  .receipt-head .t2{font-size:13px; color:var(--ink-soft);}
   /* 🆕 [總覽簡化] 「建議轉帳／彼此欠款」切換：標題列右側的分段按鈕，
      取代原本「標題本身是 <select>」的做法——看起來像純文字，很難發現能切換。 */
   .seg-tabs{
     display:inline-flex; flex-shrink:0; padding:3px; gap:2px;
-    background:var(--chip-bg); border-radius:9px;
+    background:var(--chip-bg); border-radius:var(--r-md);
   }
   .seg-tab{
-    font-family:'Noto Sans TC',sans-serif; font-size:12.5px; font-weight:700;
-    background:none; border:none; border-radius:7px; padding:6px 11px;
+    font-family:'Noto Sans TC',sans-serif; font-size:13px; font-weight:700;
+    background:none; border:none; border-radius:var(--r-sm); padding:6px 11px;
     color:var(--ink-soft); cursor:pointer; white-space:nowrap;
   }
   .seg-tab:hover{ color:var(--ink); }
   .seg-tab[aria-selected="true"]{ background:var(--card); color:var(--ink); box-shadow:var(--shadow-sm); }
 
-  /* 你的狀態卡片：標題直接寫出「你要付／你應收」的金額 */
-  .my-status-card{ border-color:var(--brass-soft); }
-  .my-status-headline{ font-size:16px; margin-top:4px; }
-  .my-status-headline b{ font-family:'IBM Plex Mono',monospace; font-size:24px; margin:0 2px; }
+  /* 你的狀態卡片（分帳的「一處大膽」）：做成一張收據——底邊鋸齒、右上角蓋狀態章，
+     結清時吉祥物出來。標題直接寫出「你要付／你可以拿回」的金額 */
+  .my-status-card{
+    --zz:8px;
+    border-color:var(--brass-soft); border-bottom:0; border-radius:var(--r-lg) var(--r-lg) 0 0; box-shadow:none;
+    padding-bottom:var(--zz);
+    -webkit-mask:linear-gradient(#000 0 0) top/100% calc(100% - var(--zz)) no-repeat, conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) bottom/calc(var(--zz) * 2) var(--zz) repeat-x;
+    mask:linear-gradient(#000 0 0) top/100% calc(100% - var(--zz)) no-repeat, conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) bottom/calc(var(--zz) * 2) var(--zz) repeat-x;
+  }
+  .my-status-head{ flex-wrap:nowrap; align-items:center; gap:12px; border-bottom-style:dashed; }
+  .my-status-main{ flex:1; min-width:0; }
+  .my-status-who{ display:flex; align-items:center; font-size:13px; color:var(--ink-soft); }
+  .my-status-who .mav{ width:20px; height:20px; font-size:11.5px; margin-right:6px; }
+  .my-status-stamp{
+    align-self:flex-start; font-size:13px; padding:4px 9px; letter-spacing:.12em;
+    transform:rotate(-7deg); opacity:.85;
+  }
+  .my-status-stamp.neg{ color:var(--debt); border-color:var(--debt); }
+  .my-status-stamp.pos, .my-status-stamp.zero{ color:var(--credit); border-color:var(--credit); }
+  .my-status-headline{ font-size:17px; margin-top:4px; }
+  .my-status-headline b{ font-family:'IBM Plex Mono',monospace; font-size:26px; margin:0 2px; }
   .my-status-headline.neg{ color:var(--debt); }
   .my-status-headline.pos{ color:var(--credit); }
   .balance-row{
@@ -1017,14 +1039,14 @@
   .balance-row:last-of-type{border-bottom:none;}
   .balance-name{font-weight:700; font-size:14.5px;}
   .balance-tagline{font-size:11.5px; color:var(--ink-soft); margin-top:2px;}
-  .balance-amt{font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:15.5px; padding:4px 10px; border-radius:6px; white-space:nowrap;}
+  .balance-amt{font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:14.5px; padding:4px 10px; border-radius:var(--r-sm); white-space:nowrap;}
   .balance-amt.pos{background:var(--credit-bg); color:var(--credit);}
   .balance-amt.neg{background:var(--debt-bg); color:var(--debt);}
   .balance-amt.zero{background:var(--zero-bg); color:var(--ink-soft);}
 
   .stamp{
-    font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:600;
-    color:var(--brass); border:2px solid var(--brass); border-radius:6px;
+    font-family:'IBM Plex Mono',monospace; font-size:11.5px; font-weight:600;
+    color:var(--brass); border:2px solid var(--brass); border-radius:var(--r-sm);
     padding:4px 8px; letter-spacing:.06em; opacity:.9; white-space:nowrap; flex-shrink:0;
   }
   .stamp.settled{color:var(--credit); border-color:var(--credit);}
@@ -1032,13 +1054,14 @@
   .settle-list{padding:12px 18px 16px;}
   /* 結算列（分組清單樣式）：放在 .settle-box 圓角區塊裡，每列「誰付給誰｜金額｜標記已付」，
      「標記已付」是右側的文字按鈕。窄螢幕上名字獨佔第一行，金額和按鈕排在第二行左右兩端。 */
-  .settle-box{ background:var(--surface); border:1px solid var(--card-line); border-radius:12px; overflow:hidden; }
-  .settle-item{ display:flex; align-items:center; gap:4px 14px; padding:12px 14px; font-size:14px; }
+  .settle-box{ background:var(--surface); border:1px solid var(--card-line); border-radius:var(--r-lg); overflow:hidden; }
+  .settle-item{ display:flex; align-items:center; gap:4px 14px; padding:12px 14px; font-size:14.5px; }
   .settle-item + .settle-item{ border-top:1px solid var(--card-line); margin-left:14px; padding-left:0; }
   /* 付款人、收款人各自截斷名字；動詞（付給、應付你）與「你」標記不縮，一定看得到要付給誰 */
   .settle-who{ flex:1; min-width:0; display:flex; align-items:baseline; gap:0 6px; white-space:nowrap; font-weight:600; }
   .settle-party{ display:flex; align-items:baseline; min-width:0; flex:0 1 auto; }
-  .settle-name{ min-width:0; overflow:hidden; text-overflow:ellipsis; }
+  /* 名字至少留兩個字的寬度：長名字被截時，短名字（例如「小明」）不會跟著被擠成「小…」 */
+  .settle-name{ min-width:min(2.2em, 100%); overflow:hidden; text-overflow:ellipsis; }
   .settle-who .settle-verb, .settle-who .you-tag{ flex-shrink:0; }
   .settle-who .you-tag{ margin:0 4px 0 0; }
   .settle-verb{ color:var(--ink-soft); font-weight:400; margin:0 6px; }
@@ -1058,7 +1081,7 @@
     .settle-who{ flex-basis:100%; flex-direction:column; align-items:stretch; gap:2px; }
     .settle-amt{ margin-right:auto; }
   }
-  .settle-amt-cur{font-size:11px; font-weight:500; color:var(--ink-soft); margin-left:3px;}
+  .settle-amt-cur{font-size:12px; font-weight:500; color:var(--ink-soft); margin-left:3px;}
 
   /* 🆕「建議轉帳」「彼此累計欠款總額」的幣別換算列：小型下拉選單＋匯率提示文字
      並排在同一行，取代原本另外佔一整個欄位的大型 select。 */
@@ -1068,22 +1091,22 @@
   }
   .convert-label{ font-size:12px; color:var(--ink-soft); white-space:nowrap; flex-shrink:0; }
   .convert-select{
-    width:auto; max-width:120px; padding:5px 8px; font-size:12.5px;
-    border-radius:6px; flex-shrink:0;
+    width:auto; max-width:120px; padding:5px 8px; font-size:13px;
+    border-radius:var(--r-sm); flex-shrink:0;
   }
   .convert-note{ font-size:11.5px; color:var(--ink-soft); line-height:1.5; }
 
   .kv-summary{display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:14px;}
-  .kv-card{background:var(--card); border:1px solid var(--card-line); border-radius:10px; padding:12px 14px;}
-  .kv-card .k{font-size:10.5px; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace;}
-  .kv-card .v{font-family:'Noto Serif TC',serif; font-weight:700; font-size:19px; margin-top:4px; word-break:break-all;}
+  .kv-card{background:var(--card); border:1px solid var(--card-line); border-radius:var(--r-md); padding:12px 14px;}
+  .kv-card .k{font-size:13px; color:var(--ink-soft);}
+  .kv-card .v{font-family:'Noto Serif TC',serif; font-weight:700; font-size:20px; margin-top:4px; word-break:break-all;}
 
   .rate-table{width:100%; border-collapse:collapse;}
   .rate-table th{
     text-align:left; font-size:11.5px; color:var(--ink-soft); font-weight:600;
     padding:6px 8px; border-bottom:1px solid var(--card-line); font-family:'IBM Plex Mono',monospace;
   }
-  .rate-table td{padding:9px 8px; border-bottom:1px dashed var(--card-line); font-size:14px;}
+  .rate-table td{padding:9px 8px; border-bottom:1px dashed var(--card-line); font-size:14.5px;}
   .rate-table input{width:100px;}
   .rate-cur-name{font-size:12px; color:var(--ink-soft);}
   /* 幣別搜尋選單（js/currencyPicker.js） */
@@ -1092,14 +1115,14 @@
   .cur-list{
     position:absolute; z-index:30; left:0; right:0; top:calc(100% + 4px);
     max-height:260px; overflow-y:auto; margin:0; padding:4px; list-style:none;
-    background:var(--card); border:1px solid var(--card-line); border-radius:8px;
+    background:var(--card); border:1px solid var(--card-line); border-radius:var(--r-md);
     box-shadow:var(--shadow);
   }
-  .cur-opt{display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:6px; cursor:pointer; font-size:14px; color:var(--ink);}
+  .cur-opt{display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:var(--r-sm); cursor:pointer; font-size:14.5px; color:var(--ink);}
   .cur-opt.active, .cur-opt:hover{background:var(--brass-tint);}
   .cur-opt-name{flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
-  .cur-opt-code{font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:var(--ink-soft);}
-  .cur-opt-has{font-size:11px; color:var(--ink-soft); border:1px solid var(--card-line); border-radius:999px; padding:1px 7px;}
+  .cur-opt-code{font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--ink-soft);}
+  .cur-opt-has{font-size:11.5px; color:var(--ink-soft); border:1px solid var(--card-line); border-radius:999px; padding:1px 7px;}
   .cur-opt-empty{padding:10px; font-size:13px; color:var(--ink-soft);}
   .cur-hint{margin:6px 0 0; min-height:1em;}
   .cur-hint:empty{display:none;}
@@ -1116,7 +1139,7 @@
   }
   .bar-chart-legend{
     display:flex; gap:14px; flex-wrap:wrap; margin-bottom:14px;
-    font-size:11px; font-family:'IBM Plex Mono',monospace; color:var(--ink-soft);
+    font-size:11.5px; font-family:'IBM Plex Mono',monospace; color:var(--ink-soft);
   }
   .bar-chart-legend span{
     display:inline-flex; align-items:center; gap:5px;
@@ -1133,7 +1156,7 @@
   .bar-row{ display:contents; }
   #balanceBarChart > .empty-state{ grid-column:1 / -1; }
   .bar-name{
-    max-width:8em; font-size:12.5px; font-weight:700;
+    max-width:8em; font-size:13px; font-weight:700;
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     text-align:right; padding-right:10px; color:var(--ink);
   }
@@ -1174,7 +1197,7 @@
     padding:14px 16px 16px;
   }
   .member-detail-card{
-    background:var(--surface); border:1px solid var(--card-line); border-radius:10px;
+    background:var(--surface); border:1px solid var(--card-line); border-radius:var(--r-md);
     overflow:hidden;
   }
   .member-detail-head{
@@ -1190,7 +1213,7 @@
   }
   .member-detail-head:hover{ background:var(--surface-hover); }
   .member-detail-name{
-    font-weight:700; font-size:14px; display:flex; align-items:center; gap:8px;
+    font-weight:700; font-size:14.5px; display:flex; align-items:center; gap:8px;
     flex:1 1 auto; min-width:0;
   }
   /* 名字最多兩行，再長就省略；金額那一側不縮 */
@@ -1203,18 +1226,15 @@
     .member-detail-head{ flex-wrap:wrap; }
     .member-detail-right{ margin-left:auto; }
   }
-  .member-detail-name .status-dot{
-    width:8px; height:8px; border-radius:50%; flex-shrink:0;
-  }
   .member-detail-net{
-    font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:13.5px;
-    padding:4px 9px; border-radius:6px; white-space:nowrap; flex-shrink:0;
+    font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:13px;
+    padding:4px 9px; border-radius:var(--r-sm); white-space:nowrap; flex-shrink:0;
   }
   .member-detail-net.pos{ background:var(--credit-bg); color:var(--credit); }
   .member-detail-net.neg{ background:var(--debt-bg); color:var(--debt); }
   .member-detail-net.zero{ background:var(--chip-bg); color:var(--ink-soft); }
   .member-detail-chevron{
-    font-size:11px; color:var(--ink-soft); transition:transform .2s; flex-shrink:0;
+    font-size:11.5px; color:var(--ink-soft); transition:transform .2s; flex-shrink:0;
   }
   .member-detail-card.open .member-detail-chevron{ transform:rotate(180deg); }
   .member-detail-body{
@@ -1222,8 +1242,7 @@
   }
   .member-detail-card.open .member-detail-body{ display:block; }
   .detail-section-title{
-    font-size:10.5px; font-family:'IBM Plex Mono',monospace; color:var(--ink-soft);
-    letter-spacing:.06em; text-transform:uppercase;
+    font-size:13px; font-weight:700; font-family:'Noto Sans TC',sans-serif; color:var(--ink-soft);
     margin:12px 0 6px; padding-bottom:4px;
     border-bottom:1px dashed var(--card-line);
   }
@@ -1238,9 +1257,9 @@
   .detail-row-sub{ font-size:11.5px; color:var(--ink-soft); margin-top:2px; line-height:1.5; }
   .detail-row-amt{ flex-shrink:0; text-align:right; }
   .detail-row-amt .orig{ font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:13px; }
-  .detail-row-amt .base{ font-size:10.5px; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace; margin-top:2px; }
+  .detail-row-amt .base{ font-size:12px; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace; margin-top:2px; }
   .detail-tag{
-    display:inline-block; font-size:10px; font-family:'IBM Plex Mono',monospace;
+    display:inline-block; font-size:11px; font-family:'IBM Plex Mono',monospace;
     padding:1px 6px; border-radius:4px; margin-right:4px; vertical-align:middle;
   }
   .detail-tag.paid{ background:var(--credit-bg); color:var(--credit); }
@@ -1249,7 +1268,7 @@
   .detail-tag.transfer-out{ background:var(--credit-bg); color:var(--credit); }
   .detail-summary-row{
     display:flex; justify-content:space-between; align-items:center;
-    padding:9px 0 4px; font-size:12.5px;
+    padding:9px 0 4px; font-size:13px;
   }
   .detail-summary-row .label{ color:var(--ink-soft); }
   .detail-summary-row .val{ font-family:'IBM Plex Mono',monospace; font-weight:700; }
@@ -1258,7 +1277,7 @@
   .detail-summary-row .val.zero{ color:var(--ink-soft); }
   .detail-currency-group{ margin-top:8px; }
   .detail-currency-badge{
-    display:inline-block; font-family:'IBM Plex Mono',monospace; font-size:10px;
+    display:inline-block; font-family:'IBM Plex Mono',monospace; font-size:11px;
     background:var(--chip-bg); color:var(--ink-soft); padding:2px 7px; border-radius:4px;
     margin-bottom:6px;
   }
@@ -1273,7 +1292,7 @@
     .rate-table, .rate-table tbody, .rate-table tr, .rate-table td{display:block; width:100%;}
     .rate-table tr{border-bottom:1px dashed var(--card-line); padding:8px 0;}
     .rate-table td{border:none; padding:3px 0; display:flex; justify-content:space-between; align-items:center;}
-    .rate-table td::before{content:attr(data-label); font-size:11px; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace;}
+    .rate-table td::before{content:attr(data-label); font-size:11.5px; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace;}
     /* 幣別／匯率／刪除排成一行，不再拆成三列（標籤由幣別代碼本身說明） */
     .rate-table tr{display:flex; align-items:center; gap:10px;}
     .rate-table td{padding:0;}
@@ -1303,8 +1322,8 @@
     body{padding-bottom:60px;}
     :root{--gutter:20px;}
     .app-header{padding-top:16px; padding-bottom:16px;}
-    .header-row1 .brand{font-size:18px;}
-    #tripName{font-size:19px;}
+    .header-row1 .brand{font-size:17px;}
+    #tripName{font-size:20px;}
     .top-nav{display:flex;}
     .bottom-nav{display:none;}
     main.wrap{padding-top:20px;}
@@ -1373,16 +1392,16 @@
   .acct-menu{
     position:absolute; top:calc(100% + 6px); right:0; z-index:120; min-width:220px; max-width:min(300px, calc(100vw - 16px));
     display:flex; flex-direction:column; padding:6px;
-    background:var(--card); color:var(--ink); border:1px solid var(--card-line); border-radius:12px;
+    background:var(--card); color:var(--ink); border:1px solid var(--card-line); border-radius:var(--r-lg);
     box-shadow:0 12px 32px rgba(0,0,0,0.22);
   }
   .acct-menu[hidden]{display:none;}
   .acct-menu-info{display:grid; gap:2px; padding:8px 10px 10px; margin-bottom:4px; border-bottom:1px solid var(--card-line);}
   .acct-menu-info b{font-size:14.5px; overflow-wrap:anywhere;}
-  .acct-menu-info span{font-size:12.5px; color:var(--ink-soft);}
+  .acct-menu-info span{font-size:13px; color:var(--ink-soft);}
   .acct-menu-item{
-    min-height:40px; padding:0 10px; border:none; background:none; border-radius:8px; text-align:left;
-    font:inherit; font-size:14px; color:inherit; cursor:pointer;
+    min-height:40px; padding:0 10px; border:none; background:none; border-radius:var(--r-md); text-align:left;
+    font:inherit; font-size:14.5px; color:inherit; cursor:pointer;
   }
   .acct-menu-item:hover{background:var(--surface-hover);}
   .account-avatar-fallback{display:inline-flex; align-items:center; justify-content:center; background:var(--brass-tint); color:var(--brass); font-weight:700;}
@@ -1400,7 +1419,7 @@
   .my-nickname input{flex:1 1 auto; min-width:0;}
 
   .member-tag .link-badge, .account-link .link-badge{
-    font-size:11px; padding:2px 8px; border-radius:20px; white-space:nowrap; flex-shrink:0;
+    font-size:11.5px; padding:2px 8px; border-radius:20px; white-space:nowrap; flex-shrink:0;
     border:1px dashed var(--card-line); color:var(--ink-soft);
   }
   .member-tag .link-badge.linked, .account-link .link-badge.linked{border-style:solid; border-color:var(--brass-soft); color:var(--brass); background:var(--brass-tint);}
@@ -1409,27 +1428,28 @@
   .discord-status code{word-break:break-all;}
   .discord-status .dot{width:8px; height:8px; border-radius:50%; background:#80848E; flex-shrink:0;}
   .discord-status.on .dot{background:#4FCB7E;}
-  .discord-steps{margin:8px 0 12px; padding-left:20px; color:var(--ink-soft); font-size:14px; line-height:1.8;}
+  .discord-steps{margin:8px 0 12px; padding-left:20px; color:var(--ink-soft); font-size:14.5px; line-height:1.8;}
   .bind-code-box{
     margin:4px 0 12px; padding:16px; text-align:center;
-    border:1px solid var(--brass-soft); border-radius:10px; background:var(--brass-tint);
+    border:1px solid var(--brass-soft); border-radius:var(--r-md); background:var(--brass-tint);
   }
-  .bind-code{font-family:'IBM Plex Mono',monospace; font-size:28px; font-weight:600; letter-spacing:.18em; color:var(--brass);}
+  .bind-code{font-family:'IBM Plex Mono',monospace; font-size:26px; font-weight:600; letter-spacing:.18em; color:var(--brass);}
   .bind-code-cmd{margin:6px 0 2px; word-break:break-all;}
 
-  .no-access-brand{font-family:'Noto Serif TC',serif; font-size:13px; letter-spacing:.3em; color:var(--brass); margin-bottom:14px;}
+  .no-access-brand{font-family:'Noto Serif TC',serif; font-weight:900; font-size:17px; color:var(--brass); margin-bottom:12px;}
+  .no-access-card h1 + p{margin-top:12px;}
   .no-access-login{margin:22px auto 0; display:flex; flex-direction:column; align-items:center; gap:10px;}
   .no-access-login .btn{min-width:200px;}
-  .no-access-card .no-access-note{font-size:12.5px; margin:14px 0 10px;}
+  .no-access-card .no-access-note{font-size:13px; margin:14px 0 10px;}
 
   .invite-screen{max-width:440px; margin:12vh auto 0; padding:0 16px 40px;}
   .invite-card{
     text-align:center; padding:32px 24px; background:var(--card);
-    border:1px solid var(--card-line); border-radius:12px; box-shadow:var(--shadow);
+    border:1px solid var(--card-line); border-radius:var(--r-lg); box-shadow:var(--shadow);
   }
-  .invite-card .ic{font-size:40px; margin-bottom:10px;}
+  .invite-card > .ic{font-size:36px; line-height:1; margin-bottom:10px; color:var(--brass);}
   .invite-card h1{font-family:'Noto Serif TC',serif; font-size:20px; margin:0 0 10px; color:var(--ink);}
-  .invite-card p{color:var(--ink-soft); font-size:14px; line-height:1.75; margin:0 0 14px;}
+  .invite-card p{color:var(--ink-soft); font-size:14.5px; line-height:1.75; margin:0 0 14px;}
   .invite-members{display:flex; flex-direction:column; gap:8px; text-align:left;}
   .invite-new input{min-width:0;}
 
@@ -1444,11 +1464,11 @@
   /* ---------- 🆕 [行程連結] 邀請與分享卡片（js/tripLinks.js） ---------- */
   .tl-hero{
     display:flex; align-items:center; gap:12px; flex-wrap:wrap;
-    padding:14px; border-radius:10px; background:var(--brass-tint); border:1px solid var(--brass-soft);
+    padding:14px; border-radius:var(--r-md); background:var(--brass-tint); border:1px solid var(--brass-soft);
   }
-  .tl-hero-ic{font-size:24px; line-height:1; flex-shrink:0;}
+  .tl-hero-ic{font-size:20px; line-height:1; flex-shrink:0; color:var(--brass);}
   .tl-hero-text{flex:1 1 220px; min-width:0;}
-  .tl-hero-title{font-weight:700; color:var(--ink); font-size:15px;}
+  .tl-hero-title{font-weight:700; color:var(--ink); font-size:14.5px;}
   .tl-hero-sub{margin:4px 0 0; font-size:13px; line-height:1.65; color:var(--ink-soft);}
   .tl-hero-btn{flex-shrink:0;}
   .tl-foot{margin:10px 0 0;}
@@ -1456,24 +1476,24 @@
   .tl-section-head h3.section-subtitle{margin:0;}
   .tl-empty{margin:10px 0 0;}
   .tl-list{display:flex; flex-direction:column; gap:8px; margin-top:10px;}
-  .tl-row{background:var(--surface); border:1px solid var(--card-line); border-radius:10px; padding:10px 12px;}
+  .tl-row{background:var(--surface); border:1px solid var(--card-line); border-radius:var(--r-md); padding:10px 12px;}
   .tl-row.open{border-color:var(--brass-soft);}
   .tl-row.expired .tl-row-main{opacity:.6;}
   .tl-row-main{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
-  .tl-row-ic{font-size:18px; line-height:1; flex-shrink:0; width:24px; text-align:center;}
+  .tl-row-ic{font-size:17px; line-height:1; flex-shrink:0; width:24px; text-align:center;}
   .tl-row-text{flex:1 1 160px; min-width:0;}
-  .tl-row-title{font-weight:700; font-size:14px; color:var(--ink); display:flex; align-items:center; gap:6px; flex-wrap:wrap; overflow-wrap:anywhere;}
+  .tl-row-title{font-weight:700; font-size:14.5px; color:var(--ink); display:flex; align-items:center; gap:6px; flex-wrap:wrap; overflow-wrap:anywhere;}
   .tl-row-actions{display:flex; gap:6px; flex-shrink:0; margin-left:auto;}
-  .tl-badge{font-size:11px; font-weight:500; padding:1px 7px; border-radius:20px; background:var(--chip-bg); color:var(--ink-soft);}
+  .tl-badge{font-size:11.5px; font-weight:500; padding:1px 7px; border-radius:20px; background:var(--chip-bg); color:var(--ink-soft);}
   .tl-tags{display:flex; flex-wrap:wrap; gap:4px; margin-top:4px;}
   .tl-tag{font-size:11.5px; padding:1px 8px; border-radius:20px; border:1px solid var(--brass-soft); color:var(--brass); background:var(--brass-tint); white-space:nowrap;}
   .tl-tag.warn{border-color:var(--debt-bg); color:var(--debt); background:var(--debt-bg);}
   .tl-tag.muted{border-color:var(--card-line); color:var(--ink-soft); background:transparent;}
   .tl-tag.off{border-color:var(--card-line); color:var(--ink-soft); background:var(--zero-bg);}
   .tl-editor, .tl-composer{margin-top:12px; padding-top:12px; border-top:1px dashed var(--card-line);}
-  .tl-composer{margin-top:10px; padding:14px; border:1px solid var(--card-line); border-radius:10px; background:var(--surface);}
+  .tl-composer{margin-top:10px; padding:14px; border:1px solid var(--card-line); border-radius:var(--r-md); background:var(--surface);}
   .tl-field{margin:0 0 12px;}
-  .tl-label{font-size:12.5px; color:var(--ink-soft); font-weight:500; margin-bottom:6px;}
+  .tl-label{font-size:13px; color:var(--ink-soft); font-weight:500; margin-bottom:6px;}
   .tl-seg{display:flex; flex-wrap:wrap;}
   .tl-seg .seg-tab{flex:1 1 auto;}
   .tl-summary{margin:0 0 12px; color:var(--ink);}
@@ -1482,14 +1502,14 @@
   .tl-presets{display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px; margin-bottom:12px;}
   .tl-preset{
     display:flex; flex-direction:column; align-items:flex-start; gap:3px; text-align:left;
-    padding:10px 12px; border-radius:10px; border:1px solid var(--card-line); background:var(--card);
+    padding:10px 12px; border-radius:var(--r-md); border:1px solid var(--card-line); background:var(--card);
     color:var(--ink); font:inherit; cursor:pointer;
   }
   .tl-preset:hover{border-color:var(--brass-soft);}
   .tl-preset:focus-visible{outline:none; box-shadow:var(--focus-ring);}
   .tl-preset.on{border-color:var(--brass-bg); background:var(--brass-tint); box-shadow:inset 0 0 0 1px var(--brass-bg);}
-  .tl-preset-ic{font-size:18px; line-height:1;}
-  .tl-preset-title{font-weight:700; font-size:13.5px;}
+  .tl-preset-ic{font-size:17px; line-height:1;}
+  .tl-preset-title{font-weight:700; font-size:13px;}
   .tl-preset-sub{font-size:12px; line-height:1.5; color:var(--ink-soft);}
   @media (max-width:560px){
     .tl-presets{grid-template-columns:1fr;}
@@ -1504,7 +1524,7 @@
     content:""; position:absolute; top:0; left:14px; right:0; height:1px; background:var(--card-line);
   }
   .hist-head{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; }
-  .hist-actor{ font-weight:700; font-size:14px; display:inline-flex; gap:6px; align-items:baseline; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .hist-actor{ font-weight:700; font-size:14.5px; display:inline-flex; gap:6px; align-items:baseline; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .hist-me, .hist-via{ font-weight:500; font-size:12px; color:var(--ink-soft); }
   .hist-time{ font:12px 'IBM Plex Mono',monospace; color:var(--ink-soft); white-space:nowrap; }
   .hist-badge{
@@ -1512,10 +1532,10 @@
     color:var(--brass); background:color-mix(in srgb, var(--brass) 12%, var(--card));
   }
   .hist-changes{ list-style:none; margin:6px 0 0; padding:0; display:flex; flex-direction:column; gap:6px; }
-  .hist-changes li{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; font-size:13.5px; line-height:1.5; }
+  .hist-changes li{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; font-size:13px; line-height:1.5; }
   .hist-change{ min-width:0; overflow-wrap:anywhere; }
-  .hist-fields{ display:block; margin-top:2px; font-size:12.5px; color:var(--ink-soft); }
-  .hist-action{ flex-shrink:0; font-size:12.5px; white-space:nowrap; }
+  .hist-fields{ display:block; margin-top:2px; font-size:13px; color:var(--ink-soft); }
+  .hist-action{ flex-shrink:0; font-size:13px; white-space:nowrap; }
   .hist-meta{ display:inline-flex; align-items:baseline; gap:10px; flex-shrink:0; }
   .hist-revert{ font-size:12px; white-space:nowrap; color:var(--ink-soft); font-weight:600; }
   .hist-delete{ font-size:12px; white-space:nowrap; color:var(--debt); font-weight:600; }

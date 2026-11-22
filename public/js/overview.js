@@ -62,7 +62,7 @@ async function renderDebtSectionUI(){
   const isTransfer = debtViewMode !== 'pairwise';
   const sourceList = isTransfer ? lastTransferTx : lastPairwiseDebts;
   const verb = isTransfer ? '付給' : '欠';
-  const emptyMsg = isTransfer ? '🎉 目前沒有需要結算的款項' : '🎉 目前彼此之間沒有任何累計欠款';
+  const emptyMsg = isTransfer ? '目前沒有需要結算的款項' : '目前彼此之間沒有任何累計欠款';
   if (subtitleEl){
     subtitleEl.textContent = isTransfer
       ? '最少轉帳次數，一次結清'
@@ -85,7 +85,7 @@ async function renderDebtSectionUI(){
       effectiveCurrency = wantedCurrency;
       rateNote = `依匯率 1 ${trip.baseCurrency} ≈ ${round2(rate)} ${wantedCurrency} 換算，僅供參考。`;
     } else {
-      rateNote = `⚠️ 無法取得 ${wantedCurrency} 匯率，暫時仍以 ${trip.baseCurrency} 顯示。`;
+      rateNote = `無法取得 ${wantedCurrency} 匯率，暫時仍以 ${trip.baseCurrency} 顯示。`;
     }
   }
   if (noteEl) noteEl.textContent = rateNote;
@@ -106,7 +106,8 @@ async function renderDebtSectionUI(){
 function settleNameHtml(memberId){
   const me = typeof myTripMember === 'function' ? myTripMember() : null;
   const you = me && me.id === memberId ? '<span class="you-tag">你</span>' : '';
-  return `${you}<span class="settle-name">${escapeHtml(memberName(memberId))}</span>`;
+  const m = trip.members.find(x => x.id === memberId);
+  return `${memberAvatarHtml(m)}${you}<span class="settle-name">${escapeHtml(memberName(memberId))}</span>`;
 }
 function settleRowHtml(t, whoHtml, amount, currency, withPaidBtn){
   return `<div class="settle-item">
@@ -151,9 +152,12 @@ function renderMyStatusCard(net){
   const base = trip.baseCurrency;
   const v = round2(net[me.id] || 0);
   const mine = lastTransferTx.filter(t => t.from === me.id || t.to === me.id);
-  const headline = v < -0.01 ? `你要付 <b>${fmtMoneyCompact(-v)}</b> ${base}`
-    : v > 0.01 ? `你可以拿回 <b>${fmtMoneyCompact(v)}</b> ${base}`
-    : '你已經結清了 🎉';
+  // 收據造型：右上角蓋一個狀態章（待付款／待收款／已結清）
+  const state = v < -0.01 ? 'neg' : v > 0.01 ? 'pos' : 'zero';
+  const stamp = { neg: '待付款', pos: '待收款', zero: '已結清' }[state];
+  const headline = state === 'neg' ? `你要付 <b>${fmtMoneyCompact(-v)}</b> ${base}`
+    : state === 'pos' ? `你可以拿回 <b>${fmtMoneyCompact(v)}</b> ${base}`
+    : '你已經結清了';
   const rows = mine.map(t => {
     const paying = t.from === me.id;
     const who = paying
@@ -162,11 +166,12 @@ function renderMyStatusCard(net){
     return settleRowHtml(t, who, t.amount, base, true);
   }).join('');
   el.innerHTML = `
-    <div class="receipt-head">
-      <div>
-        <div class="t2">你（${escapeHtml(me.name)}）在這個行程</div>
-        <div class="t1 my-status-headline ${v < -0.01 ? 'neg' : v > 0.01 ? 'pos' : ''}">${headline}</div>
+    <div class="receipt-head my-status-head">
+      <div class="my-status-main">
+        <div class="my-status-who">${memberAvatarHtml(me)}${escapeHtml(me.name)}在這個行程</div>
+        <div class="t1 my-status-headline ${state === 'zero' ? '' : state}">${headline}</div>
       </div>
+      <div class="stamp my-status-stamp ${state}">${stamp}</div>
     </div>
     ${rows ? `<div class="settle-list"><div class="settle-box">${rows}</div></div>` : ''}`;
   el.style.display = '';
@@ -179,7 +184,7 @@ function renderBalanceBarChart(net) {
   const el = document.getElementById('balanceBarChart');
   if (!el) return;
   if (!trip.members.length) {
-    el.innerHTML = emptyState('👥', '還沒有成員。先到「設定 → 成員與分享」加人。', '新增成員',
+    el.innerHTML = emptyState(icon('users'), '還沒有成員。先到「設定 → 成員與分享」加人。', '新增成員',
       "goAddMember");
     return;
   }
@@ -362,7 +367,7 @@ function renderMemberDetails(net) {
     return `<div class="member-detail-card ${isOpen ? 'open' : ''}" id="mdc-${m.id}">
       <button type="button" class="member-detail-head" aria-expanded="${isOpen}" aria-controls="mdb-${m.id}" ${act('click','toggleMemberDetail',m.id)}>
         <div class="member-detail-name">
-          <span class="status-dot" style="background:${v>0.01?'var(--credit)':v<-0.01?'var(--debt)':'var(--card-line)'}"></span>
+          ${memberAvatarHtml(m)}
           <span class="member-detail-name-text">${escapeHtml(m.name)}</span>
         </div>
         <div class="member-detail-right">

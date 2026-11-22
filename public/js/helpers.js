@@ -18,6 +18,17 @@ function fmtMoney(amount, currency){
   return amount.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
 }
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+// 成員字首頭像：依成員 id 在 8 個低飽和色相裡挑一個（避開紅綠，紅綠留給應付／應收），
+// 用在結算列、成員明細、成員名單，讓同一個人在每個地方都是同一個顏色
+const AVATAR_HUES = [35, 55, 190, 212, 236, 262, 290, 318];
+function memberAvatarHtml(m){
+  if (!m) return '';
+  let h = 0;
+  for (const c of String(m.id || '')) h = (h * 31 + c.codePointAt(0)) >>> 0;
+  const ch = (String(m.name || '').trim().match(/[\p{L}\p{N}]/u) || [''])[0].toUpperCase();
+  return `<span class="mav" style="--mav-h:${AVATAR_HUES[h % AVATAR_HUES.length]}" aria-hidden="true">${escapeHtml(ch)}</span>`;
+}
 // 明細與結算的金額：整數就不顯示 .00，手機上省版面
 function fmtMoneyCompact(amount){
   if (!Number.isFinite(amount)) return '-';
@@ -101,5 +112,7 @@ function groupItemsByDate(items){
 }
 
 // 窄螢幕上按鈕改成只顯示圖示（文字仍保留給螢幕閱讀器與寬螢幕），見 style.css 的 .btn-label／.btn-ic。
+// 線條 icon（index.html 的 sprite），取代 emoji：各平台長得一樣、會跟著主題變色
+const icon = (name) => `<svg class="ic" aria-hidden="true"><use href="#i-${name}"/></svg>`;
 const ICON_UNLINK = '<svg class="btn-ic" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 17H7A5 5 0 0 1 7 7h2"/><path d="M15 7h2a5 5 0 0 1 4 8"/><line x1="8" y1="12" x2="12" y2="12"/><line x1="2" y1="2" x2="22" y2="22"/></svg>';
 const ICON_TRASH = '<svg class="btn-ic" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>';
