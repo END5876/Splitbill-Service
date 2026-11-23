@@ -119,10 +119,10 @@
 
   <!-- ================= OVERVIEW ================= -->
   <div class="panel active" id="panel-overview" data-panel="overview">
-    <!-- 版面順序依「打開總覽最想知道什麼」排列：我的狀態 → 怎麼結清 → 統計 → 圖表 → 逐筆明細。
+    <!-- 版面順序依「打開總覽最想知道什麼」排列：我的狀態 → 怎麼結清 → 統計 → 逐筆明細。
          「你的狀態」只有在能辨識出你是哪位成員（登入且已連結）時才會顯示，見 js/overview.js 的 renderMyStatusCard()。 -->
     <!-- 平板與桌機的欄位安排見 style.css 的「平板與桌機版面」：
-         ≥1024 左欄 .ov-main、右欄 .ov-side、成員明細在下方；700～1023 長條圖與成員明細並排 -->
+         ≥1024 左欄 .ov-main、右欄 .ov-side、成員明細在下方；700～1023 成員明細整列 -->
     <div class="ov-main">
     <div class="receipt my-status-card" id="myStatusCard" style="display:none; margin-bottom:14px;"></div>
 
@@ -156,17 +156,6 @@
       <div class="kv-card"><div class="k">轉帳筆數</div><div class="v" id="kvDeposits">0</div></div>
     </div>
 
-    <div class="receipt ov-bar" style="margin-bottom:14px;">
-      <div class="receipt-head">
-        <div>
-          <div class="t1">每個人要付或可拿回多少</div>
-        </div>
-        <div class="stamp" id="stampBadge">待結算</div>
-      </div>
-      <div class="bar-chart-wrap">
-        <div id="balanceBarChart"></div>
-      </div>
-    </div>
     </div>
 
     <div class="receipt ov-members">

@@ -403,15 +403,7 @@ function renderAll(){
 
   const net = calcNetBalances(trip);
 
-  // --- 1. 橫向長條圖 ---
-  renderBalanceBarChart(net);
-
-  const allSettled = trip.members.length>0 && trip.members.every(m=>Math.abs(net[m.id]||0)<=0.01);
-  const stamp = document.getElementById('stampBadge');
-  stamp.textContent = allSettled ? '已結清' : '待結算';
-  stamp.classList.toggle('settled', allSettled);
-
-  // --- 2. 建議轉帳／彼此累計欠款總額（合併卡片，共用同一個換算幣別；
+  // --- 建議轉帳／彼此累計欠款總額（合併卡片，共用同一個換算幣別；
   //        清單本身永遠先用基準幣別算好，換算只發生在顯示那一層） ---
   lastTransferTx = simplifyDebts(net);
   lastPairwiseDebts = calcPairwiseDebts(trip);

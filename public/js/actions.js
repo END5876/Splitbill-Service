@@ -27,7 +27,7 @@ const UI_ACTIONS = new Set([
   'createTripLink', 'createTripOnServer', 'deleteDeposit', 'deleteExpense', 'deleteSelectedTrip', 'detachFromDiscord',
   'downloadCsv', 'downloadJson', 'editDeposit', 'editExpense', 'equalFillChips', 'finalizeReceiptExpense',
   'focusNewMemberInput', 'generateBindCode', 'historyDeleteItem', 'historyRestoreChange', 'historyRestoreRevision',
-  'loadHistory', 'loadMoreHistory', 'goAddMember', 'goHome', 'handleFileImport', 'retryConnection', 'flushPendingEntries', 'reloadForUpdate', 'toggleAccountMenu', 'openAccountSettings',
+  'loadHistory', 'loadMoreHistory', 'goHome', 'handleFileImport', 'retryConnection', 'flushPendingEntries', 'reloadForUpdate', 'toggleAccountMenu', 'openAccountSettings',
   'handleReceiptUpload', 'importJsonAsNewTrip', 'joinReceiptSession', 'leaveJoinScreen',
   'linkAccount', 'loadTripFromApi', 'loadTripLinks', 'loginWithDiscord', 'loginWithLine', 'logout', 'markTransferPaid',
   'onChipToggle', 'onDebtCurrencyChange', 'onDebtViewChange', 'onDepositFilterChange',
@@ -107,9 +107,4 @@ function startFirstDeposit(){
 }
 function focusNewMemberInput(){
   document.getElementById('newMemberName').focus();
-}
-function goAddMember(){
-  showMainTab('settings');
-  showSettingsSub('members');
-  focusNewMemberInput();
 }

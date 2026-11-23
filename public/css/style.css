@@ -1168,63 +1168,6 @@
 
 
 
-  /* ---------- Overview: Balance Bar Chart ---------- */
-  .bar-chart-wrap{
-    padding:16px 18px 18px;
-  }
-  .bar-chart-legend{
-    display:flex; gap:14px; flex-wrap:wrap; margin-bottom:14px;
-    font-size:11.5px; font-family:var(--font-num); font-variant-numeric:tabular-nums; color:var(--ink-soft);
-  }
-  .bar-chart-legend span{
-    display:inline-flex; align-items:center; gap:5px;
-  }
-  .bar-chart-legend .swatch{
-    width:10px; height:10px; border-radius:2px; flex-shrink:0;
-  }
-  /* 整張圖共用一個 grid：名字欄寬跟著最長的名字走（上限 8em），每列仍然對齊，
-     取代原本固定 72px、中文名字超過 4～5 字就被截斷的做法 */
-  #balanceBarChart{
-    display:grid; grid-template-columns:minmax(40px, max-content) 1fr max-content;
-    align-items:center; row-gap:10px;
-  }
-  .bar-row{ display:contents; }
-  #balanceBarChart > .empty-state{ grid-column:1 / -1; }
-  .bar-name{
-    max-width:8em; font-size:13px; font-weight:700;
-    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-    text-align:right; padding-right:10px; color:var(--ink);
-  }
-  .bar-track{
-    min-width:0; display:flex; align-items:center; position:relative; height:28px;
-  }
-  .bar-axis{
-    position:absolute; left:50%; top:0; bottom:0;
-    width:1px; background:var(--card-line);
-  }
-  .bar-fill-pos{
-    position:absolute; left:50%; height:18px; top:5px;
-    background:var(--brass); border-radius:0 4px 4px 0;
-    transition:width .45s cubic-bezier(.4,0,.2,1);
-    min-width:0;
-  }
-  .bar-fill-neg{
-    position:absolute; right:50%; height:18px; top:5px;
-    background:var(--debt); border-radius:4px 0 0 4px;
-    transition:width .45s cubic-bezier(.4,0,.2,1);
-    min-width:0;
-  }
-  .bar-fill-zero{
-    position:absolute; left:50%; height:18px; top:5px;
-    width:2px; margin-left:-1px;
-    background:var(--card-line); border-radius:2px;
-  }
-  .bar-val{ font-family:var(--font-num); font-variant-numeric:tabular-nums;
-    font-size:11.5px; font-weight:600; padding-left:8px; white-space:nowrap;
-  }
-  .bar-val.pos{ color:var(--credit); }
-  .bar-val.neg{ color:var(--debt); }
-  .bar-val.zero{ color:var(--ink-soft); }
 
   /* ---------- Overview: Member Detail Cards ---------- */
   .member-detail-list{
@@ -1367,9 +1310,9 @@
   }
 
   /* ═════════ 平板與桌機版面（ui-review 第 4 批）═════════
-     700～1023：摘要 4 欄、支出表單「金額＋幣別＋日期」同一列、長條圖與成員明細並排
+     700～1023：摘要 4 欄、支出表單「金額＋幣別＋日期」同一列
      ≥1024：版面放寬到 1120px；支出／轉帳左欄表單（捲動時固定）、右欄明細；
-            總覽左欄「你的狀態＋怎麼結清」、右欄摘要＋長條圖，成員明細在下方 */
+            總覽左欄「你的狀態＋怎麼結清」、右欄摘要，成員明細在下方 */
   @media (min-width:700px){
     .kv-summary{grid-template-columns:repeat(4,1fr);}
     .btn-block{max-width:320px;}
@@ -1378,8 +1321,6 @@
     #panel-overview.active{display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); column-gap:14px; align-items:start;}
     #panel-overview .ov-main, #panel-overview .ov-side{display:contents;}
     #panel-overview.active > *, #panel-overview .ov-main > *, #panel-overview .kv-summary{grid-column:1 / -1;}
-    #panel-overview .ov-bar{grid-column:1;}
-    #panel-overview .ov-members{grid-column:2;}
     #panel-overview .member-detail-list{padding-top:12px;}
 
     .form-card:not(.collapsed) #expenseFormBody{display:grid; grid-template-columns:minmax(0,1fr) 140px 180px; column-gap:12px;}

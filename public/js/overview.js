@@ -106,8 +106,7 @@ async function renderDebtSectionUI(){
 function settleNameHtml(memberId){
   const me = typeof myTripMember === 'function' ? myTripMember() : null;
   const you = me && me.id === memberId ? '<span class="you-tag">你</span>' : '';
-  const m = trip.members.find(x => x.id === memberId);
-  return `${memberAvatarHtml(m)}${you}<span class="settle-name">${escapeHtml(memberName(memberId))}</span>`;
+  return `${you}<span class="settle-name">${escapeHtml(memberName(memberId))}</span>`;
 }
 function settleRowHtml(t, whoHtml, amount, currency, withPaidBtn){
   return `<div class="settle-item">
@@ -184,43 +183,6 @@ function renderMyStatusCard(net){
     </div>
     ${rows ? `<div class="settle-list"><div class="settle-box">${rows}</div></div>` : ''}`;
   el.style.display = '';
-}
-
-/* =====================================================================
-   Overview: 橫向淨額長條圖
-===================================================================== */
-function renderBalanceBarChart(net) {
-  const el = document.getElementById('balanceBarChart');
-  if (!el) return;
-  if (!trip.members.length) {
-    el.innerHTML = emptyState(icon('users'), '還沒有成員。先到「設定 → 成員與分享」加人。', '新增成員',
-      "goAddMember");
-    return;
-  }
-  // 找最大絕對值，用來計算長條寬度比例
-  const vals = trip.members.map(m => round2(net[m.id] || 0));
-  const maxAbs = Math.max(...vals.map(v => Math.abs(v)), 0.01);
-
-  el.innerHTML = trip.members.map((m, idx) => {
-    const v = vals[idx];
-    const pct = Math.min(Math.abs(v) / maxAbs * 46, 46); // 最多佔軌道寬度的 46%（留中線）
-    const cls = v > 0.01 ? 'pos' : (v < -0.01 ? 'neg' : 'zero');
-    // 數字不帶正負號，方向用文字（顏色只是輔助）
-    const valLabel = Math.abs(v) <= 0.01 ? '已結清' : `${netWords(v, false)} ${fmtMoney(Math.abs(v), trip.baseCurrency)}`;
-    const barHtml = v > 0.01
-      ? `<div class="bar-fill-pos" style="width:${pct}%"></div>`
-      : v < -0.01
-      ? `<div class="bar-fill-neg" style="width:${pct}%"></div>`
-      : `<div class="bar-fill-zero"></div>`;
-    return `<div class="bar-row">
-      <div class="bar-name" title="${escapeHtml(m.name)}">${escapeHtml(m.name)}</div>
-      <div class="bar-track">
-        <div class="bar-axis"></div>
-        ${barHtml}
-      </div>
-      <div class="bar-val ${cls}">${valLabel}${Math.abs(v) > 0.01 ? ` <span style="font-size:9.5px;opacity:.7">${trip.baseCurrency}</span>` : ''}</div>
-    </div>`;
-  }).join('');
 }
 
 /* =====================================================================
@@ -376,7 +338,6 @@ function renderMemberDetails(net) {
     return `<div class="member-detail-card ${isOpen ? 'open' : ''}" id="mdc-${m.id}">
       <button type="button" class="member-detail-head" aria-expanded="${isOpen}" aria-controls="mdb-${m.id}" ${act('click','toggleMemberDetail',m.id)}>
         <div class="member-detail-name">
-          ${memberAvatarHtml(m)}
           <span class="member-detail-name-text">${escapeHtml(m.name)}</span>
         </div>
         <div class="member-detail-right">
