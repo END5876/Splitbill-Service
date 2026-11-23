@@ -62,11 +62,11 @@ async function renderDebtSectionUI(){
   const isTransfer = debtViewMode !== 'pairwise';
   const sourceList = isTransfer ? lastTransferTx : lastPairwiseDebts;
   const verb = isTransfer ? '付給' : '欠';
-  const emptyMsg = isTransfer ? '目前沒有需要結算的款項' : '目前彼此之間沒有任何累計欠款';
+  const emptyMsg = isTransfer ? '目前不需要轉帳。' : '目前沒有人要付錢給別人。';
   if (subtitleEl){
     subtitleEl.textContent = isTransfer
       ? '最少轉帳次數，一次結清'
-      : '同組兩人互抵，不跨人合併';
+      : '只算兩人之間互相要付多少';
   }
 
   const wantedCurrency = debtDisplayCurrency || trip.baseCurrency;
@@ -370,7 +370,7 @@ function renderMemberDetails(net) {
              <span class="val ${netCls}" style="font-size:14px;">${Math.abs(v) > 0.01 ? `${fmtMoney(Math.abs(v), trip.baseCurrency)} ${trip.baseCurrency}` : ''}</span>
            </div>
          </div>`
-      : '<p class="hint" style="padding:8px 0 4px;">尚無任何記帳紀錄。</p>';
+      : '<p class="hint" style="padding:8px 0 4px;">還沒有帳目。</p>';
 
     const isOpen = openMemberDetailIds.has(m.id);
     return `<div class="member-detail-card ${isOpen ? 'open' : ''}" id="mdc-${m.id}">

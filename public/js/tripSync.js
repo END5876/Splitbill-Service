@@ -82,13 +82,13 @@ function renderSyncStatus(){
   if (shareMode && shareMode.permission !== 'write'){
     state = 'readonly'; label = '唯讀'; hint = '這是看帳用的免登入連結，只能看、不能修改';
   } else if (!currentTripId && !shareMode){
-    state = 'offline'; label = '未開啟行程'; hint = '還沒開啟任何行程，變更不會被儲存。點此開啟或建立行程';
+    state = 'offline'; label = '未開啟行程'; hint = '點一下開啟或建立行程';
   } else if (syncSaving > 0 || cloudSavePending){
-    state = 'saving'; label = '儲存中…'; hint = '正在把變更存到雲端';
+    state = 'saving'; label = '儲存中…'; hint = '正在儲存';
   } else if (syncFailed){
-    state = 'error'; label = '未儲存'; hint = '最近一次儲存沒有成功，點此重試';
+    state = 'error'; label = '未儲存'; hint = '沒有存到，點一下再試一次';
   } else {
-    state = 'saved'; label = '已同步'; hint = '所有變更都已存到雲端';
+    state = 'saved'; label = '已同步'; hint = '已全部儲存';
   }
   el.dataset.state = state;
   el.querySelector('.sync-label').textContent = label;
@@ -404,8 +404,8 @@ function renderPendingBanner(){
   const n = pendingForCurrentTrip().length;
   el.hidden = !n;
   if (n) document.getElementById('pendingText').textContent = navigator.onLine === false
-    ? `有 ${n} 筆還沒存到，存在這台手機上。連上網路後會自動補存。`
-    : `有 ${n} 筆還沒存到，存在這台手機上。正在等伺服器回應，也可以按「再試一次」。`;
+    ? `有 ${n} 筆還沒存到，先存在這台裝置上。連上網路後會自動補存。`
+    : `有 ${n} 筆還沒存到，先存在這台裝置上。正在等伺服器回應，也可以按「再試一次」。`;
 }
 // 開啟行程後：還沒存到的帳目放回畫面（伺服器那份還沒有），再試著補存
 function restorePendingEntries(){
@@ -476,12 +476,12 @@ async function syncEntry(kind, id, entry, opts){
     // 伺服器明確拒絕（4xx：權限、行程不存在、格式不對）：重送也不會成功，從待補存清單拿掉並說明
     if (!unreachable && opts.fromQueue){
       removePendingEntry(kind, id);
-      toast(`有 1 筆存在這台手機上的帳目沒辦法補存：${err.message}`, 'error');
+      toast(`有 1 筆存在這台裝置上的帳目沒辦法補存：${err.message}`, 'error');
     }
     if (unreachable && entry && opts.isNew && addPendingEntry(kind, id, entry)){
       toast(navigator.onLine === false
-        ? '目前沒有網路。這筆先存在這台手機上，連上網路後會自動補存。'
-        : '伺服器沒有回應。這筆先存在這台手機上，稍後會自動補存。', 'info', { duration: 6000 });
+        ? '目前沒有網路。這筆先存在這台裝置上，連上網路後會自動補存。'
+        : '伺服器沒有回應。這筆先存在這台裝置上，稍後會自動補存。', 'info', { duration: 6000 });
     } else if (!opts.fromQueue){
       toast(unreachable
         ? '沒有存到：連不上伺服器。連上網路後，點頁首的「未儲存」再試一次。'

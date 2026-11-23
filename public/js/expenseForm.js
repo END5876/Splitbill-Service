@@ -39,7 +39,7 @@ function syncManualMarks(prefix){
     const isManual = manualIds.has(chip.dataset.id);
     chip.classList.toggle('manual', isManual);
     const amt = chip.querySelector('.amt');
-    if (amt) amt.title = isManual ? '已手動輸入，不會被自動平分覆蓋' : '';
+    if (amt) amt.title = isManual ? '手動輸入的金額，平均分攤時不會被改掉' : '';
   });
 }
 // 🆕 更新欄位標題列右側的「已選 N 人」計數（見 index.html 的 .field-head
@@ -59,8 +59,8 @@ function updateChipFieldMeta(containerOrId){
   if (n && total > 0){
     const sum = checked.reduce((s, c)=>s + (parseFloat(c.querySelector('.amt').value) || 0), 0);
     const diff = round2(total - sum);
-    if (Math.abs(diff) <= 0.01){ status = '・✓ 已分配完'; state = 'ok'; }
-    else { status = diff > 0 ? `・還差 ${fmtMoney(diff)}` : `・超出 ${fmtMoney(-diff)}`; state = 'off'; }
+    if (Math.abs(diff) <= 0.01){ status = '，已分完'; state = 'ok'; }
+    else { status = diff > 0 ? `，還差 ${fmtMoney(diff)}` : `，超出 ${fmtMoney(-diff)}`; state = 'off'; }
   }
   meta.textContent = `已選 ${n} 人${status}`;
   meta.dataset.state = state;
@@ -291,14 +291,14 @@ function renderExpenseHint(){
   } else if (expenseLiveRate && expenseLiveRate.currency === currency){
     rate = expenseLiveRate.rate;
     const base = round2(amount*rate);
-    hintHtml = `即時匯率 1 ${currency} = ${rate} ${trip.baseCurrency}，換算約為 <b>${fmtMoney(base, trip.baseCurrency)}</b>`;
+    hintHtml = `約 <b>${fmtMoney(base, trip.baseCurrency)}</b>（1 ${currency} ＝ ${rate} ${trip.baseCurrency}）`;
   } else {
     rate = trip.rates[currency];
     if (rate){
       const base = round2(amount*rate);
-      hintHtml = `${icon('clock')} 查詢即時匯率中…暫用手動設定的匯率換算約為 <b>${fmtMoney(base, trip.baseCurrency)}</b>`;
+      hintHtml = `約 <b>${fmtMoney(base, trip.baseCurrency)}</b>（正在查詢最新匯率…）`;
     } else {
-      hintHtml = `幣別 ${currency} 尚無匯率資料，正在查詢即時匯率…如果查不到，請到「設定 → 行程」的匯率手動新增。`;
+      hintHtml = `正在查詢 ${currency} 的匯率…`;
     }
   }
   document.getElementById('expBaseHint').innerHTML = hintHtml;

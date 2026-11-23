@@ -207,7 +207,6 @@ function resolveTypedCurrency(input){
     const seq = ++lookupSeq;
     // 已經設定過的幣別：按鈕改成「更新匯率」，說明會從多少改成多少
     const old = trip.rates[opt.code];
-    const btnLabel = old != null ? '更新匯率' : '新增幣別';
     setAddRateLabel(old != null);
     valInput.value = '';
     valInput.placeholder = '查詢中…';
@@ -215,7 +214,7 @@ function resolveTypedCurrency(input){
     const live = await fetchLiveRate(opt.code, base);
     if (seq !== lookupSeq) return;
     valInput.placeholder = '匯率';
-    const change = (v) => old != null ? `${currencyLabel(opt.code)} 目前是 ${old}，按「更新匯率」會改成 ${v}。` : `確認後按「${btnLabel}」。`;
+    const change = (v) => old != null ? `${currencyLabel(opt.code)} 目前是 ${old}，按「更新匯率」會改成 ${v}。` : '';
     if (live && live.rate > 0){
       valInput.value = String(parseFloat(live.rate.toPrecision(6)));
       const when = rateAsOfText(live.asOf);

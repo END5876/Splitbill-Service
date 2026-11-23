@@ -86,7 +86,7 @@ function renderReceiptSessionBanner(){
     zone.style.display = '';
     zone.innerHTML = `
       <div class="receipt-session-banner">
-        <span>${icon('users')} 有人正在進行帳單辨識認領中，加入即可立刻同步、一起點選品項</span>
+        <span>${icon('users')} 有人正在分這張帳單，加入一起選品項</span>
         <button type="button" class="btn btn-brass btn-sm" data-click="joinReceiptSession" data-loading="加入中…">加入認領</button>
       </div>`;
   } else {
@@ -302,8 +302,8 @@ async function handleReceiptUpload(fileOrEvent){
     triggerBody.innerHTML = `
       <span class="receipt-scan-ic"><span class="spinner" style="border-color:var(--card-line); border-top-color:var(--ink);"></span></span>
       <span class="receipt-scan-txt">
-        <span class="title">辨識中，請稍候…</span>
-        <span class="sub">正在讀取帳單內容，請不要關閉頁面</span>
+        <span class="title">辨識中…</span>
+        <span class="sub">請不要關閉頁面</span>
       </span>`;
   }
 
@@ -584,7 +584,7 @@ function renderReceiptWorkArea(){
         <button type="button" class="claim-chip shared ${isShared?'on':''}" ${act('click','receiptSetShared',item.id)}>${icon('users')} 共同分擔</button>
       </div>
       ${serviceChargeHint}
-      ${unclaimed ? '<p class="hint" style="color:var(--debt); margin-top:6px;">尚未認領——請點選人名或「共同分擔」</p>' : ''}
+      ${unclaimed ? '<p class="hint" style="color:var(--debt); margin-top:6px;">還沒分配：點人名或「共同分擔」</p>' : ''}
     </div>`;
   }).join('');
 
@@ -607,7 +607,7 @@ function renderReceiptWorkArea(){
     <div class="receipt-preview-row">
       <img class="receipt-thumb" src="${escapeHtml(receiptState.imageDataUrl || '')}" alt="帳單照片預覽">
       <div style="flex:1;">
-        <p class="hint" style="margin-top:0;">共 ${receiptState.items.length} 個項目。點品項下方的人名分配（可多選＝一起分攤），辨識錯了可以直接改。</p>
+        <p class="hint" style="margin-top:0;">點人名分給誰，可以多選一起分。辨識錯的可以直接改。</p>
         <div class="btn-row">
           <button type="button" class="btn btn-ghost btn-sm" data-click="receiptResetUpload">${icon('refresh')} 重新上傳照片</button>
           ${receiptSessionJoined ? `<button type="button" class="btn btn-danger btn-sm" data-click="abandonReceiptSession">${icon('stop')} 放棄認領</button>` : ''}
@@ -617,21 +617,22 @@ function renderReceiptWorkArea(){
 
     <div class="row">
       <div class="field" style="max-width:160px;">
-        <label>服務費 %（辨識錯了可修正）</label>
+        <label>服務費 %</label>
         <input type="number" inputmode="decimal" step="0.1" min="0" value="${Math.round(receiptState.serviceChargeRate*10000)/100}" data-change="receiptUpdateServiceChargeRate" data-args='["$value"]'>
       </div>
     </div>
     <p class="hint" style="margin-top:-6px;">只套用到沒有手動改過金額的品項。</p>
 
     <div class="field">
-      <label>這頓誰有出席？（決定「共同分擔」要平均分給誰）</label>
+      <label>這次有誰參加？</label>
       <div class="chip-select">${attendeeChipsHtml}</div>
+      <p class="hint">共同分擔的品項會平均分給這些人。</p>
     </div>
 
     <h2 class="section-title" style="font-size:14.5px; margin-top:16px;">品項認領</h2>
     ${itemsHtml}
     <div class="btn-row">
-      <button type="button" class="btn btn-ghost btn-sm" data-click="receiptAddManualItem">＋ 新增一個項目（辨識漏掉的）</button>
+      <button type="button" class="btn btn-ghost btn-sm" data-click="receiptAddManualItem">新增品項</button>
     </div>
 
     ${buildReceiptSummaryHtml()}

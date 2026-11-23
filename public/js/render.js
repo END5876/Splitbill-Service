@@ -304,7 +304,7 @@ function renderExpenseList(){
   if (filterActive){
     const filteredSubtotal = round2(filteredExpenses.reduce((s,e)=>s+(typeof e.amountInBase==='number'?e.amountInBase:(e.amount||0)),0));
     expSummaryEl.style.display = '';
-    expSummaryEl.textContent = `顯示 ${filteredExpenses.length} / ${allExpenses.length} 筆・小計 ${fmtMoney(filteredSubtotal, trip.baseCurrency)} ${trip.baseCurrency}`;
+    expSummaryEl.textContent = `${filteredExpenses.length} / ${allExpenses.length} 筆，小計 ${fmtMoney(filteredSubtotal, trip.baseCurrency)} ${trip.baseCurrency}`;
   } else {
     expSummaryEl.style.display = 'none';
   }
@@ -326,7 +326,7 @@ function renderDepositList(){
   if (filterActive){
     const filteredSubtotal = round2(filteredDeposits.reduce((s,d)=>s+(typeof d.amountInBase==='number'?d.amountInBase:(d.amount||0)),0));
     depSummaryEl.style.display = '';
-    depSummaryEl.textContent = `顯示 ${filteredDeposits.length} / ${allDeposits.length} 筆・小計 ${fmtMoney(filteredSubtotal, trip.baseCurrency)} ${trip.baseCurrency}`;
+    depSummaryEl.textContent = `${filteredDeposits.length} / ${allDeposits.length} 筆，小計 ${fmtMoney(filteredSubtotal, trip.baseCurrency)} ${trip.baseCurrency}`;
   } else {
     depSummaryEl.style.display = 'none';
   }

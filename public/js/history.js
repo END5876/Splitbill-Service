@@ -178,7 +178,7 @@ function renderHistoryPanel(){
   const el = document.getElementById('historyList');
   if (!el) return;
   if (!historyKey){
-    el.innerHTML = '<p class="empty-state" style="padding:16px;">開啟雲端行程之後，這裡會列出每一次修改：誰、什麼時候、改了什麼，刪錯的帳目也可以從這裡還原。</p>';
+    el.innerHTML = '<p class="empty-state" style="padding:16px;">開啟行程後，這裡會列出每次修改，刪錯的帳目也能還原。</p>';
     return;
   }
   if (historyError && !historyItems.length){
@@ -187,7 +187,7 @@ function renderHistoryPanel(){
     return;
   }
   if (!historyItems.length){
-    el.innerHTML = `<p class="empty-state" style="padding:16px;">${historyLoading ? '讀取中…' : '還沒有任何紀錄。之後每一次修改都會出現在這裡。'}</p>`;
+    el.innerHTML = `<p class="empty-state" style="padding:16px;">${historyLoading ? '載入中…' : '還沒有任何修改。'}</p>`;
     return;
   }
   // 依日期分組，沿用帳目清單的分組樣式

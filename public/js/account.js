@@ -228,13 +228,13 @@ function renderDiscordPanel(){
   if (!el) return;
   clearInterval(bindCodeTimer); bindCodeTimer = null;
   if (!currentTripId){
-    el.innerHTML = '<p class="hint">請先到上方「我的行程」開啟一個雲端行程。</p>';
+    el.innerHTML = '<p class="hint">請先到上方「我的行程」開啟一個行程。</p>';
     return;
   }
   const manage = canManageTrip();
   if (trip.guildId){
     el.innerHTML = `
-      <div class="discord-status on"><span class="dot"></span>已連到 Discord 伺服器 <code class="inline">${escapeHtml(trip.guildId)}</code></div>
+      <div class="discord-status on"><span class="dot"></span>已連到 Discord 伺服器</div>
       <p class="hint">在那個伺服器輸入 <code class="inline">/splitbill panel</code> 就能記帳。</p>
       ${manage ? `<div class="btn-row"><button class="btn btn-danger btn-sm" type="button" data-click="detachFromDiscord" data-loading="處理中…">中斷與伺服器的連線</button></div>` : ''}`;
     return;

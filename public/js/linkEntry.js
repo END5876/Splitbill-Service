@@ -97,7 +97,7 @@ function showOfflineScreen(){
   el.innerHTML = `
     <div class="no-access-card">
       <div class="no-access-brand">裊器分帳</div>
-      <h1>${noNet ? '目前沒有網路' : '暫時連不上分帳'}</h1>
+      <h1>${noNet ? '目前沒有網路' : '暫時連不上裊器分帳'}</h1>
       <p>${noNet ? '連上網路後會自動載入你的行程。' : '伺服器可能正在更新。恢復後會自動載入你的行程。'}</p>
       <div class="no-access-login"><button class="btn btn-primary" type="button" data-click="retryConnection">重新連線</button></div>
     </div>`;
@@ -123,7 +123,7 @@ function showNoAccessScreen(){
     <div class="no-access-card">
       <div class="no-access-brand">裊器分帳</div>
       <h1>跟朋友一起記帳、結算</h1>
-      <p>旅行、聚餐、合租的花費，記下來就自動算好誰該付誰多少。</p>
+      <p>旅行、聚餐、合租的支出，記下來就自動算好誰該付誰多少。</p>
       <ul class="landing-features">
         <li><svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg><div><b>拍照辨識帳單</b><span>上傳收據，自動列出品項，大家點選自己吃了什麼</span></div></li>
         <li><svg class="ic" aria-hidden="true"><use href="#i-globe"/></svg><div><b>多幣別自動換算</b><span>出國刷卡、付現都能記，依即時匯率換算</span></div></li>
@@ -239,7 +239,7 @@ function showJoinScreen(token, info){
     <div class="invite-card">
       ${head}
       ${unlinked.length ? `
-      <p>你是下面哪一位？選了之後，這位成員過去的代墊與分攤紀錄都會連結到你的帳號（${escapeHtml(currentUser.name)}）。</p>
+      <p>你是下面哪一位？選了之後，這位成員的帳目就會算在你身上。</p>
       <div class="invite-members">
         ${unlinked.map(m => `<button class="modal-list-item" type="button" ${act('click','confirmJoinClaim',token,m.id,'$el')}><div class="mli-title">我是「${escapeHtml(m.name)}」</div></button>`).join('')}
       </div>` : '<p>名單上的成員都已經有人選了，你可以用新成員的身分加入。</p>'}

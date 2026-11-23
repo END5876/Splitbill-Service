@@ -136,7 +136,7 @@
         </div>
         <div class="seg-tabs" role="tablist" aria-label="切換要顯示的結算方式">
           <button type="button" role="tab" class="seg-tab" data-view="transfer" aria-selected="true" data-click="onDebtViewChange" data-args='["transfer"]'>建議轉帳</button>
-          <button type="button" role="tab" class="seg-tab" data-view="pairwise" aria-selected="false" data-click="onDebtViewChange" data-args='["pairwise"]'>彼此欠款</button>
+          <button type="button" role="tab" class="seg-tab" data-view="pairwise" aria-selected="false" data-click="onDebtViewChange" data-args='["pairwise"]'>兩人之間</button>
         </div>
       </div>
       <div class="convert-bar">
@@ -173,7 +173,7 @@
       <div class="receipt-head">
         <div>
           <div class="t1">各成員收支明細</div>
-          <div class="t2">點選成員展開逐筆紀錄</div>
+          <div class="t2">點成員看每一筆帳目</div>
         </div>
       </div>
       <div class="member-detail-list" id="memberDetailList"></div>
@@ -240,8 +240,8 @@
       </div>
       <div class="field" id="expBaseAmountField" hidden>
         <label for="expAmountInBase">實際花了多少 <span id="expBaseCurrencyLabel"></span>？（選填）</label>
-        <input type="number" inputmode="decimal" id="expAmountInBase" class="num" placeholder="留白則依匯率自動換算" step="0.01">
-        <p class="hint">例如刷卡實際扣的金額，沒填就用匯率換算。</p>
+        <input type="number" inputmode="decimal" id="expAmountInBase" class="num" placeholder="沒填就用匯率換算" step="0.01">
+        <p class="hint">例如刷卡實際扣的金額。</p>
       </div>
       <p class="hint" id="expBaseHint"></p>
 
@@ -270,7 +270,7 @@
         <div class="btn-row split-actions">
           <button class="btn btn-ghost btn-sm" data-click="equalFillChips" data-args='["participant"]' title="依已勾選人數重新平均"><span><span class="lbl-long">依已勾選人數</span>重新平均</span></button>
           <button class="btn btn-ghost btn-sm" data-click="checkAllParticipants" title="全部人平均分攤"><span>全部<span class="lbl-long">人</span>平均<span class="lbl-long">分攤</span></span></button>
-          <button class="btn btn-ghost btn-sm" data-click="selfShareParticipants" title="誰付的就算誰的，不分攤給其他人（只是記一筆帳）">各付各的</button>
+          <button class="btn btn-ghost btn-sm" data-click="selfShareParticipants" title="每個人只算自己付的錢">各付各的</button>
         </div>
       </div>
 
@@ -311,11 +311,11 @@
       <p class="hint" style="margin:0 0 12px;">預收款＝出發前先向大家收的錢，例如團費。</p>
       <div class="row">
         <div class="field">
-          <label for="depPayer">付款人（轉出的人）</label>
+          <label for="depPayer">付款人</label>
           <select id="depPayer"></select>
         </div>
         <div class="field">
-          <label for="depCollector">收款人（收到的人）</label>
+          <label for="depCollector">收款人</label>
           <select id="depCollector"></select>
         </div>
       </div>
@@ -331,8 +331,7 @@
       </div>
       <div class="field" id="depBaseAmountField" hidden>
         <label for="depAmountInBase">實際轉了多少 <span id="depBaseCurrencyLabel"></span>？（選填）</label>
-        <input type="number" inputmode="decimal" id="depAmountInBase" class="num" placeholder="留白則依匯率自動換算" step="0.01">
-        <p class="hint">沒填就用匯率換算。</p>
+        <input type="number" inputmode="decimal" id="depAmountInBase" class="num" placeholder="沒填就用匯率換算" step="0.01">
       </div>
       <p class="hint" id="depBaseHint"></p>
       <div class="row">
@@ -445,7 +444,7 @@
         <!-- 幣別搜尋選單：可以打國家、貨幣名稱或代碼；選到後自動帶入即時匯率（js/currencyPicker.js） -->
         <div class="btn-row add-rate-row">
           <div class="cur-picker">
-            <input type="text" id="newRateCurrency" placeholder="搜尋國家、貨幣或代碼，如：日本" autocomplete="off" aria-label="搜尋幣別">
+            <input type="text" id="newRateCurrency" placeholder="例如：日本、JPY" autocomplete="off" aria-label="搜尋幣別">
             <ul class="cur-list" id="newRateCurrencyList" role="listbox" aria-label="幣別" hidden></ul>
           </div>
           <input type="number" inputmode="decimal" id="newRateValue" placeholder="匯率" step="0.0001" style="max-width:120px;" aria-label="匯率">
@@ -470,7 +469,6 @@
           <input type="text" id="newMemberName" placeholder="新成員名稱" style="max-width:180px;" aria-label="新成員名稱" data-enter="addMember">
           <button class="btn btn-primary" data-click="addMember">＋ 新增成員</button>
         </div>
-        <p class="hint">新成員要用邀請連結加入後，本人才看得到這個行程。</p>
       </div>
       <!-- 🆕 [行程連結] 邀請與分享：整張卡片由 js/tripLinks.js 依狀態繪出 -->
       <div class="card" id="tripLinksCard">

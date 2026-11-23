@@ -81,8 +81,8 @@ function renderInviteSection(){
   if (!el) return;
   if (!isTripMember()){
     el.innerHTML = `<p class="hint" style="margin:0;">${currentTripId && shareMode
-      ? '你是用連結開啟這個行程的訪客，邀請其他人請找行程成員。'
-      : '請先到「行程」分頁開啟一個雲端行程，才能邀請朋友或分享給別人。'}</p>`;
+      ? '你是用免登入連結開啟的，要邀請別人請找行程成員。'
+      : '請先開啟一個行程。'}</p>`;
     document.getElementById('linkManager').innerHTML = '';
     return;
   }
@@ -168,7 +168,7 @@ function setLinkEditLabel(value){ tripLinksState.editing.label = value; }
 function setLinkComposerJoin(checked){ tripLinksState.composer.join = checked; renderLinkManager(); }
 function setLinkComposerLabel(value){ tripLinksState.composer.label = value; }
 function linkSummaryText(guest, join){
-  if (guest === 'none' && !join) return '兩項都關掉的話，這條連結就沒有用途了。';
+  if (guest === 'none' && !join) return '至少要開啟一項。';
   const parts = [];
   if (guest !== 'none') parts.push(guest === 'write' ? '拿到網址的任何人，不用登入就能新增、修改、刪除帳目' : '拿到網址的任何人，不用登入就能看帳');
   if (join) parts.push('登入後可以加入成為成員');
@@ -222,7 +222,7 @@ function linkComposerHtml(c){
         ${segTabsHtml('有效期限', LINK_EXPIRY_CHOICES.map(e => ({ value: e.days, label: e.label })), c.days, 'setLinkComposerDays')}
       </div>
       <div class="field tl-field">
-        <label for="linkNewLabel">名稱（選填，方便你認得這是給誰的）</label>
+        <label for="linkNewLabel">名稱（選填）</label>
         <input type="text" id="linkNewLabel" maxlength="50" placeholder="例如：小華、公司同事" value="${escapeHtml(c.label)}" data-input="setLinkComposerLabel" data-args='["$value"]'>
       </div>
       <p class="hint tl-summary">${linkSummaryText(preset.guest, c.join)}${c.days ? `${c.days} 天後失效。` : ''}</p>
