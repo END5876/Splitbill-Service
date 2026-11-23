@@ -1,29 +1,30 @@
 :root{
-    /* 配色：G 風格——#f8f9fa 畫布、白色卡片、#dadce0 細線。整個畫面只有兩個彩色：
-       藍色（#1a73e8）只給可以點的東西與選取中的狀態；綠色給可拿回與成功；紅色給欠錢、錯誤與刪除。
-       綠、紅只染文字與小圓點，不加色塊底；其餘一律灰階。
+    /* 配色：照 Google App（Material 3）的邏輯——白色頁面＋淡藍灰卡片（暗色：近黑頁面＋深灰卡片），
+       卡片不加陰影；藍色是主色（圖表、實心按鈕、連結），主要動作用「淡藍底藍字」的柔色按鈕，
+       選取中的晶片也是淡藍底；狀態用淡色底＋飽和色文字：綠＝可拿回／完成，紅＝欠錢／錯誤。
        （--brass* 這組變數名稱沿用舊版，現在代表主色藍。強調色的淡底仍用 color-mix() 從主色推導。） */
     --font-text:'DM Sans','Noto Sans TC',system-ui,sans-serif;
     --font-display:'DM Sans','Noto Sans TC',system-ui,sans-serif;
     --font-num:'DM Sans','Noto Sans TC',system-ui,sans-serif;
     --font-code:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-    --ink:#202124;
-    --ink-soft:#5F6368;
-    --paper:#F8F9FA;
-    --card:#FFFFFF;
-    --card-line:#DADCE0;
-    --brass:#1A73E8;         /* 主色文字／連結（白底 4.5:1） */
-    --brass-bg:#1A73E8;      /* 填色徽章／按鈕底；上面疊 --on-brass（白字） */
-    --brass-soft:#AECBFA;    /* 邊框／焦點框用的淡主色 */
-    --credit:#188038;             /* 可拿回：綠字，不加色塊底 */
-    --credit-bg:var(--chip-bg);
-    --debt:#D93025;               /* 欠錢：紅字，不加色塊底 */
-    --debt-bg:var(--chip-bg);
-    --danger:#D93025;
-    --danger-bg:color-mix(in srgb, var(--danger) 9%, var(--card));
-    --shadow: 0 1px 0 rgba(60,64,67,0.04), 0 8px 24px rgba(60,64,67,0.06);
-    --shadow-sm: 0 1px 3px rgba(60,64,67,0.16);
-    --shadow-up: 0 -4px 16px rgba(60,64,67,0.08);
+    --ink:#1F1F1F;
+    --ink-soft:#444746;
+    --paper:#FFFFFF;
+    --card:#F0F4F9;
+    --card-line:#C4C7C5;
+    --card-border:var(--card);   /* 卡片外框：跟卡片同色，看起來沒有框 */
+    --brass:#0B57D0;         /* 主色文字／連結（白底 4.5:1） */
+    --brass-bg:#0B57D0;      /* 填色徽章／按鈕底；上面疊 --on-brass（白字） */
+    --brass-soft:#A8C7FA;    /* 邊框／焦點框用的淡主色 */
+    --credit:#146C2E;             /* 可拿回：綠字，不加色塊底 */
+    --credit-bg:#E6F4EA;
+    --debt:#B3261E;               /* 欠錢：紅字，不加色塊底 */
+    --debt-bg:#FCE8E6;
+    --danger:#B3261E;
+    --danger-bg:#FCE8E6;
+    --shadow:none;
+    --shadow-sm:0 1px 2px rgba(0,0,0,0.12);
+    --shadow-up:0 -2px 8px rgba(0,0,0,0.06);
     --safe-b: env(safe-area-inset-bottom, 0px);
     /* 手機橫放、平板主畫面模式：左右避開瀏海與圓角 */
     --safe-l: env(safe-area-inset-left, 0px);
@@ -47,41 +48,41 @@
        就能讓整個頁面（表單欄位、卡片、徽章、彈窗遮罩...）跟著換膚，不用
        在每個元件各自判斷目前是什麼主題。 */
     --surface:#FFFFFF;            /* 輸入框／卡片內的「白色」表面（chip、modal-list-item、member-tag...） */
-    --surface-hover:#F8F9FA;      /* 可互動列表項目的 hover 背景（member-detail-head） */
-    --chip-bg:#F1F3F4;            /* 徽章/標籤類背景（receipt-type-badge、code.inline、幣別標籤...） */
-    --chip-bg-hover:#E8EAED;
+    --surface-hover:#E9EEF6;      /* 可互動列表項目的 hover 背景（member-detail-head） */
+    --chip-bg:#DDE3EA;            /* 徽章/標籤類背景（receipt-type-badge、code.inline、幣別標籤...） */
+    --chip-bg-hover:#D3DAE3;
     --fee-bg:var(--surface-hover);  /* 帳單辨識「雜費」項目列背景 */
     --fee-badge-bg:var(--chip-bg);
     --fee-badge-bg-hover:var(--chip-bg-hover);
     --fee-badge-text:var(--ink-soft);
     --zero-bg:var(--chip-bg);     /* 淨額為 0（已結清）時的中性徽章背景 */
-    --brass-tint:color-mix(in srgb, var(--brass) 9%, var(--card)); /* 勾選中／hover 時的主色高亮底 */
-    --scrim:rgba(32,33,36,0.5);   /* Modal 遮罩層 */
+    --brass-tint:#D3E3FD; /* 勾選中／hover 時的主色高亮底 */
+    --scrim:rgba(0,0,0,0.32);   /* Modal 遮罩層 */
     --paper-stripe:transparent;   /* 背景直紋線：G 風格是乾淨的平面，不畫 */
 
     /* 頁首：G 風格是白底＋細底線；暗色模式是深灰底。頁首文字沿用 --on-dark 這組變數名稱。 */
     --header-bg:#FFFFFF;
-    --header-line:#DADCE0;
+    --header-line:transparent;
     --header-shadow:none;
-    --on-dark:#202124;
-    --on-dark-muted:#5F6368;
-    --on-dark-faint:#80868B;
+    --on-dark:#1F1F1F;
+    --on-dark-muted:#444746;
+    --on-dark-faint:#747775;
     --header-btn-bg:transparent;
-    --header-btn-line:#DADCE0;
-    --header-btn-hover:#F1F3F4;
-    --sync-idle:#9AA0A6; --sync-ok:#188038; --sync-busy:var(--sync-idle); --sync-err:#D93025; --sync-ro:var(--sync-idle);
-    --sync-err-bg:color-mix(in srgb, #D93025 9%, #FFFFFF); --sync-err-line:#F4B5AF; --sync-err-text:#C5221F;
-    --header-accent:#202124;      /* 頁首品牌字 */
+    --header-btn-line:#C4C7C5;
+    --header-btn-hover:#F0F4F9;
+    --sync-idle:#747775; --sync-ok:#146C2E; --sync-busy:var(--sync-idle); --sync-err:#B3261E; --sync-ro:var(--sync-idle);
+    --sync-err-bg:#FCE8E6; --sync-err-line:#F2B8B5; --sync-err-text:#8C1D18;
+    --header-accent:#1F1F1F;      /* 頁首品牌字 */
 
     /* 主要按鈕／作用中分頁／toast 的「強調面」：淺色模式是深底淺字，暗色模式翻成
        淺底深字（固定深色放在暗色卡片上會幾乎看不見）。 */
-    --emphasis:#1A73E8;
-    --emphasis-hover:#1967D2;
-    --on-emphasis:#FFFFFF;
+    --emphasis:#D3E3FD;
+    --emphasis-hover:#C2D7FA;
+    --on-emphasis:#0B57D0;
     --on-brass:#FFFFFF;
-    --toast-bg:#3C4043; --on-toast:#FFFFFF;      /* 提示訊息：深灰提示條（成功也一樣） */
+    --toast-bg:#303030; --on-toast:#F2F2F2;      /* 提示訊息：深灰提示條（成功也一樣） */
     --toast-success-bg:var(--toast-bg);      /* 一般提示訊息：G 風格的深灰提示條 */
-    --debt-solid:#D93025;         /* 目前唯一用途：確認刪除 Modal 的紅色按鈕背景（白字疊在上面） */
+    --debt-solid:#B3261E;         /* 目前唯一用途：確認刪除 Modal 的紅色按鈕背景（白字疊在上面） */
   }
 
   /* 🆕 暗色模式調色盤。切換方式見 js/theme.js 的 setTheme()／toggleTheme()，
@@ -89,56 +90,56 @@
      好 data-theme，避免第一次畫面出現「先亮後暗」的閃爍。
      中性色沿用 Discord 的灰階（同一冷灰色相的不同明度）。 */
   :root[data-theme="dark"]{
-    --ink:#E8EAED;
-    --ink-soft:#9AA0A6;
-    --paper:#202124;
-    --card:#292A2D;
-    --card-line:#3C4043;
-    --brass:#8AB4F8;
-    --brass-bg:#8AB4F8;          /* 上面疊 --on-brass（深字） */
-    --brass-soft:#3F5C88;        /* 暗色下當邊框用，壓低亮度避免框線搶眼 */
-    --credit:#81C995;
-    --credit-bg:var(--chip-bg);
-    --debt:#F28B82;
-    --debt-bg:var(--chip-bg);
-    --danger:#F28B82;
-    --danger-bg:color-mix(in srgb, var(--danger) 14%, var(--card));
-    --shadow: 0 1px 0 rgba(0,0,0,0.4), 0 10px 26px rgba(0,0,0,0.45);
-    --shadow-sm: 0 1px 3px rgba(0,0,0,0.5);
-    --shadow-up: 0 -4px 16px rgba(0,0,0,0.35);
+    --ink:#E3E3E3;
+    --ink-soft:#C4C7C5;
+    --paper:#131314;
+    --card:#282A2C;
+    --card-line:#444746;
+    --brass:#A8C7FA;
+    --brass-bg:#A8C7FA;          /* 上面疊 --on-brass（深字） */
+    --brass-soft:#0842A0;        /* 暗色下當邊框用，壓低亮度避免框線搶眼 */
+    --credit:#6DD58C;
+    --credit-bg:#2D4232;
+    --debt:#F2B8B5;
+    --debt-bg:#4A3533;
+    --danger:#F2B8B5;
+    --danger-bg:#4A3533;
+    --shadow:none;
+    --shadow-sm:0 1px 2px rgba(0,0,0,0.5);
+    --shadow-up:0 -2px 8px rgba(0,0,0,0.4);
     color-scheme: dark; /* 讓深色模式下的原生 select 選項清單等控制項跟著換成深色 */
 
-    --surface:#303134;
-    --surface-hover:#35363A;
-    --chip-bg:#3C4043;
-    --chip-bg-hover:#44474A;
+    --surface:#1E1F20;
+    --surface-hover:#333537;
+    --chip-bg:#333537;
+    --chip-bg-hover:#3C3E41;
     --fee-bg:var(--surface-hover);
     --fee-badge-bg:var(--chip-bg);
     --fee-badge-bg-hover:var(--chip-bg-hover);
     --fee-badge-text:var(--ink-soft);
-    --brass-tint:color-mix(in srgb, var(--brass) 12%, var(--card));
+    --brass-tint:#004A77;
     --scrim:rgba(0,0,0,0.6);
 
-    --header-bg:#292A2D;
-    --header-line:#3C4043;
+    --header-bg:#131314;
+    --header-line:transparent;
     --header-shadow:none;
-    --on-dark:#E8EAED;
-    --on-dark-muted:#BDC1C6;
-    --on-dark-faint:#9AA0A6;
-    --header-accent:var(--ink);
+    --on-dark:#E3E3E3;
+    --on-dark-muted:#C4C7C5;
+    --on-dark-faint:#8E918F;
+    --header-accent:#E3E3E3;
     --header-btn-bg:transparent;
-    --header-btn-line:#5F6368;
-    --header-btn-hover:#3C4043;
-    --sync-idle:#9AA0A6; --sync-ok:#81C995; --sync-busy:var(--sync-idle); --sync-err:#F28B82; --sync-ro:var(--sync-idle);
-    --sync-err-bg:color-mix(in srgb, #F28B82 16%, #292A2D); --sync-err-line:#8C3A33; --sync-err-text:#F6AEA9;
+    --header-btn-line:#444746;
+    --header-btn-hover:#282A2C;
+    --sync-idle:#8E918F; --sync-ok:#6DD58C; --sync-busy:var(--sync-idle); --sync-err:#F2B8B5; --sync-ro:var(--sync-idle);
+    --sync-err-bg:#4A3533; --sync-err-line:#8C1D18; --sync-err-text:#F9DEDC;
 
-    --emphasis:#8AB4F8;
-    --emphasis-hover:#AECBFA;
-    --on-emphasis:#202124;
-    --on-brass:#202124;
-    --toast-bg:#E8EAED; --on-toast:#202124;
+    --emphasis:#004A77;
+    --emphasis-hover:#0B5A8E;
+    --on-emphasis:#C2E7FF;
+    --on-brass:#062E6F;
+    --toast-bg:#E3E3E3; --on-toast:#303030;
     --toast-success-bg:var(--toast-bg);
-    --debt-solid:#D93025;
+    --debt-solid:#B3261E;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
   html,body{margin:0;padding:0;}
@@ -392,7 +393,7 @@
 
   .card{
     scroll-margin-top:76px; /* 捲到卡片時不要被固定的頁首蓋住 */
-    background:var(--card); border:1px solid var(--card-line); border-radius:var(--r-lg);
+    background:var(--card); border:1px solid var(--card-border); border-radius:var(--r-lg);
     padding:16px 16px; box-shadow:var(--shadow); margin-bottom:14px;
   }
 
@@ -1203,7 +1204,7 @@
   }
   .bar-fill-pos{
     position:absolute; left:50%; height:18px; top:5px;
-    background:var(--credit); border-radius:0 4px 4px 0;
+    background:var(--brass); border-radius:0 4px 4px 0;
     transition:width .45s cubic-bezier(.4,0,.2,1);
     min-width:0;
   }
