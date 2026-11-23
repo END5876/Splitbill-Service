@@ -186,3 +186,57 @@ test('刪除單筆紀錄：只有建立者／管理端可以，訪客與一般�
   assert.ok((await getTrip()).expenses.some((e) => e.id === 'del-me'), '帳目本身不受影響');
   assert.equal((await del(`${BASE}/api/trip/h1`, OWNER)).status, 404, '重複刪除回 404');
 });
+
+test('誰記的、誰改過：伺服器依登入身分寫 createdBy／updatedBy，不信前端；訪客看不到帳號', async () => {
+  // 成員用網頁新增：自稱是別人也沒用
+  assert.equal((await putEntry('expenses', 'w1', { entry: expense({ createdBy: '300000000000000099', updatedBy: 'x' }) }, undefined, asAlice())).status, 200);
+  let e = (await getTrip()).expenses.find((x) => x.id === 'w1');
+  assert.equal(e.createdBy, ALICE);
+  assert.equal(e.updatedBy, undefined, '新的一筆沒有「改過」');
+
+  // 內容沒變的重送：不算改過
+  assert.equal((await putEntry('expenses', 'w1', { entry: expense() }, undefined, asAlice())).status, 200);
+  assert.equal((await getTrip()).expenses.find((x) => x.id === 'w1').updatedBy, undefined);
+
+  // 訪客改了內容：記成訪客，記帳者不變
+  assert.equal((await putEntry('expenses', 'w1', { entry: expense({ description: '午餐' }) }, `${BASE}/api/shared-trip/${RW}`, JSONH)).status, 200);
+  e = (await getTrip()).expenses.find((x) => x.id === 'w1');
+  assert.equal(e.createdBy, ALICE);
+  assert.equal(e.updatedBy, 'guest');
+
+  // Bot 代 Alice 改（x-actor-id）：記成 Alice
+  const trip = await getTrip();
+  trip.expenses.find((x) => x.id === 'w1').description = '晚餐';
+  const r = await fetch(`${BASE}/api/trip/h1`, {
+    method: 'PUT', headers: { ...OWNER, 'x-actor-id': ALICE }, body: JSON.stringify({ ...trip, expectedUpdatedAt: trip.updatedAt }),
+  });
+  assert.equal(r.status, 200);
+  e = (await getTrip()).expenses.find((x) => x.id === 'w1');
+  assert.equal(e.updatedBy, ALICE);
+
+  // 訪客讀取：帳號一律遮蔽
+  const guest = await j(await fetch(`${BASE}/api/shared-trip/${RO}`));
+  const ge = guest.body.trip.expenses.find((x) => x.id === 'w1');
+  assert.equal(ge.createdBy, 'discord');
+  assert.equal(ge.updatedBy, 'discord');
+  assert.ok(!JSON.stringify(guest.body).includes(ALICE));
+
+  // 轉帳也記
+  assert.equal((await putEntry('deposits', 'd9', { entry: { payerId: 'b', collectorId: 'a', amount: 10, currency: 'TWD', amountInBase: 10, note: '', createdAt: 1 } }, undefined, asAlice())).status, 200);
+  assert.equal((await getTrip()).deposits.find((x) => x.id === 'd9').createdBy, ALICE);
+});
+
+test('還原刪掉的帳目：一律用紀錄裡刪除前的內容，前端夾帶的修改不採用；紀錄裡沒有的不能「還原」', async () => {
+  assert.equal((await putEntry('expenses', 'r9', { entry: expense({ description: '晚餐', amount: 100 }) }, undefined, asAlice())).status, 200);
+  assert.equal((await delEntry('expenses', 'r9', undefined, asAlice())).status, 200);
+  // 訪客送「還原」卻把金額改成 5000
+  const tampered = expense({ description: '晚餐', amount: 5000, amountInBase: 5000,
+    payers: [{ userId: 'a', amount: 5000 }], participants: [{ userId: 'a', amount: 2500 }, { userId: 'b', amount: 2500 }] });
+  const r = await putEntry('expenses', 'r9', { entry: tampered, restore: true }, `${BASE}/api/shared-trip/${RW}`, JSONH);
+  assert.equal(r.status, 200);
+  const e = (await getTrip()).expenses.find((x) => x.id === 'r9');
+  assert.equal(e.amount, 100, '金額是刪除前的');
+  assert.equal(e.createdBy, ALICE, '記帳者沿用原本的');
+  assert.equal(e.updatedBy, 'guest', '還原的人記成改過');
+  assert.equal((await putEntry('expenses', 'never-existed', { entry: expense(), restore: true }, undefined, asAlice())).status, 404);
+});

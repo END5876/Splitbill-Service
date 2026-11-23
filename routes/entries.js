@@ -34,10 +34,13 @@ module.exports = function createEntriesRouter(ctx) {
       res.status(404).json({ error: '找不到這個行程' });
       return null;
     }
-    return requireTripAccess(req, res, trip, 'write') ? { trip, actor: actorOf(req) } : null;
+    if (!requireTripAccess(req, res, trip, 'write')) return null;
+    if (trip.archived) { res.status(403).json({ error: '這個行程已封存，只能看、不能修改。建立者可以在「設定 → 行程」取消封存。', archived: true }); return null; }
+    return { trip, actor: actorOf(req) };
   }
   function tripByShareToken(req, res) {
     const found = requireGuestLink(req, res, '此分享連結為唯讀，無法儲存變更');
+    if (found && found.trip.archived) { res.status(403).json({ error: '這個行程已封存，只能看、不能修改。建立者可以在「設定 → 行程」取消封存。', archived: true }); return null; }
     return found && { trip: found.trip, actor: actorOf(req, found.link), guest: true };
   }
 
@@ -86,25 +89,50 @@ module.exports = function createEntriesRouter(ctx) {
         const { trip, actor, guest } = resolved;
         const entryId = req.params.entryId;
         if (!isSafeId(entryId)) return res.status(400).json({ error: '資料 ID 格式錯誤' });
-        const raw = req.body && req.body.entry;
-        const error = spec.validate(raw, trip);
-        if (error) return res.status(400).json({ error });
-
         const list = trip[kind];
         const index = list.findIndex((x) => x.id === entryId);
         const existing = index === -1 ? null : list[index];
+
+        // 還原刪掉的那筆：內容一律用伺服器操作紀錄裡刪除前的版本，前端送來的內容不採用
+        // （只能原樣還原，不能夾帶修改還掛著原本記帳者的名字）
+        const restoringDeleted = !!(req.body && req.body.restore === true) && !existing;
+        let raw = req.body && req.body.entry;
+        let removed = null;
+        if (restoringDeleted) {
+          removed = storage.findRemovedEntry(trip.id, entryId, kind === 'expenses' ? 'expense' : 'deposit');
+          if (!removed) return res.status(404).json({ error: '紀錄裡找不到這筆刪掉的帳目，沒辦法還原' });
+          raw = { ...removed };
+          delete raw.id;
+          delete raw.updatedBy;
+        }
+        const error = spec.validate(raw, trip);
+        if (error) return res.status(400).json({ error: restoringDeleted ? `沒辦法還原：${error}` : error });
         if (!existing && list.length >= storage.MAX_ENTRIES) {
           return res.status(400).json({ error: `這個行程的資料已達上限（最多 ${storage.MAX_ENTRIES} 筆）` });
         }
         // 編輯時沒帶日期就沿用原本的（不然會被當成「現在」，日期悄悄變掉）
         const withDate = existing && raw.createdAt === undefined ? { ...raw, createdAt: existing.createdAt } : raw;
         const entry = { ...spec.repair({ ...withDate, id: entryId }, trip, existing, guest, req.body.restore === true), id: entryId };
+        // 誰記的、誰改過：依這次請求的身分寫入，不信前端送來的值
+        if (restoringDeleted) {
+          // 記帳者沿用刪除前的值，這次還原的人記成「改過」
+          const who = storage.actorAccountId(actor);
+          const original = typeof removed.createdBy === 'string' ? removed.createdBy : null;
+          if (original) entry.createdBy = original;
+          else if (kind === 'expenses') entry.createdBy = who && who !== 'guest' ? who : 'web-ui';
+          else delete entry.createdBy;
+          if (who) entry.updatedBy = who;
+          else delete entry.updatedBy;
+        } else {
+          storage.stampAuthors(existing ? [existing] : [], [entry], actor);
+        }
         // 較新版本的程式寫下、這個版本不認得的欄位接回去（見 storage.preserveUnknownFields）
         storage.preserveUnknownEntryFields(kind, existing, entry);
         if (index === -1) list.push(entry);
         else list[index] = entry;
 
-        const shown = guest && kind === 'expenses' ? storage.toGuestExpense(entry) : entry;
+        // 🔒 訪客的回應不帶記帳者的帳號（支出、轉帳都一樣）
+        const shown = guest ? storage.toGuestExpense(entry) : entry;
         res.json({ entry: shown, ...commit(trip, req, actor) });
       });
 

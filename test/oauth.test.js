@@ -193,3 +193,101 @@ test('限流：Discord 換 token 失敗太多次（亂灌 callback）就暫停�
   assert.equal((await oauth(base, ALICE)).status, 429, '全新的來源也要等');
   assert.equal(await whoami(base, { cookie: sessionOf(await oauth(main, ALICE)) }), ALICE, '已登入的 Cookie 不受影響');
 });
+
+// ── 代碼交接（iOS 主畫面 App）──
+const XRW = { 'x-requested-with': 'splitbill' };
+async function handoffStart(base, ip) {
+  const r = await fetch(`${base}/auth/handoff/start`, { method: 'POST', headers: { ...XRW, 'X-Forwarded-For': ip } });
+  assert.equal(r.status, 200);
+  const j = await r.json();
+  const hc = cookieOf(r, 'sb_handoff');
+  assert.match(hc, /Path=\/auth\/handoff;/);
+  assert.match(hc, /SameSite=Strict/);
+  return { ...j, cookie: hc.split(';')[0] };
+}
+// 在「瀏覽器」那邊走完登入，回傳確認頁（HTML）
+async function handoffBrowserLogin(base, loginUrl, userId, ip) {
+  const r1 = await fetch(base + loginUrl, { redirect: 'manual' });
+  assert.equal(r1.status, 302);
+  const state = new URL(r1.headers.get('location')).searchParams.get('state');
+  const stateCookie = cookieOf(r1, 'sb_oauth_state').split(';')[0];
+  const r2 = await fetch(`${base}/auth/discord/callback?code=code-${userId}&state=${state}`, {
+    redirect: 'manual', headers: { cookie: stateCookie, 'X-Forwarded-For': ip },
+  });
+  assert.equal(r2.status, 200);
+  assert.equal(cookieOf(r2, 'sb_session'), '', '瀏覽器那邊不登入，登入要交給 App');
+  return r2.text();
+}
+const confirmForm = (html) => ({
+  id: /name="id" value="([^"]+)"/.exec(html)[1],
+  token: /name="token" value="([^"]+)"/.exec(html)[1],
+});
+const poll = (base, cookie) => fetch(`${base}/auth/handoff/poll`, { method: 'POST', headers: { ...XRW, cookie } });
+
+test('代碼交接：App 取代碼 → 瀏覽器登入並按「登入 App」→ App 輪詢拿到登入', async () => {
+  const base = await boot();
+  const ip = newIp();
+  const h = await handoffStart(base, ip);
+  assert.match(h.code, /^[A-HJ-NP-Z2-9]{6}$/);
+  assert.match(h.loginUrls.discord, /^\/auth\/discord\/login\?handoff=[0-9a-f]{32}$/);
+  assert.equal((await poll(base, h.cookie)).status, 202);
+
+  const page = await handoffBrowserLogin(base, h.loginUrls.discord, ALICE, ip);
+  assert.ok(page.includes(h.code), '確認頁顯示同一組代碼');
+  assert.ok(!page.includes('另一個網路'), '同一個網路不警告');
+  const p1 = await poll(base, h.cookie);
+  assert.equal(p1.status, 202);
+  assert.equal((await p1.json()).status, 'confirming');
+
+  const f = confirmForm(page);
+  const c = await fetch(`${base}/auth/handoff/confirm`, { method: 'POST', body: new URLSearchParams({ ...f, action: 'approve' }) });
+  assert.equal(c.status, 200);
+
+  const done = await poll(base, h.cookie);
+  assert.equal(done.status, 200);
+  assert.equal(await whoami(base, { cookie: sessionOf(done) }), ALICE);
+  assert.equal((await poll(base, h.cookie)).status, 410, '用過就作廢');
+});
+
+test('代碼交接：只知道連結或代碼拿不走登入；別的網路要求的代碼會警告；取消後作廢', async () => {
+  const base = await boot();
+  const h = await handoffStart(base, newIp());
+  const page = await handoffBrowserLogin(base, h.loginUrls.discord, ALICE, newIp());
+  assert.ok(page.includes('另一個網路'), '來源網路不同要警告');
+  assert.equal((await poll(base, '')).status, 410, '沒有 App 的 Cookie');
+  assert.equal((await poll(base, h.cookie.replace(/\.[^.]+$/, '.wrong'))).status, 410, 'Cookie 的密鑰不對');
+
+  const f = confirmForm(page);
+  const bad = await fetch(`${base}/auth/handoff/confirm`, { method: 'POST', body: new URLSearchParams({ id: f.id, token: 'x', action: 'approve' }) });
+  assert.equal(bad.status, 410, '確認頁的 token 不對');
+  const cancel = await fetch(`${base}/auth/handoff/confirm`, { method: 'POST', body: new URLSearchParams({ ...f, action: 'cancel' }) });
+  assert.equal(cancel.status, 200);
+  assert.equal((await poll(base, h.cookie)).status, 410);
+});
+
+test('代碼交接：缺 CSRF 標頭或跨站要求一律拒絕；不存在的代碼不能拿去登入', async () => {
+  const base = await boot();
+  assert.equal((await fetch(`${base}/auth/handoff/start`, { method: 'POST' })).status, 403);
+  assert.equal((await fetch(`${base}/auth/handoff/start`, { method: 'POST', headers: { ...XRW, 'sec-fetch-site': 'cross-site' } })).status, 403);
+  assert.equal((await fetch(`${base}/auth/discord/login?handoff=${'a'.repeat(32)}`, { redirect: 'manual' })).status, 410);
+  const h = await handoffStart(base, newIp());
+  assert.equal((await fetch(`${base + h.loginUrls.discord}&link=1`, { redirect: 'manual' })).status, 410, '不能同時是綁定');
+  const cancel = await fetch(`${base}/auth/handoff/cancel`, { method: 'POST', headers: { ...XRW, cookie: h.cookie } });
+  assert.equal(cancel.status, 200);
+  assert.equal((await fetch(base + h.loginUrls.discord, { redirect: 'manual' })).status, 410, 'App 取消後連結失效');
+});
+
+test('代碼交接：同一個來源最多同時 5 組；重新開始會作廢自己上一組、不佔名額', async () => {
+  const base = await boot();
+  const ip = newIp();
+  let last = await handoffStart(base, ip);
+  for (let i = 0; i < 8; i++) {
+    const r = await fetch(`${base}/auth/handoff/start`, { method: 'POST', headers: { ...XRW, 'X-Forwarded-For': ip, cookie: last.cookie } });
+    assert.equal(r.status, 200, '帶著上一組的 Cookie 重來不會被擋');
+    last = { cookie: cookieOf(r, 'sb_handoff').split(';')[0] };
+  }
+  for (let i = 0; i < 4; i++) {
+    assert.equal((await fetch(`${base}/auth/handoff/start`, { method: 'POST', headers: { ...XRW, 'X-Forwarded-For': ip } })).status, 200);
+  }
+  assert.equal((await fetch(`${base}/auth/handoff/start`, { method: 'POST', headers: { ...XRW, 'X-Forwarded-For': ip } })).status, 429);
+});

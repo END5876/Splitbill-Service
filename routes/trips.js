@@ -57,6 +57,7 @@ module.exports = function createTripsRouter(ctx) {
 
     if (existing) {
       if (!requireTripAccess(req, res, existing, 'write')) return;
+      if (existing.archived) return res.status(403).json({ error: '這個行程已封存，只能看、不能修改。建立者可以在「設定 → 行程」取消封存。', archived: true });
       const expected = req.body && req.body.expectedUpdatedAt;
       if (typeof expected === 'number' && typeof existing.updatedAt === 'number' && expected !== existing.updatedAt) {
         return res.status(409).json({
@@ -95,8 +96,10 @@ module.exports = function createTripsRouter(ctx) {
       if (existing.ownerId) incoming.ownerId = existing.ownerId;
       else delete incoming.ownerId;
       incoming.createdAt = existing.createdAt;
+      incoming.archived = !!existing.archived; // 封存只走 PATCH /archive（只有建立者）
     } else {
       delete incoming.links;
+      incoming.archived = false;
       incoming.guildId = null; // 下面依舊網址的 guildId 決定要不要綁定
       if (typeof incoming.ownerId !== 'string' || !incoming.ownerId.trim()) delete incoming.ownerId;
     }
@@ -113,6 +116,8 @@ module.exports = function createTripsRouter(ctx) {
     );
 
     const repaired = storage.repairTrip({ ...incoming, id: tripId });
+    // 誰記的、誰改過：依這次請求的身分寫入，不信前端傳來的值
+    storage.stampTripAuthors(existing, repaired, actorOf(req));
     // 較新版本的程式寫下、這個版本不認得的欄位接回去（見 storage.preserveUnknownFields）
     storage.preserveUnknownFields(existing, repaired);
     storage.setTrip(repaired);
@@ -131,6 +136,8 @@ module.exports = function createTripsRouter(ctx) {
     const trip = loadTripOr404(req, res);
     if (!trip) return;
     if (!requireTripAccess(req, res, trip, 'write')) return;
+    // 封存的行程只能看；建立者還是可以改名（整理舊行程用）
+    if (trip.archived && !requireTripAccess(req, res, trip, 'owner')) return;
     const raw = req.body && typeof req.body.name === 'string' ? req.body.name : '';
     const name = raw.replace(/\s+/g, ' ').trim().slice(0, 60);
     if (!name) return res.status(400).json({ error: '請輸入行程名稱' });
@@ -140,6 +147,23 @@ module.exports = function createTripsRouter(ctx) {
       storage.persist();
     }
     res.json({ ok: true, name: trip.name, updatedAt: trip.updatedAt });
+  });
+
+  // ---- PATCH /api/trip/:tripId/archive：封存／取消封存（只有建立者） ----
+  // 封存後只能看：帳目、整包 PUT、分享連結寫入、回到舊版本一律拒絕；Discord 的行程選單不再列出。
+  // body: { archived: boolean }
+  router.patch('/trip/:tripId/archive', (req, res) => {
+    const trip = loadTripOr404(req, res);
+    if (!trip) return;
+    if (!requireTripAccess(req, res, trip, 'owner')) return;
+    const want = req.body && req.body.archived;
+    if (typeof want !== 'boolean') return res.status(400).json({ error: 'archived 要是 true 或 false' });
+    if (want !== !!trip.archived) {
+      trip.archived = want;
+      storage.touchTrip(trip, { actor: actorOf(req) });
+      storage.persist();
+    }
+    res.json({ ok: true, archived: !!trip.archived, updatedAt: trip.updatedAt });
   });
 
   // ---- DELETE /api/trip/:tripId：徹底刪除一個行程 ----

@@ -23,6 +23,7 @@ module.exports = function createMembersRouter(ctx) {
     const uid = requireUser(req, res);
     if (!uid) return;
 
+    if (trip.archived) return res.status(403).json({ error: '這個行程已封存，只能看、不能修改。建立者可以在「設定 → 行程」取消封存。', archived: true });
     const member = trip.members.find((m) => m.id === req.params.memberId);
     if (!member) return res.status(404).json({ error: '找不到這位成員' });
     if (!memberAccountId(member)) return res.json({ ok: true, trip: storage.toPublicTrip(trip) });

@@ -92,7 +92,7 @@ async function renderDebtSectionUI(){
 
   listEl.innerHTML = sourceList.length ? `<div class="settle-box">${displayList.map(t => settleRowHtml(t,
       `<span class="settle-party">${settleNameHtml(t.from)}</span><span class="settle-party"><span class="settle-verb lead">${verb}</span>${settleNameHtml(t.to)}</span>`,
-      t.amount, effectiveCurrency, isTransfer)).join('')}</div>` : `<p class="empty-state" style="padding:16px;">${emptyMsg}</p>`;
+      t.amount, effectiveCurrency, isTransfer)).join('')}</div>` : `<p class="empty-state" style="padding:16px;">${emptyMsg}</p>${archiveOfferHtml(isTransfer)}`;
 }
 
 /* =====================================================================
@@ -144,6 +144,15 @@ async function markTransferPaid(fromId, toId){
    「你的狀態」：登入且是這個行程的成員時，總覽最上方直接告訴你
    「你要付誰多少／誰要付你多少」，不用自己在長條圖跟清單裡找自己。
 ===================================================================== */
+// 大家都結清了：建立者可以封存這個行程（Discord 的行程選單就不會再列出來）
+function archiveOfferHtml(isTransfer){
+  if (!isTransfer || trip.archived || !trip.expenses.length || !canManageCurrentTrip()) return '';
+  return `<div class="archive-offer" data-write-only>
+    <span>大家都結清了。行程結束的話，可以封存起來。</span>
+    <button type="button" class="btn btn-ghost btn-sm" data-click="archiveCurrentTrip">封存這個行程</button>
+  </div>`;
+}
+
 function renderMyStatusCard(net){
   const el = document.getElementById('myStatusCard');
   if (!el) return;

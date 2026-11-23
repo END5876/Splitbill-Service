@@ -107,10 +107,105 @@ async function fetchMe(){
   renderHeaderAccount();
   return currentUser;
 }
+// 主畫面 App：iOS 的主畫面 App 跟 Safari 不共用 Cookie，跳去登入後回不來，所以一律改用代碼登入；
+// 其他平台的主畫面 App 照常登入，另外在按鈕下面提供代碼登入（萬一回不來）
+const IOS_STANDALONE = navigator.standalone === true; // 只有 iOS 有 navigator.standalone
+const STANDALONE = IOS_STANDALONE || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
 function loginWith(provider, next){
+  if (IOS_STANDALONE) return startLoginHandoff(provider, next);
   const target = next || (location.pathname + location.search + location.hash);
   location.href = `/auth/${encodeURIComponent(provider)}/login?next=${encodeURIComponent(target)}`;
 }
+
+/* ---------- 代碼登入（主畫面 App）：App 顯示代碼 → 在瀏覽器登入並確認代碼 → App 自動登入 ---------- */
+let handoffTimer = null, handoffBusy = false, handoffStarting = false;
+const HANDOFF_STATUS = {
+  pending: '等待登入…',
+  confirming: '請在瀏覽器按「登入 App」',
+  cancelled: '已在瀏覽器取消登入，可以再試一次',
+  failed: '登入失敗，可以在瀏覽器再試一次',
+};
+const handoffFetch = (path) => fetch(`/auth/handoff/${path}`, { method: 'POST', credentials: 'same-origin', headers: { 'x-requested-with': 'splitbill' } });
+function stopLoginHandoff(){
+  clearInterval(handoffTimer); handoffTimer = null;
+}
+// provider：只顯示這個平台的按鈕；沒給就列出所有可用的登入方式。
+// next：登入後要去的地方（例如邀請頁的 /#link=…，網址上的 #link= 已經被拿掉了，不記下來登入後就回不去）
+const HANDOFF_NEXT_KEY = 'splitbill-handoff-next';
+async function startLoginHandoff(provider, next){
+  if (handoffStarting) return; // 連點兩下：只要一組代碼
+  handoffStarting = true;
+  try{
+    if (typeof next === 'string' && next.startsWith('/')) sessionStorage.setItem(HANDOFF_NEXT_KEY, next);
+    else sessionStorage.removeItem(HANDOFF_NEXT_KEY);
+  }catch(e){ /* 私密瀏覽：登入後回到首頁 */ }
+  stopLoginHandoff();
+  let j;
+  try{
+    const r = await handoffFetch('start'); // 伺服器會順便作廢這個 App 之前要的代碼
+    j = await r.json().catch(() => ({}));
+    if (!r.ok){ toast(j.error || '拿不到登入代碼，請稍後再試一次', 'error'); return; }
+  }catch(e){
+    toast('連不上伺服器，請檢查網路後再試一次', 'error'); return;
+  }finally{ handoffStarting = false; }
+  const urls = j.loginUrls || {};
+  const provs = ['line', 'discord'].filter(p => urls[p] && (!provider || p === provider || !urls[provider]));
+  const btnCls = { line: 'btn-line', discord: 'btn-brass' };
+  mountModal(`
+    <div class="modal-title" id="modalTitle">用代碼登入</div>
+    <div class="modal-body" id="modalBody">
+      <p class="handoff-intro">在瀏覽器登入後，確認頁上的代碼要和這裡一樣：</p>
+      <div class="handoff-code">${escapeHtml(j.code || '')}</div>
+      <div class="handoff-links">${provs.map(p =>
+        `<a class="btn ${btnCls[p]}" href="${escapeHtml(urls[p])}" target="_blank" rel="noopener">在瀏覽器用 ${PROVIDER_LABELS[p]} 登入</a>`).join('')}</div>
+      <p class="handoff-status" id="handoffStatus" role="status">${HANDOFF_STATUS.pending}</p>
+    </div>
+    <div class="modal-actions"><button class="btn btn-ghost" id="handoffCancelBtn" type="button">取消</button></div>`,
+    { hasTitle: true, hasBody: true, onDismiss: cancelLoginHandoff });
+  document.getElementById('handoffCancelBtn').onclick = ()=>{ closeModal(); cancelLoginHandoff(); };
+  handoffTimer = setInterval(pollLoginHandoff, 2000);
+}
+// 例如瀏覽器那邊沒按確認就關掉了：代碼在伺服器上作廢，不用等過期就能重來
+function cancelLoginHandoff(){
+  stopLoginHandoff();
+  handoffFetch('cancel').catch(() => {});
+}
+async function pollLoginHandoff(){
+  if (handoffBusy || !handoffTimer) return;
+  handoffBusy = true;
+  try{
+    const r = await handoffFetch('poll');
+    if (!handoffTimer) return; // 等回應的時候已經結束（取消或另一次輪詢已完成）
+    if (r.status === 202){
+      const j = await r.json().catch(() => ({}));
+      const el = document.getElementById('handoffStatus');
+      if (el) el.textContent = HANDOFF_STATUS[j.status] || HANDOFF_STATUS.pending;
+      return;
+    }
+    stopLoginHandoff();
+    closeModal();
+    if (r.ok){ goAfterHandoffLogin(); return; }
+    const j = await r.json().catch(() => ({}));
+    toast(j.error || '登入代碼已過期，請重新開始', 'error');
+  }catch(e){ /* 網路暫時斷線：下一輪再試 */ }
+  finally{ handoffBusy = false; }
+}
+// 登入完成：回到開始登入時要去的地方（只有 hash 不同時要自己重新載入，不然頁面不會換）
+function goAfterHandoffLogin(){
+  let next = null;
+  try{ next = sessionStorage.getItem(HANDOFF_NEXT_KEY); sessionStorage.removeItem(HANDOFF_NEXT_KEY); }catch(e){}
+  if (!next) return location.reload();
+  const u = new URL(next, location.href);
+  if (u.origin !== location.origin) return location.reload();
+  if (u.pathname === location.pathname && u.search === location.search){
+    history.replaceState(history.state, '', u.pathname + u.search + u.hash);
+    location.reload();
+  } else {
+    location.href = u.href;
+  }
+}
+// 從瀏覽器切回 App 時立刻檢查一次，不用等下一輪
+document.addEventListener('visibilitychange', () => { if (!document.hidden && handoffTimer) pollLoginHandoff(); });
 function loginWithDiscord(next){ loginWith('discord', next); }
 function loginWithLine(next){ loginWith('line', next); }
 // 已設定好的登入方式各一顆按鈕。next：登入後回到哪裡；verb：按鈕文字「用 X 登入」後面接的字（例如「並加入」）
@@ -118,9 +213,13 @@ function loginButtonsHtml(next, verb){
   const list = [];
   if (loginProviders.line) list.push(['line', 'loginWithLine', 'btn-line']);
   if (loginProviders.discord) list.push(['discord', 'loginWithDiscord', 'btn-brass']);
-  return list.map(([p, fn, cls]) =>
+  const buttons = list.map(([p, fn, cls]) =>
     `<button class="btn ${cls}" type="button" ${next ? act('click', fn, next) : `data-click="${fn}"`}>用 ${PROVIDER_LABELS[p]} 登入${escapeHtml(verb || '')}</button>`
   ).join('');
+  // 非 iOS 的主畫面 App：照常登入，萬一回不來可以改用代碼（iOS 的按鈕本身就是代碼登入）
+  const fallback = list.length && STANDALONE && !IOS_STANDALONE
+    ? '<button class="link-btn handoff-fallback" type="button" data-click="startLoginHandoff">登入後回不到這裡？改用代碼登入</button>' : '';
+  return buttons + fallback;
 }
 // 「只會讀取你的…名稱與頭像」說明用：「Discord」「LINE」或「Discord／LINE」
 function loginProviderNames(){
@@ -255,8 +354,10 @@ const ROLE_LABELS = { owner: '建立者', member: '成員', admin: '管理' };
 function populateTripSelect(){
   const sel = document.getElementById('tripSelect');
   const prev = sel.value || currentTripId || '';
-  sel.innerHTML = myTrips.length
-    ? myTrips.map(t=>`<option value="${escapeHtml(t.id)}">${escapeHtml(t.name)}（${[ROLE_LABELS[t.role], t.archived ? '已封存' : ''].filter(Boolean).join('，')}）</option>`).join('')
+  // 封存的行程排在最後
+  const ordered = [...myTrips].sort((a, b) => (a.archived ? 1 : 0) - (b.archived ? 1 : 0));
+  sel.innerHTML = ordered.length
+    ? ordered.map(t=>`<option value="${escapeHtml(t.id)}">${escapeHtml(t.name)}（${[ROLE_LABELS[t.role], t.archived ? '已封存' : ''].filter(Boolean).join('，')}）</option>`).join('')
     : '<option value="">（還沒有任何行程，先在下方建立一個）</option>';
   if (prev && myTrips.some(t=>t.id===prev)) sel.value = prev;
   updateDeleteTripButton();
@@ -335,7 +436,62 @@ function updateDeleteTripButton(){
   const btn = document.getElementById('btnDeleteTrip');
   if (!btn) return;
   const t = selectedTripEntry();
-  btn.style.display = t && (t.role === 'owner' || t.role === 'admin') ? '' : 'none';
+  const canManage = !!t && (t.role === 'owner' || t.role === 'admin');
+  btn.style.display = canManage ? '' : 'none';
+  const unarchive = document.getElementById('btnUnarchiveTrip');
+  if (unarchive) unarchive.style.display = canManage && t.archived ? '' : 'none';
+}
+
+/* ---------- 封存行程：大家都結清後，建立者可以封存；封存後只能看，Discord 的行程選單也不會列出來 ---------- */
+async function setTripArchived(tripId, archived){
+  return apiJson(await fetch(`/api/trip/${encodeURIComponent(tripId)}/archive`, {
+    method: 'PATCH',
+    headers: Object.assign({ 'Content-Type': 'application/json' }, apiHeaders()),
+    body: JSON.stringify({ archived }),
+  }));
+}
+function canManageCurrentTrip(){
+  const role = currentTripRole();
+  return role === 'owner' || role === 'admin';
+}
+async function archiveCurrentTrip(){
+  if (!currentTripId) return;
+  const ok = await confirmModal('封存後只能看、不能再記帳，Discord 的行程選單也不會再列出這個行程。之後可以在「設定 → 行程」取消封存。',
+    { title: `封存「${trip.name}」？`, confirmText: '封存行程' });
+  if (!ok) return;
+  await applyArchived(currentTripId, true);
+}
+async function unarchiveCurrentTrip(){
+  if (currentTripId) await applyArchived(currentTripId, false);
+}
+async function unarchiveSelectedTrip(){
+  const t = selectedTripEntry();
+  if (t) await applyArchived(t.id, false);
+}
+async function applyArchived(tripId, archived){
+  let body;
+  try{ body = await setTripArchived(tripId, archived); }
+  catch(err){ toast((archived ? '封存失敗：' : '取消封存失敗：') + err.message, 'error'); return; }
+  const entry = myTrips.find(t => t.id === tripId);
+  if (entry) entry.archived = !!body.archived;
+  const name = tripId === currentTripId ? trip.name : (entry ? entry.name : '');
+  if (tripId === currentTripId){
+    trip.archived = !!body.archived;
+    if (typeof body.updatedAt === 'number') trip.updatedAt = body.updatedAt; // 跟伺服器同一個版本，下次儲存才不會被當成衝突
+    renderAll();
+  }
+  populateTripSelect();
+  toast(body.archived ? `已封存「${name}」` : `已取消封存「${name}」`, 'success');
+  refreshTripList({ silent: true }).catch(()=>{});
+}
+// 封存中的行程：頁首下方常駐提示，所有記帳、編輯的按鈕藏起來（body.trip-archived）
+function renderArchivedState(){
+  const archived = !!(currentTripId && trip.archived);
+  document.body.classList.toggle('trip-archived', archived);
+  const banner = document.getElementById('archivedBanner');
+  if (banner) banner.hidden = !archived;
+  const btn = document.getElementById('archivedBannerBtn');
+  if (btn) btn.hidden = !(archived && canManageCurrentTrip());
 }
 // 下拉選單選了就直接開啟該行程並帶到總覽；載入失敗時選單退回目前開著的行程。
 async function onTripSelectChange(){
@@ -365,7 +521,7 @@ async function renameSelectedTrip(){
   const clean = name.replace(/\s+/g, ' ').trim();
   if (!clean){ toast('行程名稱不能空白', 'error'); return; }
   if (clean === oldName) return;
-  if (isCurrent){
+  if (isCurrent && !trip.archived){
     trip.name = clean;
     renderAll();
     scheduleCloudSave(0);
@@ -382,6 +538,7 @@ async function renameSelectedTrip(){
     }
   }
   t.name = clean;
+  if (isCurrent && trip.name !== clean){ trip.name = clean; renderAll(); } // 封存的行程走上面的 PATCH
   populateTripSelect();
   toast(`已改名為「${clean}」`, 'success');
   refreshTripList({ silent: true }).catch(()=>{});

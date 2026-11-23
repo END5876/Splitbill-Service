@@ -97,6 +97,11 @@
   <span id="pendingText"></span>
   <button class="btn btn-ghost btn-sm" type="button" data-click="flushPendingEntries" data-args='[true]'>再試一次</button>
 </div>
+<!-- 封存的行程：只能看。建立者可以直接取消封存（js/api.js renderArchivedState） -->
+<div class="pending-banner archived-banner" id="archivedBanner" role="status" hidden>
+  <span>這個行程已封存，只能看、不能修改。</span>
+  <button class="btn btn-ghost btn-sm" type="button" id="archivedBannerBtn" data-click="unarchiveCurrentTrip" data-loading="處理中…" hidden>取消封存</button>
+</div>
 <!-- 有新版本：常駐細橫幅，由使用者決定什麼時候重新載入（js/pwa.js） -->
 <div class="pending-banner" id="updateBanner" role="status" hidden>
   <span>有新版本。重新載入就能套用。</span>
@@ -208,14 +213,10 @@
           <span class="form-card-badge">編輯中</span>
           <span class="form-card-chevron" aria-hidden="true">▾</span>
         </button>
+        <label class="link-btn quick-add-only" for="receiptFileInput">拍收據</label>
+        <button type="button" class="quick-add-close quick-add-only" data-click="closeQuickAdd" aria-label="關閉"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
       </h2>
       <div class="form-card-body" id="expenseFormBody">
-      <div class="row">
-        <div class="field" style="flex:2;">
-          <label for="expDesc">項目說明</label>
-          <input type="text" id="expDesc" placeholder="例如：晚餐、租車費" data-input="clearInvalid" data-args='["$el"]'>
-        </div>
-      </div>
       <div class="row">
         <div class="field field-amount" style="max-width:160px;">
           <label for="expAmount">金額</label>
@@ -228,6 +229,13 @@
         <div class="field date-field">
           <label for="expDate">日期</label>
           <input type="date" id="expDate">
+        </div>
+      </div>
+      <div class="row">
+        <div class="field" style="flex:2;">
+          <label for="expDesc">項目說明</label>
+          <input type="text" id="expDesc" placeholder="例如：晚餐、租車費" data-input="clearInvalid" data-args='["$el"]'>
+          <div class="desc-suggest" id="expDescSuggest"></div>
         </div>
       </div>
       <div class="field" id="expBaseAmountField" hidden>
@@ -266,7 +274,7 @@
         </div>
       </div>
 
-      <div class="btn-row">
+      <div class="btn-row expense-save-row">
         <button class="btn btn-brass btn-block" id="btnSaveExpenseSync" data-click="saveExpenseAndSync" data-loading="儲存中…">記下這筆</button>
         <button class="btn btn-ghost" id="btnResetExpense" data-click="resetExpenseForm">清空表單</button>
       </div>
@@ -393,6 +401,7 @@
         <!-- 下拉選單選了就直接開啟（onTripSelectChange）；改名在左，刪除推到最右邊（只有建立者看得到） -->
         <div class="btn-row trip-actions">
           <button class="btn btn-ghost btn-sm" id="btnRenameTrip" type="button" style="display:none;" data-click="renameSelectedTrip" data-loading="儲存中…">行程改名</button>
+          <button class="btn btn-ghost btn-sm" id="btnUnarchiveTrip" type="button" style="display:none;" data-click="unarchiveSelectedTrip" data-loading="處理中…">取消封存</button>
           <button class="btn btn-danger btn-sm trip-delete" id="btnDeleteTrip" type="button" style="display:none;" data-click="deleteSelectedTrip" data-loading="刪除中…">刪除這個行程</button>
         </div>
 
@@ -517,6 +526,9 @@
     </div>
   </div>
 
+  <!-- 手機：右下「＋ 記一筆」打開底部的記帳面板（就是支出分頁的表單），見 js/expenseCrud.js openQuickAdd() -->
+  <button type="button" class="quick-add-fab" id="quickAddFab" data-write-only data-click="openQuickAdd"><span aria-hidden="true">＋</span>記一筆</button>
+  <div class="quick-add-backdrop" id="quickAddBackdrop" data-click="closeQuickAdd" hidden></div>
 </main>
 
 <nav class="bottom-nav" id="bottomNav">

@@ -10,7 +10,12 @@ const { alert } = require('../lib/alert');
 // 🆕 [Discord 登入] OAuth2 授權碼流程（scope 只要 identify：只拿 Discord 使用者 ID、
 // 名稱、頭像，不讀伺服器清單、不讀 email）。登入只證明身分，不授予任何權限。
 // 行為與音樂庫（music-library-service 的 webplayer/webAuth.js）一致：同一個 Discord 應用程式、
-// 同樣的 Cookie 規則、限流、換帳號；分帳沒有封鎖名單與主畫面 App 的代碼交接。
+// 同樣的 Cookie 規則、限流、換帳號、主畫面 App 的代碼交接；分帳沒有封鎖名單。
+//
+// 🆕 [代碼交接] iOS「加入主畫面」的 App 跟 Safari 不共用 Cookie：跳到 Discord／LINE 登入後 Cookie 設在瀏覽器那邊，
+// 回到 App 還是沒登入。所以 App 先要一組一次性代碼，到瀏覽器完成登入並在確認頁按「登入 App」，App 輪詢拿到登入 Cookie。
+// 輪詢要帶 start 時發給 App 的 Cookie（sb_handoff），只知道代碼或連結的人拿不走這次登入。
+// 🔒 確認頁一定要手動按：別人把他 App 的登入連結傳給你，你點開時平台已授權過會直接導回來，沒有這一步就等於把你的登入交給對方。
 //
 // 🆕 [LINE 登入] 同一套流程也支援 LINE Login（scope 只要 profile：userId、顯示名稱、頭像，不讀 email）。
 // LINE 使用者的身分是 line:U…（見 lib/accounts.js）。
@@ -33,6 +38,10 @@ const { alert } = require('../lib/alert');
 //   GET  /auth/<p>/login     ?next=<站內路徑>（&switch=1＝可以換帳號）（&link=1＝綁定到目前登入的帳號）→ 302 到授權頁
 //   GET  /auth/<p>/callback  平台導回來：驗證 state、換 token → 設定 Cookie（或完成綁定），用同站頁面跳回 next
 //   POST /auth/logout        撤銷並清除 Cookie
+//   POST /auth/handoff/start    代碼交接：主畫面 App 取得一次性代碼與各平台的登入連結（/auth/<p>/login?handoff=<id>）
+//   POST /auth/handoff/poll     代碼交接：App 輪詢，瀏覽器那邊確認後拿到登入 Cookie
+//   POST /auth/handoff/cancel   代碼交接：App 按取消，代碼立刻作廢
+//   POST /auth/handoff/confirm  代碼交接：瀏覽器那邊的確認頁送出（表單）
 
 // 指定 API 版本：不帶版本的 /api 會落到 Discord 的預設版本，哪天預設版本調整就可能壞掉
 const DISCORD_API_BASE = (process.env.DISCORD_API_BASE || 'https://discord.com/api/v10').replace(/\/+$/, '');
@@ -52,6 +61,23 @@ const GLOBAL_MAX_FAILS = 100;
 const MAX_TRACKED_SOURCES = 10000;
 // 每個帳號 1 小時內最多發出幾次登入（正常使用遠低於這個數；避免重複登入登出把已登出清單灌爆）
 const MAX_ISSUE_PER_HOUR = 60;
+// 代碼交接（只存在記憶體；重新啟動＝進行中的代碼作廢，重新取得就好）
+const HANDOFF_TTL_MS = 10 * 60 * 1000; // 代碼 10 分鐘內要用掉
+const MAX_HANDOFFS = 500;              // 同時進行中的代碼交接上限
+const MAX_HANDOFFS_PER_IP = 5;
+// 代碼字元：去掉容易看錯的 0/O、1/I/L
+const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+const HANDOFF_ID = /^[0-9a-f]{32}$/;
+
+function sha256(s) {
+  return crypto.createHash('sha256').update(String(s)).digest();
+}
+function randomCode(n) {
+  const bytes = crypto.randomBytes(n);
+  let out = '';
+  for (let i = 0; i < n; i++) out += CODE_ALPHABET[bytes[i] % CODE_ALPHABET.length];
+  return out;
+}
 
 function baseUrl() {
   return (process.env.PUBLIC_BASE_URL || '').replace(/\/+$/, '');
@@ -206,7 +232,11 @@ ${refresh ? `<meta http-equiv="refresh" content="0;url=${escapeHtml(refresh)}">`
 body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;background:var(--paper);color:var(--ink);font-family:"Noto Sans TC",system-ui,sans-serif}
 main{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px;width:100%;max-width:360px;display:flex;flex-direction:column;gap:14px;text-align:center}
 h1{font-size:18px;margin:0}p{color:var(--ink-soft);font-size:14px;line-height:1.6;margin:0}
-a.btn{height:44px;border-radius:22px;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;text-decoration:none;background:var(--brass);color:var(--on-brass)}
+a.btn,button{height:44px;border-radius:22px;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;text-decoration:none;background:var(--brass);color:var(--on-brass);border:0;width:100%;font-family:inherit;cursor:pointer}
+button.secondary{background:transparent;color:var(--ink);border:1px solid var(--line)}
+form{display:flex;flex-direction:column;gap:10px}
+.code{font:700 30px/1.2 ui-monospace,Menlo,Consolas,monospace;letter-spacing:.2em;color:var(--ink)}
+.warn{color:#C0392B;font-weight:700}
 </style></head><body><main><h1>${escapeHtml(title)}</h1>${bodyHtml}</main></body></html>`);
 }
 
@@ -264,7 +294,39 @@ module.exports = function createOAuthRouter(deps = {}) {
     const now = Date.now();
     for (const [key, f] of failures) if (f.resetAt <= now) failures.delete(key);
     for (const [uid, rec] of issued) if (rec.resetAt <= now) issued.delete(uid);
+    for (const [id, h] of handoffs) if (h.exp < now) handoffs.delete(id);
   }, 60 * 1000).unref();
+
+  // ── 代碼交接 ──
+  // id → { ip, code, secretHash, state: 'pending'|'authorized'|'approved', exp, user?, confirmToken?, notice? }
+  // notice：瀏覽器那邊沒成功（cancelled／failed）時記下來給 App 顯示；代碼仍然有效，可以在瀏覽器重試
+  const handoffs = new Map();
+  function liveHandoff(id, state) {
+    const h = typeof id === 'string' && HANDOFF_ID.test(id) ? handoffs.get(id) : null;
+    if (!h || h.exp < Date.now()) return null;
+    return !state || h.state === state ? h : null;
+  }
+  // App 這邊：由 sb_handoff Cookie（id.secret）找到自己的代碼；只知道 id 不行
+  function handoffFromCookie(req) {
+    const raw = session.readHandoffCookie(req);
+    const dot = raw.indexOf('.');
+    const id = dot > 0 ? raw.slice(0, dot) : '';
+    const h = liveHandoff(id);
+    if (!h || !crypto.timingSafeEqual(sha256(raw.slice(dot + 1)), h.secretHash)) return null;
+    return { id, h };
+  }
+  const expiredHandoffPage = (res) => sendPage(res, 410, '登入代碼已過期',
+    '<p>這組代碼已經用過、取消或過期了。請回到主畫面 App 重新取得代碼。</p>');
+  // 瀏覽器那邊沒成功：記下來讓 App 顯示，並提供重試連結（代碼仍然有效）
+  function handoffRetryPage(res, status, title, message, id, prov, notice) {
+    const h = liveHandoff(id, 'pending');
+    if (!h) return expiredHandoffPage(res);
+    h.notice = notice;
+    const retry = `/auth/${prov}/login?handoff=${encodeURIComponent(id)}`;
+    return sendPage(res, status, title, `<p>${message}</p><a class="btn" href="${escapeHtml(retry)}">再試一次</a>`);
+  }
+  // JSON 端點的 CSRF 檢查（理由同 /auth/logout）
+  const badCsrf = (req) => req.get('sec-fetch-site') === 'cross-site' || req.get('x-requested-with') !== 'splitbill';
 
   function providerOr404(req, res) {
     const p = Object.prototype.hasOwnProperty.call(PROVIDERS, req.params.prov) ? PROVIDERS[req.params.prov] : null;
@@ -284,6 +346,13 @@ module.exports = function createOAuthRouter(deps = {}) {
     }
     const next = safeNext(req.query.next);
 
+    // 代碼交接：替主畫面 App 登入（不能同時是綁定）
+    let handoff = '';
+    if (req.query.handoff !== undefined) {
+      if (req.query.link === '1' || !liveHandoff(req.query.handoff, 'pending')) return expiredHandoffPage(res);
+      handoff = req.query.handoff;
+    }
+
     // 🆕 [帳號綁定] 綁定一定要「已經登入」：登入 Cookie 是 SameSite=Strict，別的網站連過來的請求帶不到它，
     // 所以沒辦法誘導別人的瀏覽器發起綁定。發起者（session、帳號）記進簽章的 state，callback 回來時
     // （那時是跨站導回、拿不到登入 Cookie）就靠這份紀錄知道要綁到誰。
@@ -300,7 +369,7 @@ module.exports = function createOAuthRouter(deps = {}) {
     }
 
     const state = crypto.randomBytes(16).toString('hex');
-    session.writeOAuthState(res, state, next, { prov, link });
+    session.writeOAuthState(res, state, next, { prov, link, handoff });
     res.redirect(302, provider.authorizeUrl(cfg, state, { switchAccount: req.query.switch === '1' }));
   });
 
@@ -316,12 +385,16 @@ module.exports = function createOAuthRouter(deps = {}) {
     const { code, state, error } = req.query;
     const savedProv = saved && (saved.prov || 'discord'); // 舊版 state 沒有 prov，一定是 Discord
     if (typeof error === 'string') {
+      if (saved && saved.handoff && savedProv === prov) {
+        return handoffRetryPage(res, 200, '已取消登入', `已在 ${provider.label} 取消登入。`, saved.handoff, prov, { status: 'cancelled' });
+      }
       return res.redirect(302, saved && saved.link ? '/?bind=cancelled' : '/?login=cancelled');
     }
     if (!saved || savedProv !== prov || typeof saved.state !== 'string' || typeof state !== 'string'
       || !safeEqual(state, saved.state) || typeof code !== 'string') {
       return sendPage(res, 400, '這次登入已經逾時', `<p>請回到裊器分帳重新登入一次。</p>${backLink}`);
     }
+    if (saved.handoff && !liveHandoff(saved.handoff, 'pending')) return expiredHandoffPage(res);
 
     const now = Date.now();
     const ipKey = rateLimitKey(clientIp(req));
@@ -337,6 +410,9 @@ module.exports = function createOAuthRouter(deps = {}) {
     } catch (err) {
       recordLoginFailure(ipKey, Date.now());
       console.error(`[splitbill-oauth] ${provider.label} 登入失敗：`, err.message);
+      if (saved.handoff) {
+        return handoffRetryPage(res, 502, `${provider.label} 登入失敗`, '請稍後再試一次。', saved.handoff, prov, { status: 'failed' });
+      }
       return res.redirect(302, saved.link ? '/?bind=failed' : '/?login=failed');
     }
     if (!issueAllowed(user.id)) {
@@ -346,6 +422,29 @@ module.exports = function createOAuthRouter(deps = {}) {
 
     const next = safeNext(saved.next);
     if (saved.link) return finishLink(res, saved.link, user, next);
+
+    if (saved.handoff) {
+      // 重新檢查一次：換 token 的這段時間裡，這組代碼可能已經被另一個分頁用掉了
+      const h = liveHandoff(saved.handoff, 'pending');
+      if (!h) return expiredHandoffPage(res);
+      h.state = 'authorized';
+      h.user = { ...user, provider: prov };
+      h.confirmToken = crypto.randomBytes(16).toString('hex');
+      delete h.notice;
+      // 主畫面 App 和瀏覽器通常是同一台裝置、同一個網路；來源不同時多一道醒目的警告（可能是別人傳來的連結）
+      const otherNetwork = ipKey !== h.ip;
+      return sendPage(res, 200, '這組代碼和 App 上的一樣嗎？', `
+<p>確認後，顯示這組代碼的裝置會用 <b>${escapeHtml(user.name || provider.label + ' 帳號')}</b> 的身分登入裊器分帳。</p>
+<div class="code">${escapeHtml(h.code)}</div>
+${otherNetwork ? '<p class="warn">注意：這組代碼是從另一個網路要求的。不是你自己的裝置剛剛要求的話（例如有人傳這個連結給你），請按「取消」。</p>' : ''}
+<p>一樣才按「登入 App」。不一樣或不是你剛剛要求的，請按「取消」。</p>
+<form method="post" action="/auth/handoff/confirm">
+<input type="hidden" name="id" value="${escapeHtml(saved.handoff)}">
+<input type="hidden" name="token" value="${escapeHtml(h.confirmToken)}">
+<button type="submit" name="action" value="approve">登入 App</button>
+<button class="secondary" type="submit" name="action" value="cancel">取消</button>
+</form>`);
+    }
 
     session.writeSession(res, { ...user, provider: prov });
     // 🔒 不直接 302：登入 Cookie 是 SameSite=Strict，從 discord.com／line.me 一路導回來的這串請求在瀏覽器眼中是跨站的，
@@ -401,6 +500,71 @@ module.exports = function createOAuthRouter(deps = {}) {
     }
     sendRedirectPage(res, '綁定成功', withParam(next, 'bind', 'done'));
   }
+
+  // ── 代碼交接端點 ──
+  router.post('/handoff/start', (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    if (badCsrf(req)) return res.status(403).json({ error: '缺少 CSRF 標頭' });
+    const providers = enabledProviders();
+    if (!providers.discord && !providers.line) return res.status(503).json({ error: '登入功能尚未設定。' });
+    const now = Date.now();
+    for (const [id, h] of handoffs) if (h.exp < now) handoffs.delete(id);
+    // 重新開始：這個 App 之前要的代碼直接作廢，不佔名額（不然重試幾次就被下面的上限擋住）
+    const prev = handoffFromCookie(req);
+    if (prev) handoffs.delete(prev.id);
+    const ip = rateLimitKey(clientIp(req));
+    let fromIp = 0;
+    for (const h of handoffs.values()) if (h.ip === ip) fromIp += 1;
+    if (fromIp >= MAX_HANDOFFS_PER_IP || handoffs.size >= MAX_HANDOFFS) {
+      return res.status(429).json({ error: '登入代碼要求太多次了，請過幾分鐘再試。' });
+    }
+    const id = crypto.randomBytes(16).toString('hex');
+    const secret = crypto.randomBytes(24).toString('base64url');
+    const code = randomCode(6);
+    handoffs.set(id, { ip, code, secretHash: sha256(secret), state: 'pending', exp: now + HANDOFF_TTL_MS });
+    session.writeHandoffCookie(res, `${id}.${secret}`, HANDOFF_TTL_MS);
+    const loginUrls = {};
+    for (const p of ['discord', 'line']) if (providers[p]) loginUrls[p] = `/auth/${p}/login?handoff=${id}`;
+    res.json({ code, loginUrls, expiresIn: HANDOFF_TTL_MS / 1000 });
+  });
+
+  router.post('/handoff/poll', (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    if (badCsrf(req)) return res.status(403).json({ error: '缺少 CSRF 標頭' });
+    const found = handoffFromCookie(req);
+    if (!found) return res.status(410).json({ error: '登入代碼已過期，請重新取得。' });
+    const { id, h } = found;
+    if (h.state === 'authorized') return res.status(202).json({ status: 'confirming' });
+    if (h.state !== 'approved') return res.status(202).json(h.notice || { status: 'pending' });
+    handoffs.delete(id);
+    session.clearHandoffCookie(res);
+    session.writeSession(res, h.user);
+    res.json({ ok: true });
+  });
+
+  // App 按取消：代碼立刻作廢（瀏覽器那邊就算已經登入也不能再確認）
+  router.post('/handoff/cancel', (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    if (badCsrf(req)) return res.status(403).json({ error: '缺少 CSRF 標頭' });
+    const found = handoffFromCookie(req);
+    if (found) handoffs.delete(found.id);
+    session.clearHandoffCookie(res);
+    res.json({ ok: true });
+  });
+
+  // 瀏覽器確認頁的表單：要帶 callback 時發的一次性 token，別的網站送不出這個表單
+  router.post('/handoff/confirm', express.urlencoded({ extended: false, limit: '2kb' }), (req, res) => {
+    if (req.get('sec-fetch-site') === 'cross-site') return sendPage(res, 403, '不接受從其他網站發出的請求', backLink);
+    const { id, token, action } = req.body || {};
+    const h = liveHandoff(id, 'authorized');
+    if (!h || typeof token !== 'string' || !safeEqual(token, h.confirmToken)) return expiredHandoffPage(res);
+    if (action === 'cancel') {
+      handoffs.delete(id);
+      return sendPage(res, 200, '已取消', '<p>這組代碼已經作廢，那台裝置不會登入。</p>');
+    }
+    h.state = 'approved';
+    sendPage(res, 200, '登入完成', '<p>請回到主畫面 App，幾秒內就會自動登入。這個視窗可以關掉了。</p>');
+  });
 
   // POST 才能登出（避免被 <img src="/auth/logout"> 之類的跨站請求登出）；
   // 一樣要求 x-requested-with，並拒絕跨站請求，理由同 lib/auth.js 的 CSRF 說明。

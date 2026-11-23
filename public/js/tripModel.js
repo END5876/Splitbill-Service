@@ -74,6 +74,8 @@ function repairExpense(e){
     participants: shares(e.participants),
     createdAt: typeof e.createdAt === 'number' ? e.createdAt : Date.now(),
     createdBy: e.createdBy || 'web-ui',
+    // 最後修改的人（伺服器寫入，畫面顯示「小明改過」）
+    ...(typeof e.updatedBy === 'string' && e.updatedBy ? { updatedBy: e.updatedBy } : {}),
   };
 }
 function repairDeposit(d){
@@ -87,6 +89,9 @@ function repairDeposit(d){
     amountInBase: finiteNum(d.amountInBase, finiteNum(d.amount, 0)),
     note: d.note || '',
     createdAt: typeof d.createdAt === 'number' ? d.createdAt : Date.now(),
+    // 誰記的、誰改過（伺服器寫入）
+    ...(typeof d.createdBy === 'string' && d.createdBy ? { createdBy: d.createdBy } : {}),
+    ...(typeof d.updatedBy === 'string' && d.updatedBy ? { updatedBy: d.updatedBy } : {}),
   };
 }
 

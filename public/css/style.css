@@ -252,7 +252,9 @@
 
   /* 無權限阻擋頁 */
   #noAccessScreen{
-    display:none; position:fixed; inset:0; z-index:9999;
+    /* 蓋住整個 App（頁首、底部導覽、選單最高 120），但要在提示（200）與對話框（300）底下：
+       登入結果的提示、主畫面 App 的代碼登入對話框都是在這個畫面上打開的 */
+    display:none; position:fixed; inset:0; z-index:150;
     background:var(--paper); align-items:center; justify-content:center;
   }
   #noAccessScreen.visible{ display:flex; }
@@ -264,6 +266,15 @@
     border-bottom:1px solid color-mix(in srgb, var(--brass) 35%, var(--card-line));
   }
   .pending-banner[hidden]{ display:none; }
+  /* 封存的行程：只能看 */
+  .archived-banner{ background:var(--chip-bg); border-bottom-color:var(--card-line); }
+  body.trip-archived [data-write-only]{ display:none !important; }
+  body.trip-archived .quick-add-fab{ display:none !important; }
+  .archive-offer{
+    display:flex; align-items:center; justify-content:space-between; gap:8px 12px; flex-wrap:wrap;
+    margin:0 16px 16px; padding:10px 12px; border:1px dashed var(--card-line); border-radius:var(--r-md);
+    font-size:13px; color:var(--ink-soft);
+  }
   .no-access-card{
     text-align:center; padding:44px 32px 40px; max-width:420px; width:90%;
     background:var(--card); border:1px solid var(--card-line);
@@ -1409,6 +1420,61 @@
   .account-name{font-weight:700; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   /* 🆕 [LINE 登入] LINE 官方綠色按鈕；帳號綁定區塊 */
   .btn-line{background:#06C755; color:#fff;}
+
+  /* ---------- 項目說明的建議（最近用過＋常用詞） ---------- */
+  .desc-suggest{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;}
+  .desc-suggest:empty{display:none;}
+  .desc-chip{
+    border:1px solid var(--card-line); background:var(--surface); color:var(--ink-soft);
+    border-radius:999px; padding:5px 12px; font:inherit; font-size:13px; cursor:pointer;
+    max-width:10em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .desc-chip:active{background:var(--brass-tint); color:var(--ink);}
+  @media (hover:hover) and (pointer:fine){ .desc-chip:hover{border-color:var(--brass-soft); color:var(--ink);} }
+  @media (pointer:coarse){ .desc-chip{min-height:36px;} }
+
+  /* ---------- 快速記一筆（手機）：右下浮動按鈕＋底部面板 ---------- */
+  .quick-add-fab, .quick-add-only{display:none;}
+  .quick-add-backdrop{position:fixed; inset:0; z-index:65; background:var(--scrim);}
+  @media (max-width:859px){
+    .quick-add-fab{
+      display:inline-flex; align-items:center; gap:4px;
+      position:fixed; z-index:55; right:calc(var(--gutter) + var(--safe-r));
+      bottom:calc(var(--bottomnav-h) + var(--safe-b) + 14px);
+      height:48px; padding:0 18px 0 14px; border:0; border-radius:999px;
+      background:var(--brass-bg); color:var(--on-brass); font:inherit; font-size:14.5px; font-weight:700;
+      box-shadow:var(--shadow); cursor:pointer;
+    }
+    .quick-add-fab span{font-size:20px; line-height:1;}
+    body[data-tab="settings"] .quick-add-fab, body.quick-add .quick-add-fab{display:none;}
+    /* 頁面最底下多留一顆按鈕的高度，最後一列不會被「＋ 記一筆」蓋住 */
+    body:not([data-tab="settings"]):not(.share-readonly){padding-bottom:calc(var(--bottomnav-h) + var(--safe-b) + 80px);}
+    body.quick-add{overflow:hidden;}
+    body.quick-add #expenseFormCard{
+      position:fixed; left:0; right:0; bottom:0; z-index:70; margin:0;
+      max-height:88vh; max-height:88dvh; overflow-y:auto; overscroll-behavior:contain;
+      border-radius:var(--r-lg) var(--r-lg) 0 0; padding-bottom:0;
+      padding-left:max(var(--gutter), var(--safe-l)); padding-right:max(var(--gutter), var(--safe-r));
+    }
+    body.quick-add #expenseFormCard .form-card-head{display:flex; align-items:center; gap:10px;}
+    body.quick-add #expenseFormCard .form-card-toggle{flex:1; pointer-events:none;}
+    body.quick-add #expenseFormCard .form-card-chevron{display:none;}
+    body.quick-add .quick-add-only{display:inline-flex; align-items:center;}
+    .quick-add-close{border:0; background:none; color:var(--ink-soft); width:44px; height:44px; justify-content:center; margin-right:-10px; cursor:pointer;}
+    /* 「記下這筆」固定在面板底部，不用捲到最下面 */
+    body.quick-add .expense-save-row{
+      position:sticky; bottom:0; z-index:1; flex-wrap:nowrap;
+      background:var(--card); margin:12px 0 0; padding:10px 0 calc(10px + var(--safe-b));
+      border-top:1px solid var(--card-line);
+    }
+  }
+  /* 代碼登入（主畫面 App） */
+  .handoff-code{font:700 30px/1.2 'IBM Plex Mono',ui-monospace,monospace; letter-spacing:.2em; text-align:center; margin:12px 0; color:var(--ink);}
+  .handoff-links{display:flex; flex-direction:column; gap:8px;}
+  .handoff-links .btn{justify-content:center; text-decoration:none;}
+  .handoff-intro{margin:0;}
+  .handoff-status{text-align:center; color:var(--ink-soft); font-size:13px; margin:12px 0 0;}
+  .handoff-fallback{display:block; width:100%; margin-top:4px; text-align:center;}
   .btn-line:hover{background:#05B34C;}
   .account-link{display:flex; align-items:center; flex-wrap:wrap; gap:8px 12px; margin-top:12px; padding-top:12px; border-top:1px dashed var(--card-line);}
   .account-link > .hint, .account-link-status{flex:1 1 220px; min-width:0;}
@@ -1466,6 +1532,8 @@
     display:flex; align-items:center; gap:12px; flex-wrap:wrap;
     padding:14px; border-radius:var(--r-md); background:var(--brass-tint); border:1px solid var(--brass-soft);
   }
+  .ledger-offline-note{font-size:12px; color:var(--ink-soft); align-self:center;}
+  .tl-expired-bar{display:flex; justify-content:flex-end; margin:-4px 0 8px;}
   .tl-hero-ic{font-size:20px; line-height:1; flex-shrink:0; color:var(--brass);}
   .tl-hero-text{flex:1 1 220px; min-width:0;}
   .tl-hero-title{font-weight:700; color:var(--ink); font-size:14.5px;}

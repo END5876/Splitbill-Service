@@ -147,7 +147,7 @@ async function deleteDeposit(id){
 
   const deposit = trip.deposits[idx];
   const confirmed = await confirmModal(
-    `「${memberName(deposit.payerId)} → ${memberName(deposit.collectorId)}」這筆轉帳會被刪除，其他成員也會立刻看到。需要的話可以到「設定 → 紀錄」還原。`,
+    `「${memberName(deposit.payerId)} → ${memberName(deposit.collectorId)}」這筆轉帳會被刪除，其他成員也會立刻看到。${othersEntryNote(deposit)}需要的話可以到「設定 → 紀錄」還原。`,
     {
       title: '刪除這筆轉帳？',
       confirmText: '刪除轉帳',

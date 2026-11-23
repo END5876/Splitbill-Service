@@ -77,6 +77,7 @@ module.exports = function createHistoryRouter(ctx) {
       const r = resolve(req, res, true);
       if (!r) return;
       const { trip } = r;
+      if (trip.archived) return res.status(403).json({ error: '這個行程已封存，只能看、不能修改。建立者可以在「設定 → 行程」取消封存。', archived: true });
       const v = parseVersion(req.params.version);
       if (v && v === trip.updatedAt) return res.status(400).json({ error: '這已經是目前的版本了' });
       const snap = v && storage.getTripRevision(trip.id, v);

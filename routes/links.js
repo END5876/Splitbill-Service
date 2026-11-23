@@ -98,7 +98,8 @@ module.exports = function createLinksRouter(ctx) {
   });
 
   // ---- PATCH /api/trip/:tripId/links/:token：修改連結（建立者） ----
-  // 網址不變，對方下一次開啟或儲存時就會套用新設定。body: { guest?, join?, label? }
+  // 網址不變，對方下一次開啟或儲存時就會套用新設定。body: { guest?, join?, label?, expiresInDays? }
+  // expiresInDays：從現在起再算幾天（例如過期的連結「延長 7 天」）；0＝改成永久有效
   router.patch('/trip/:tripId/links/:token', (req, res) => {
     const trip = loadTripOr404(req, res);
     if (!trip) return;
@@ -109,11 +110,35 @@ module.exports = function createLinksRouter(ctx) {
     const body = (req.body && typeof req.body === 'object') ? req.body : {};
     const access = parseAccess(body, link);
     if (typeof access === 'string') return res.status(400).json({ error: access });
+    let expiresAt = link.expiresAt;
+    if (body.expiresInDays !== undefined) {
+      const days = Number(body.expiresInDays);
+      if (!Number.isFinite(days) || days < 0 || days > 3650) return res.status(400).json({ error: '有效天數要是 0～3650 的數字（0＝永久有效）' });
+      expiresAt = days > 0 ? Date.now() + days * DAY_MS : null;
+    }
     Object.assign(link, access);
+    link.expiresAt = expiresAt;
     if (typeof body.label === 'string') link.label = body.label.trim().slice(0, 50);
     storage.persist();
     storage.tripEvents.emit('trip-access-changed', trip.id); // 已開著的 SSE 連線依新設定重新檢查
     res.json(link);
+  });
+
+  // ---- DELETE /api/trip/:tripId/links?expired=1：一次刪掉所有過期的連結（建立者） ----
+  // 一定要帶 expired=1：不小心打到這個網址不會把有效的連結也刪掉
+  router.delete('/trip/:tripId/links', (req, res) => {
+    const trip = loadTripOr404(req, res);
+    if (!trip) return;
+    if (!requireTripAccess(req, res, trip, 'owner')) return;
+    if (req.query.expired !== '1') return res.status(400).json({ error: '只能一次刪除過期的連結（expired=1）' });
+    const before = trip.links.length;
+    trip.links = trip.links.filter((l) => !storage.isLinkExpired(l));
+    const removed = before - trip.links.length;
+    if (removed) {
+      storage.persist();
+      storage.tripEvents.emit('trip-access-changed', trip.id);
+    }
+    res.json({ ok: true, removed });
   });
 
   // ---- DELETE /api/trip/:tripId/links/:token：撤銷連結（建立者） ----
@@ -185,6 +210,7 @@ module.exports = function createLinksRouter(ctx) {
     if (!found) return;
     const { trip, link } = found;
     if (!link.join) return res.status(403).json({ error: '這個連結不能用來加入行程，請跟行程成員索取邀請連結' });
+    if (trip.archived) return res.status(403).json({ error: '這個行程已封存，不能再加入。', archived: true });
 
     const already = findMemberByAccount(trip, uid);
     if (already) {

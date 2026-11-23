@@ -40,7 +40,7 @@ const UI_ACTIONS = new Set([
   'saveDepositAndSync', 'saveExpenseAndSync', 'saveLinkEdit', 'saveMyNickname',
   'selfShareParticipants', 'setLinkComposerDays', 'setLinkComposerJoin', 'setLinkComposerLabel',
   'setLinkEditGuest', 'setLinkEditJoin', 'setLinkEditLabel', 'setShowAllTrips', 'showMainTab',
-  'showSettingsSub', 'startFirstDeposit', 'startFirstExpense', 'switchAccount', 'toggleDepositExpand',
+  'showSettingsSub', 'extendTripLink', 'clearExpiredLinks', 'archiveCurrentTrip', 'unarchiveCurrentTrip', 'unarchiveSelectedTrip', 'openQuickAdd', 'closeQuickAdd', 'fillExpenseDesc', 'startFirstDeposit', 'startFirstExpense', 'startLoginHandoff', 'switchAccount', 'toggleDepositExpand',
   'toggleDepositFilterMember', 'toggleExpenseExpand', 'toggleExpenseFilterMember', 'toggleFormCard',
   'toggleLinkEditor', 'toggleMemberDetail', 'toggleTheme', 'unlinkAccount', 'unlinkMember', 'updateDeleteTripButton', 'updateRate',
 ]);
@@ -98,7 +98,7 @@ function clearInvalid(el){
 function startFirstExpense(){
   showMainTab('expenses');
   setFormCardOpen('expenseFormCard', true);
-  document.getElementById('expDesc').focus();
+  document.getElementById('expAmount').focus();
 }
 function startFirstDeposit(){
   showMainTab('deposits');

@@ -105,7 +105,64 @@ function saveExpense(){
 async function saveExpenseAndSync(){
   const isNew = !editingExpenseId;
   const saved = saveExpense();
-  if (saved) await syncEntry('expenses', saved.id, saved, { isNew });
+  if (!saved) return;
+  closeQuickAdd(); // 從「＋ 記一筆」打開的：存好就收起來，回到原本的畫面
+  await syncEntry('expenses', saved.id, saved, { isNew });
+}
+
+/* ---------- 快速記一筆（手機）：右下浮動按鈕打開底部面板，就是支出分頁的同一張表單 ---------- */
+let quickAddReturnTab = null; // 從哪個分頁打開的：收起面板時回到那裡
+async function openQuickAdd(){
+  if (!trip.members || !trip.members.length){
+    toast('先到「設定 → 成員與分享」新增成員，才能記帳', 'info');
+    return;
+  }
+  // 正在編輯別筆而且改過：先問，不要默默丟掉
+  if (editingExpenseId && isExpenseFormDirty()){
+    const ok = await confirmModal('剛剛改的內容還沒儲存。', { title: '放棄這次修改？', confirmText: '放棄修改', cancelText: '繼續編輯' });
+    if (!ok) return;
+  }
+  const tab = document.body.dataset.tab || 'overview';
+  quickAddReturnTab = tab === 'expenses' ? null : tab;
+  if (tab !== 'expenses') showMainTab('expenses');
+  if (editingExpenseId) resetExpenseForm(); // 正在編輯別筆：改成新增
+  setFormCardOpen('expenseFormCard', true);
+  document.body.classList.add('quick-add');
+  document.getElementById('quickAddBackdrop').hidden = false;
+  pushLayer('quickAdd', closeQuickAdd); // 返回鍵先收起面板
+  // iOS 只有在使用者點擊的同一輪才會跳出鍵盤，不能延遲
+  document.getElementById('expAmount').focus({ preventScroll: true });
+}
+function closeQuickAdd(){
+  if (!document.body.classList.contains('quick-add')) return;
+  document.body.classList.remove('quick-add');
+  document.getElementById('quickAddBackdrop').hidden = true;
+  dropLayer('quickAdd');
+  const back = quickAddReturnTab;
+  quickAddReturnTab = null;
+  if (back) showMainTab(back);
+}
+
+/* ---------- 項目說明的建議：最近用過的 5 個名稱＋常用詞，點一下就填入 ---------- */
+const DESC_PRESETS = ['晚餐', '計程車', '便利商店'];
+function renderDescSuggest(){
+  const el = document.getElementById('expDescSuggest');
+  if (!el) return;
+  const seen = new Set();
+  const recent = [];
+  for (const e of [...(trip.expenses || [])].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))){
+    const d = String(e.description || '').trim();
+    if (!d || d.length > 20 || seen.has(d)) continue;
+    seen.add(d); recent.push(d);
+    if (recent.length >= 5) break;
+  }
+  const list = recent.concat(DESC_PRESETS.filter(p => !seen.has(p)));
+  el.innerHTML = list.map(d => `<button type="button" class="desc-chip" ${act('click', 'fillExpenseDesc', d)}>${escapeHtml(d)}</button>`).join('');
+}
+function fillExpenseDesc(text){
+  const input = document.getElementById('expDesc');
+  input.value = text;
+  clearInvalid(input);
 }
 // 表單填了東西但還沒儲存（返回鍵、關閉頁面前提醒用）
 function isExpenseFormDirty(){
@@ -158,13 +215,18 @@ function editExpense(id){
   showMainTab('expenses');
   document.getElementById('expenseFormCard').scrollIntoView({behavior:'smooth'});
 }
+// 刪別人記的帳時多提醒一句「這筆是阿華記的」（自己記的、看不出是誰的就不說）
+function othersEntryNote(x){
+  const who = authorName(x.createdBy);
+  return who && who !== '你' ? `這筆是${who}記的。` : '';
+}
 async function deleteExpense(id){
   const idx = trip.expenses.findIndex(e => e.id === id);
   if (idx === -1) return;
 
   const expense = trip.expenses[idx];
   const confirmed = await confirmModal(
-    `「${expense.description || '未命名支出'}」會被刪除，其他成員也會立刻看到。需要的話可以到「設定 → 紀錄」還原。`,
+    `「${expense.description || '未命名支出'}」會被刪除，其他成員也會立刻看到。${othersEntryNote(expense)}需要的話可以到「設定 → 紀錄」還原。`,
     {
       title: '刪除這筆支出？',
       confirmText: '刪除支出',

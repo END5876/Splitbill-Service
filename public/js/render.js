@@ -109,6 +109,33 @@ function renderExpenseSplit(e, evenShare){
   return `<div class="split-box"><div class="split-caption">${caption}</div><ul class="split-list" style="--num-w:${numWidth}ch">${rows}</ul></div>`;
 }
 
+// 誰記的、誰改過：帳號（createdBy／updatedBy）換成行程裡的名字，自己寫「你」，訪客寫「訪客」；
+// 看不出是誰（舊資料、沒連結帳號的人）回空字串
+function authorName(account){
+  if (!account) return '';
+  if (account === 'guest') return '訪客';
+  const m = (trip.members || []).find(x => x.discordId === account || x.lineId === account);
+  if (!m) return '';
+  const me = typeof myTripMember === 'function' ? myTripMember() : null;
+  return me && me.id === m.id ? '你' : m.name;
+}
+// 展開後的「10:30 阿華記錄」「小明改過」
+function authorFacts(x){
+  const c = authorName(x.createdBy);
+  const u = authorName(x.updatedBy);
+  return [
+    `${fmtTime(x.createdAt)} ${c ? escapeHtml(c) : ''}記錄`,
+    x.updatedBy ? `${u ? escapeHtml(u) : ''}改過` : null,
+  ];
+}
+
+// 沒有網路時不能改、刪舊帳目（新增的帳目送不出去會先存在手機，舊的改了卻沒地方放，見第 2 批 C2）
+const offlineLock = () => (navigator.onLine === false ? 'disabled' : '');
+const offlineNote = () => (navigator.onLine === false ? '<span class="ledger-offline-note">連上網路後才能修改</span>' : '');
+// 網路狀態一變就重畫，按鈕跟著停用／恢復
+window.addEventListener('online', () => { if (currentTripId) renderAll(); });
+window.addEventListener('offline', () => { if (currentTripId) renderAll(); });
+
 // 展開後最上方的一行補充資訊（時間、換算金額…），用「・」串起來
 function ledgerFactsHtml(parts){
   const list = parts.filter(Boolean);
@@ -125,11 +152,12 @@ function renderExpenseRow(e){
   const evenShare = e.participants.length > 1 && e.participants.every(p=>Math.abs(p.amount - e.participants[0].amount) < 0.005);
   const detailHtml = expanded ? `
       <div class="ledger-entry-detail">
-        ${ledgerFactsHtml([`${fmtTime(e.createdAt)} 記錄`, ledgerBaseNote(e.amount, e.currency, e.amountInBase)])}
+        ${ledgerFactsHtml([...authorFacts(e), ledgerBaseNote(e.amount, e.currency, e.amountInBase)])}
         ${renderExpenseSplit(e, evenShare)}
         <div class="ledger-actions" data-write-only>
-          <button class="btn btn-ghost btn-sm" ${act('click','editExpense',e.id)}>編輯</button>
-          <button class="btn btn-danger btn-sm" ${act('click','deleteExpense',e.id)}>刪除</button>
+          <button class="btn btn-ghost btn-sm" ${act('click','editExpense',e.id)} ${offlineLock()}>編輯</button>
+          <button class="btn btn-danger btn-sm" ${act('click','deleteExpense',e.id)} ${offlineLock()}>刪除</button>
+          ${offlineNote()}
         </div>
       </div>` : '';
   return `
@@ -155,10 +183,11 @@ function renderDepositRow(d){
   const expanded = expandedDepositIds.has(d.id);
   const detailHtml = expanded ? `
       <div class="ledger-entry-detail">
-        ${ledgerFactsHtml([`${fmtTime(d.createdAt)} 記錄`, ledgerBaseNote(d.amount, d.currency, d.amountInBase)])}
+        ${ledgerFactsHtml([...authorFacts(d), ledgerBaseNote(d.amount, d.currency, d.amountInBase)])}
         <div class="ledger-actions" data-write-only>
-          <button class="btn btn-ghost btn-sm" ${act('click','editDeposit',d.id)}>編輯</button>
-          <button class="btn btn-danger btn-sm" ${act('click','deleteDeposit',d.id)}>刪除</button>
+          <button class="btn btn-ghost btn-sm" ${act('click','editDeposit',d.id)} ${offlineLock()}>編輯</button>
+          <button class="btn btn-danger btn-sm" ${act('click','deleteDeposit',d.id)} ${offlineLock()}>刪除</button>
+          ${offlineNote()}
         </div>
       </div>` : '';
   return `
@@ -310,6 +339,8 @@ function renderDepositList(){
 
 function renderAll(){
   renderHistoryIfVisible(); // 「設定 → 紀錄」開著時，行程有更新就重新載入（js/history.js）
+  renderDescSuggest();
+  renderArchivedState();
   // cover
   const titleEl = document.getElementById('tripName');
   titleEl.textContent = trip.name || '未開啟行程';

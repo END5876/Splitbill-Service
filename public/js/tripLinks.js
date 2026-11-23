@@ -117,11 +117,13 @@ function renderLinkManager(){
   else if (!links.length && !s.composer) body = '<p class="hint tl-empty">還沒有免登入連結。</p>';
   else body = `<div class="tl-list">${sorted.map(l => linkRowHtml(l, l.token === inviteToken)).join('')}</div>`;
 
+  const expiredCount = links.filter(linkIsExpired).length;
   el.innerHTML = `
     <div class="tl-section-head">
       <h3 class="section-subtitle">所有連結 ${s.links ? `<span class="n">(${links.length})</span>` : ''}</h3>
       ${s.composer ? '' : '<button class="btn btn-ghost btn-sm" type="button" data-click="openLinkComposer">＋ 新增免登入連結</button>'}
     </div>
+    ${expiredCount > 0 ? `<div class="tl-expired-bar"><button class="link-btn" type="button" data-click="clearExpiredLinks" data-loading="清除中…">清除過期的連結（${expiredCount}）</button></div>` : ''}
     ${s.composer ? linkComposerHtml(s.composer) : ''}
     ${body}`;
 }
@@ -146,7 +148,9 @@ function linkRowHtml(l, isDefaultInvite){
           <div class="tl-tags">${linkTagsHtml(l)}</div>
         </div>
         <div class="tl-row-actions">
-          ${expired ? '' : `<button class="btn btn-brass btn-sm" type="button" ${act('click','copyLinkUrl',l.token)}>複製</button>`}
+          ${expired
+    ? `<button class="btn btn-ghost btn-sm" type="button" ${act('click','extendTripLink',l.token)} data-loading="延長中…">延長 7 天</button>`
+    : `<button class="btn btn-brass btn-sm" type="button" ${act('click','copyLinkUrl',l.token)}>複製</button>`}
           <button class="btn btn-ghost btn-sm" type="button" aria-expanded="${editing ? 'true' : 'false'}" ${act('click','toggleLinkEditor',l.token)}>${editing ? '收起' : '設定'}</button>
         </div>
       </div>
@@ -330,6 +334,31 @@ async function saveLinkEdit(){
   }
 }
 
+// 過期的連結：從現在起再給 7 天，網址不變（對方手上的連結又能用了）
+async function extendTripLink(token){
+  try{
+    const link = await apiJson(await fetch(tripApiUrl(`/links/${encodeURIComponent(token)}`), {
+      method: 'PATCH',
+      headers: Object.assign({ 'Content-Type': 'application/json' }, apiHeaders()),
+      body: JSON.stringify({ expiresInDays: 7 }),
+    }));
+    tripLinksState.links = (tripLinksState.links || []).map(x => x.token === link.token ? link : x);
+    renderLinkManager();
+    toast(`「${link.label || linkDefaultName(link)}」可以再用 7 天`, 'success');
+  }catch(err){
+    toast('沒有延長連結：' + err.message, 'error');
+  }
+}
+async function clearExpiredLinks(){
+  try{
+    const r = await apiJson(await fetch(tripApiUrl('/links?expired=1'), { method: 'DELETE', headers: apiHeaders() }));
+    tripLinksState.links = (tripLinksState.links || []).filter(x => !linkIsExpired(x));
+    renderLinkManager();
+    toast(`已清除 ${r.removed || 0} 條過期的連結`, 'success');
+  }catch(err){
+    toast('沒有清除過期的連結：' + err.message, 'error');
+  }
+}
 async function revokeTripLink(token){
   const l = (tripLinksState.links || []).find(x => x.token === token);
   const name = l ? (l.label || linkDefaultName(l)) : '這條連結';

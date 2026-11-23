@@ -177,3 +177,23 @@ test('🔒 整包 PUT 夾帶 links／舊版 shareLinks／invite 都不會變成�
     assert.equal((await fetch(`${BASE}/api/shared-trip/${t}`)).status, 404);
   }
 });
+
+test('延長連結：expiresInDays 從現在起算（0＝永久）；一次清除過期的連結要帶 expired=1、不會動到有效的', async () => {
+  const l = await createLink('legacy', { guest: 'read', join: false, expiresInDays: 1 });
+  assert.equal(l.status, 201);
+  const patch = (body) => fetch(`${BASE}/api/trip/legacy/links/${l.body.token}`, { method: 'PATCH', headers: OWNER, body: JSON.stringify(body) }).then(j);
+  const ext = await patch({ expiresInDays: 7 });
+  assert.equal(ext.status, 200);
+  assert.ok(Math.abs(ext.body.expiresAt - (Date.now() + 7 * 864e5)) < 60000);
+  assert.equal((await patch({ expiresInDays: 0 })).body.expiresAt, null);
+  assert.equal((await patch({ expiresInDays: -1 })).status, 400);
+  assert.equal((await patch({ label: '只改名字' })).body.expiresAt, null, '沒帶天數就不動有效期限');
+
+  assert.equal((await fetch(`${BASE}/api/trip/legacy/links`, { method: 'DELETE', headers: OWNER })).status, 400);
+  const clear = await j(await fetch(`${BASE}/api/trip/legacy/links?expired=1`, { method: 'DELETE', headers: OWNER }));
+  assert.equal(clear.status, 200);
+  assert.equal(clear.body.removed, 0);
+  const list = await j(await fetch(`${BASE}/api/trip/legacy/links`, { headers: OWNER }));
+  assert.ok(list.body.some((x) => x.token === l.body.token), '有效的連結還在');
+  assert.equal((await fetch(`${BASE}/api/trip/legacy/links?expired=1`, { method: 'DELETE', headers: as(BOB) })).status, 403);
+});

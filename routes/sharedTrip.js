@@ -26,6 +26,7 @@ module.exports = function createSharedTripRouter(ctx) {
   router.put('/shared-trip/:token', (req, res) => {
     const found = requireGuestLink(req, res, '此分享連結為唯讀，無法儲存變更');
     if (!found) return;
+    if (found.trip.archived) return res.status(403).json({ error: '這個行程已封存，只能看、不能修改。建立者可以在「設定 → 行程」取消封存。', archived: true });
 
     // 🆕 [併發保護] 原子化版本比對，理由同 routes/trips.js 的 PUT /api/trip/:tripId。
     // 分享連結版本先前完全沒有任何併發保護（連前端的「先查再比對」都沒有），
@@ -52,6 +53,7 @@ module.exports = function createSharedTripRouter(ctx) {
     delete incoming.invite;
     incoming.guildId = existing.guildId;
     incoming.createdAt = existing.createdAt;
+    incoming.archived = !!existing.archived; // 封存只有建立者能改（PATCH /api/trip/:id/archive）
     if (existing.ownerId) incoming.ownerId = existing.ownerId;
     else delete incoming.ownerId;
     // 訪客不能移除已連結 Discord 的成員（那等於把人踢出行程），漏掉的會被補回去
@@ -59,6 +61,7 @@ module.exports = function createSharedTripRouter(ctx) {
     const repaired = storage.repairTrip({ ...incoming, id: existing.id });
     // 🔒 訪客拿到的支出 createdBy 是遮蔽過的（見 storage.toGuestTrip），存回時沿用伺服器上的值
     storage.restoreGuestCreatedBy(existing, repaired);
+    storage.stampTripAuthors(existing, repaired, actorOf(req, found.link));
     storage.preserveUnknownFields(existing, repaired);
     storage.setTrip(repaired);
     // 🆕 [多人協作 / 即時同步] 同上，改用 touchTrip() 才會觸發 SSE 廣播，

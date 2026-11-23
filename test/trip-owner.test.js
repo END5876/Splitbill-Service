@@ -157,3 +157,31 @@ test('PATCH /trip/:id/name：只改名稱、空白擋下、非成員不能改', 
   assert.equal((await patch({ name: '偷改' }, MALLORY)).status, 403);
   assert.equal((await get('rn1')).body.name, '沖繩 三天兩夜');
 });
+
+test('封存：只有建立者能封存／取消；封存後帳目與整包寫入一律拒絕，整包 PUT 改不了封存狀態', async () => {
+  assert.equal((await put('ar1', trip({ ownerId: ALICE, members: [{ id: 'm1', name: 'A', discordId: ALICE }, { id: 'm2', name: 'B', discordId: BOB }] }))).status, 200);
+  const patch = (actor, archived) => fetch(`${BASE}/api/trip/ar1/archive`, {
+    method: 'PATCH', headers: { ...OWNER, 'x-actor-id': actor }, body: JSON.stringify({ archived }),
+  }).then(j);
+  assert.equal((await patch(BOB, true)).status, 403, '一般成員不能封存');
+  // 整包 PUT 帶 archived:true 沒有用
+  const t0 = (await get('ar1')).body;
+  assert.equal((await put('ar1', { ...t0, archived: true }, { ...OWNER, 'x-actor-id': BOB })).status, 200);
+  assert.equal((await get('ar1')).body.archived, false);
+
+  const a = await patch(ALICE, true);
+  assert.equal(a.status, 200);
+  assert.equal(a.body.archived, true);
+  const t1 = (await get('ar1')).body;
+  const w = await put('ar1', { ...t1, name: 'x' }, { ...OWNER, 'x-actor-id': ALICE });
+  assert.equal(w.status, 403);
+  assert.equal(w.body.archived, true);
+  const e = await fetch(`${BASE}/api/trip/ar1/expenses/e1`, {
+    method: 'PUT', headers: { ...OWNER, 'x-actor-id': ALICE },
+    body: JSON.stringify({ entry: { description: 'x', amount: 1, currency: 'TWD', amountInBase: 1, payers: [{ userId: 'm1', amount: 1 }], participants: [{ userId: 'm1', amount: 1 }] } }),
+  });
+  assert.equal(e.status, 403);
+
+  assert.equal((await patch(ALICE, false)).body.archived, false, '取消封存');
+  assert.equal((await put('ar1', { ...(await get('ar1')).body, name: 'y' }, { ...OWNER, 'x-actor-id': ALICE })).status, 200);
+});
