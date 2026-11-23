@@ -1,6 +1,7 @@
 :root{
-    /* 配色：G 風格——#f8f9fa 畫布、白色卡片、#dadce0 細線，只有一個藍色（#1a73e8）負責可以點的東西；
-       綠色代表可拿回／成功，琥珀色代表要付，紅色只留給錯誤與刪除。
+    /* 配色：G 風格——#f8f9fa 畫布、白色卡片、#dadce0 細線。整個畫面只有兩個彩色：
+       藍色（#1a73e8）只給可以點的東西與選取中的狀態；紅色給欠錢、錯誤與刪除。其餘一律灰階，
+       「可拿回」用一般黑字加「＋」號，狀態靠文字與正負號，不靠底色。
        （--brass* 這組變數名稱沿用舊版，現在代表主色藍。強調色的淡底仍用 color-mix() 從主色推導。） */
     --font-text:'DM Sans','Noto Sans TC',system-ui,sans-serif;
     --font-display:'DM Sans','Noto Sans TC',system-ui,sans-serif;
@@ -14,10 +15,10 @@
     --brass:#1A73E8;         /* 主色文字／連結（白底 4.5:1） */
     --brass-bg:#1A73E8;      /* 填色徽章／按鈕底；上面疊 --on-brass（白字） */
     --brass-soft:#AECBFA;    /* 邊框／焦點框用的淡主色 */
-    --credit:#188038;
-    --credit-bg:color-mix(in srgb, var(--credit) 10%, var(--card));
-    --debt:#B06000;
-    --debt-bg:color-mix(in srgb, var(--debt) 10%, var(--card));
+    --credit:var(--ink);          /* 可拿回：一般黑字（靠「＋」號區分） */
+    --credit-bg:var(--chip-bg);
+    --debt:#D93025;               /* 欠錢：紅字，不加色塊底 */
+    --debt-bg:var(--chip-bg);
     --danger:#D93025;
     --danger-bg:color-mix(in srgb, var(--danger) 9%, var(--card));
     --shadow: 0 1px 0 rgba(60,64,67,0.04), 0 8px 24px rgba(60,64,67,0.06);
@@ -49,10 +50,10 @@
     --surface-hover:#F8F9FA;      /* 可互動列表項目的 hover 背景（member-detail-head） */
     --chip-bg:#F1F3F4;            /* 徽章/標籤類背景（receipt-type-badge、code.inline、幣別標籤...） */
     --chip-bg-hover:#E8EAED;
-    --fee-bg:color-mix(in srgb, var(--brass) 5%, var(--card)); /* 帳單辨識「雜費」項目列背景 */
-    --fee-badge-bg:color-mix(in srgb, var(--brass) 20%, var(--card));
-    --fee-badge-bg-hover:color-mix(in srgb, var(--brass) 28%, var(--card));
-    --fee-badge-text:color-mix(in srgb, var(--brass) 70%, var(--ink));
+    --fee-bg:var(--surface-hover);  /* 帳單辨識「雜費」項目列背景 */
+    --fee-badge-bg:var(--chip-bg);
+    --fee-badge-bg-hover:var(--chip-bg-hover);
+    --fee-badge-text:var(--ink-soft);
     --zero-bg:var(--chip-bg);     /* 淨額為 0（已結清）時的中性徽章背景 */
     --brass-tint:color-mix(in srgb, var(--brass) 9%, var(--card)); /* 勾選中／hover 時的主色高亮底 */
     --scrim:rgba(32,33,36,0.5);   /* Modal 遮罩層 */
@@ -68,9 +69,9 @@
     --header-btn-bg:transparent;
     --header-btn-line:#DADCE0;
     --header-btn-hover:#F1F3F4;
-    --sync-idle:#9AA0A6; --sync-ok:#188038; --sync-busy:#F9AB00; --sync-err:#D93025; --sync-ro:#1A73E8;
+    --sync-idle:#9AA0A6; --sync-ok:var(--sync-idle); --sync-busy:var(--sync-idle); --sync-err:#D93025; --sync-ro:var(--sync-idle);
     --sync-err-bg:color-mix(in srgb, #D93025 9%, #FFFFFF); --sync-err-line:#F4B5AF; --sync-err-text:#C5221F;
-    --header-accent:#1A73E8;      /* 頁首品牌字／頁首內焦點框 */
+    --header-accent:#202124;      /* 頁首品牌字 */
 
     /* 主要按鈕／作用中分頁／toast 的「強調面」：淺色模式是深底淺字，暗色模式翻成
        淺底深字（固定深色放在暗色卡片上會幾乎看不見）。 */
@@ -78,8 +79,8 @@
     --emphasis-hover:#1967D2;
     --on-emphasis:#FFFFFF;
     --on-brass:#FFFFFF;
-    --toast-success-bg:#188038;
-    --toast-bg:#3C4043; --on-toast:#FFFFFF;      /* 一般提示訊息：G 風格的深灰提示條 */
+    --toast-bg:#3C4043; --on-toast:#FFFFFF;      /* 提示訊息：深灰提示條（成功也一樣） */
+    --toast-success-bg:var(--toast-bg);      /* 一般提示訊息：G 風格的深灰提示條 */
     --debt-solid:#D93025;         /* 目前唯一用途：確認刪除 Modal 的紅色按鈕背景（白字疊在上面） */
   }
 
@@ -96,10 +97,10 @@
     --brass:#8AB4F8;
     --brass-bg:#8AB4F8;          /* 上面疊 --on-brass（深字） */
     --brass-soft:#3F5C88;        /* 暗色下當邊框用，壓低亮度避免框線搶眼 */
-    --credit:#81C995;
-    --credit-bg:color-mix(in srgb, var(--credit) 14%, var(--card));
-    --debt:#FCAD70;
-    --debt-bg:color-mix(in srgb, var(--debt) 14%, var(--card));
+    --credit:var(--ink);
+    --credit-bg:var(--chip-bg);
+    --debt:#F28B82;
+    --debt-bg:var(--chip-bg);
     --danger:#F28B82;
     --danger-bg:color-mix(in srgb, var(--danger) 14%, var(--card));
     --shadow: 0 1px 0 rgba(0,0,0,0.4), 0 10px 26px rgba(0,0,0,0.45);
@@ -111,10 +112,10 @@
     --surface-hover:#35363A;
     --chip-bg:#3C4043;
     --chip-bg-hover:#44474A;
-    --fee-bg:color-mix(in srgb, var(--brass) 7%, var(--card));
-    --fee-badge-bg:color-mix(in srgb, var(--brass) 24%, var(--card));
-    --fee-badge-bg-hover:color-mix(in srgb, var(--brass) 32%, var(--card));
-    --fee-badge-text:var(--brass);
+    --fee-bg:var(--surface-hover);
+    --fee-badge-bg:var(--chip-bg);
+    --fee-badge-bg-hover:var(--chip-bg-hover);
+    --fee-badge-text:var(--ink-soft);
     --brass-tint:color-mix(in srgb, var(--brass) 12%, var(--card));
     --scrim:rgba(0,0,0,0.6);
 
@@ -124,19 +125,19 @@
     --on-dark:#E8EAED;
     --on-dark-muted:#BDC1C6;
     --on-dark-faint:#9AA0A6;
-    --header-accent:var(--brass);
+    --header-accent:var(--ink);
     --header-btn-bg:transparent;
     --header-btn-line:#5F6368;
     --header-btn-hover:#3C4043;
-    --sync-idle:#9AA0A6; --sync-ok:#81C995; --sync-busy:#FDD663; --sync-err:#F28B82; --sync-ro:#8AB4F8;
+    --sync-idle:#9AA0A6; --sync-ok:var(--sync-idle); --sync-busy:var(--sync-idle); --sync-err:#F28B82; --sync-ro:var(--sync-idle);
     --sync-err-bg:color-mix(in srgb, #F28B82 16%, #292A2D); --sync-err-line:#8C3A33; --sync-err-text:#F6AEA9;
 
     --emphasis:#8AB4F8;
     --emphasis-hover:#AECBFA;
     --on-emphasis:#202124;
     --on-brass:#202124;
-    --toast-success-bg:#1E8E3E;
     --toast-bg:#E8EAED; --on-toast:#202124;
+    --toast-success-bg:var(--toast-bg);
     --debt-solid:#D93025;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
@@ -439,9 +440,9 @@
   .form-card.collapsed .form-card-body{ display:none; }
   .form-card-badge{
     display:none; font-family:var(--font-text); font-size:11.5px; font-weight:700;
-    color:var(--on-brass); background:var(--brass-bg); padding:2px 8px; border-radius:20px;
+    color:var(--ink); background:var(--chip-bg); padding:2px 8px; border-radius:20px;
   }
-  .form-card.editing{ border-color:var(--brass-bg); box-shadow:inset 4px 0 0 var(--brass-bg), var(--shadow); }
+  .form-card.editing{ border-color:var(--ink-soft); box-shadow:inset 4px 0 0 var(--ink-soft), var(--shadow); }
   .form-card.editing .form-card-badge{ display:inline-block; }
   .row{display:flex; gap:12px; flex-wrap:wrap;}
   .row > .field{flex:1; min-width:130px;}
@@ -497,7 +498,7 @@
   .btn-ghost{background:transparent; color:var(--ink-soft); border:1px solid var(--card-line);}
   .btn-ghost:hover{border-color:var(--ink-soft); color:var(--ink);}
   .btn-danger{background:transparent; color:var(--danger); border:1px solid var(--danger-bg);}
-  .btn-danger:hover{background:var(--debt-bg);}
+  .btn-danger:hover{background:var(--danger-bg);}
   .btn-sm{padding:7px 12px; font-size:13px; min-height:34px; border-radius:var(--r-sm);}
   .btn-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:6px;}
   .check-row{display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14.5px; color:var(--ink); user-select:none;}
@@ -638,7 +639,7 @@
   .receipt-scan-ic{
     width:46px; height:46px; flex-shrink:0; border-radius:var(--r-md);
     display:flex; align-items:center; justify-content:center;
-    font-size:20px; background:var(--brass-tint); color:var(--brass);
+    font-size:20px; background:var(--chip-bg); color:var(--ink-soft);
   }
   .receipt-scan-ic .ic{width:24px; height:24px;}
   .receipt-scan-txt{flex:1; min-width:0;}
@@ -682,7 +683,7 @@
   .receipt-item-row{
     border:1.5px solid var(--card-line); border-radius:var(--r-md); padding:12px; margin-bottom:10px; background:var(--surface);
   }
-  .receipt-item-row.fee{background:var(--fee-bg); border-color:var(--brass-soft);}
+  .receipt-item-row.fee{background:var(--fee-bg); border-color:var(--card-line);}
   .receipt-item-row.unclaimed{border-color:var(--danger);}
   .receipt-item-head{display:flex; align-items:center; gap:8px; margin-bottom:8px; flex-wrap:wrap;}
   .receipt-item-head input[type=text]{flex:1; min-width:100px; font-weight:700; font-size:14.5px; border:none; background:transparent; padding:2px;}
@@ -720,8 +721,8 @@
     border-color:var(--brass-bg); background:var(--brass-tint); color:var(--ink);
     text-shadow:0.3px 0 currentColor, -0.3px 0 currentColor;
   }
-  .claim-chip.shared{border-color:var(--credit); }
-  .claim-chip.shared.on{background:var(--credit-bg); border-color:var(--credit); color:var(--credit);}
+  .claim-chip.shared{border-style:dashed; }
+  .claim-chip.shared.on{border-style:solid; }
   .receipt-summary{
     background:var(--card); border:1px dashed var(--card-line); border-radius:var(--r-md);
     padding:12px 14px; margin:14px 0; font-size:13px;
@@ -748,7 +749,7 @@
   }
   .toast .ic{width:18px; height:18px; flex-shrink:0;}
   .toast .msg-text{flex:1; min-width:0; overflow-wrap:anywhere;}
-  .toast.success{background:var(--toast-success-bg); color:#FFFFFF;}
+  .toast.success{background:var(--toast-success-bg);}
   /* 錯誤：實色紅底白字＋圖示，不自動消失，有關閉鈕 */
   .toast.error{background:var(--debt-solid); color:#fff;}
   .toast-close{
@@ -895,7 +896,7 @@
   .you-tag{
     display:inline-block; margin-left:4px; padding:0 5px; border-radius:4px;
     font-size:11.5px; font-weight:700; line-height:16px; vertical-align:1px;
-    background:var(--brass-tint); color:var(--brass);
+    background:var(--chip-bg); color:var(--ink-soft);
   }
   /* 應收／應付的文字顏色（明細列「你應收 X」、展開清單的每位成員） */
   .amt-pos{ color:var(--credit); }
@@ -992,10 +993,10 @@
   /* 成員字首頭像（helpers.js memberAvatarHtml）：同一個人在每個地方同一個顏色 */
   .mav{
     --mav-h:212; flex:none; display:inline-grid; place-items:center; width:24px; height:24px; border-radius:50%;
-    background:hsl(var(--mav-h) 34% 88%); color:hsl(var(--mav-h) 40% 26%);
-    font:700 12px/1 'Noto Sans TC',sans-serif; margin-right:8px; vertical-align:middle;
+    background:var(--chip-bg); color:var(--ink-soft);
+    font:700 12px/1 var(--font-text); margin-right:8px; vertical-align:middle;
   }
-  :root[data-theme="dark"] .mav{ background:hsl(var(--mav-h) 22% 30%); color:hsl(var(--mav-h) 45% 88%); }
+  /* 頭像：不分顏色，只靠名字第一個字辨認（深色模式靠 --chip-bg 自動切換） */
   .member-tag .mav{ margin-right:2px; }
   .settle-who .mav{ width:18px; height:18px; font-size:11px; margin-right:5px; align-self:center; }
   .member-tag input{border:none; background:transparent; font-size:14.5px; flex:1 1 auto; width:auto; min-width:0; padding:2px;}
@@ -1046,7 +1047,7 @@
      結清時吉祥物出來。標題直接寫出「你要付／你可以拿回」的金額 */
   .my-status-card{
     --zz:8px;
-    border-color:var(--brass-soft); border-bottom:0; border-radius:var(--r-lg) var(--r-lg) 0 0; box-shadow:none;
+    border-color:var(--card-line); border-bottom:0; border-radius:var(--r-lg) var(--r-lg) 0 0; box-shadow:none;
     padding-bottom:var(--zz);
     -webkit-mask:linear-gradient(#000 0 0) top/100% calc(100% - var(--zz)) no-repeat, conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) bottom/calc(var(--zz) * 2) var(--zz) repeat-x;
     mask:linear-gradient(#000 0 0) top/100% calc(100% - var(--zz)) no-repeat, conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) bottom/calc(var(--zz) * 2) var(--zz) repeat-x;
@@ -1104,7 +1105,7 @@
     flex-shrink:0; display:inline-flex; align-items:center; gap:6px;
     background:none; border:none; border-left:1px solid var(--card-line);
     padding:4px 0 4px 12px; cursor:pointer;
-    color:var(--brass); font:600 13px 'Noto Sans TC',sans-serif;
+    color:var(--brass); font:600 13px var(--font-text);
   }
   .settle-paid-link:hover{ text-decoration:underline; }
   .settle-paid-link:disabled{ opacity:.6; cursor:wait; text-decoration:none; }
@@ -1202,7 +1203,7 @@
   }
   .bar-fill-pos{
     position:absolute; left:50%; height:18px; top:5px;
-    background:var(--credit); border-radius:0 4px 4px 0;
+    background:var(--ink-soft); border-radius:0 4px 4px 0;
     transition:width .45s cubic-bezier(.4,0,.2,1);
     min-width:0;
   }
@@ -1437,7 +1438,7 @@
     font:inherit; font-size:14.5px; color:inherit; cursor:pointer;
   }
   .acct-menu-item:hover{background:var(--surface-hover);}
-  .account-avatar-fallback{display:inline-flex; align-items:center; justify-content:center; background:var(--brass-tint); color:var(--brass); font-weight:700;}
+  .account-avatar-fallback{display:inline-flex; align-items:center; justify-content:center; background:var(--chip-bg); color:var(--ink-soft); font-weight:700;}
   .account-meta{flex:1; min-width:0;}
   .account-name{font-weight:700; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   /* 🆕 [LINE 登入] LINE 官方綠色按鈕；帳號綁定區塊 */
@@ -1510,16 +1511,16 @@
     font-size:11.5px; padding:2px 8px; border-radius:20px; white-space:nowrap; flex-shrink:0;
     border:1px dashed var(--card-line); color:var(--ink-soft);
   }
-  .member-tag .link-badge.linked, .account-link .link-badge.linked{border-style:solid; border-color:var(--brass-soft); color:var(--brass); background:var(--brass-tint);}
+  .member-tag .link-badge.linked, .account-link .link-badge.linked{border-style:solid; border-color:var(--card-line); color:var(--ink); background:var(--chip-bg);}
 
   .discord-status{display:flex; align-items:center; flex-wrap:wrap; gap:4px 8px; font-weight:700; margin-bottom:8px; color:var(--ink);}
   .discord-status code{word-break:break-all;}
   .discord-status .dot{width:8px; height:8px; border-radius:50%; background:var(--sync-idle); flex-shrink:0;}
-  .discord-status.on .dot{background:var(--credit);}
+  .discord-status.on .dot{background:var(--ink);}
   .discord-steps{margin:8px 0 12px; padding-left:20px; color:var(--ink-soft); font-size:14.5px; line-height:1.8;}
   .bind-code-box{
     margin:4px 0 12px; padding:16px; text-align:center;
-    border:1px solid var(--brass-soft); border-radius:var(--r-md); background:var(--brass-tint);
+    border:1px solid var(--card-line); border-radius:var(--r-md); background:var(--chip-bg);
   }
   .bind-code{font-family:var(--font-num); font-variant-numeric:tabular-nums; font-size:26px; font-weight:600; letter-spacing:.18em; color:var(--brass);}
   .bind-code-cmd{margin:6px 0 2px; word-break:break-all;}
@@ -1552,7 +1553,7 @@
   /* ---------- 🆕 [行程連結] 邀請與分享卡片（js/tripLinks.js） ---------- */
   .tl-hero{
     display:flex; align-items:center; gap:12px; flex-wrap:wrap;
-    padding:14px; border-radius:var(--r-md); background:var(--brass-tint); border:1px solid var(--brass-soft);
+    padding:14px; border-radius:var(--r-md); background:var(--chip-bg); border:1px solid var(--card-line);
   }
   .ledger-offline-note{font-size:12px; color:var(--ink-soft); align-self:center;}
   .tl-expired-bar{display:flex; justify-content:flex-end; margin:-4px 0 8px;}
@@ -1576,8 +1577,8 @@
   .tl-row-actions{display:flex; gap:6px; flex-shrink:0; margin-left:auto;}
   .tl-badge{font-size:11.5px; font-weight:500; padding:1px 7px; border-radius:20px; background:var(--chip-bg); color:var(--ink-soft);}
   .tl-tags{display:flex; flex-wrap:wrap; gap:4px; margin-top:4px;}
-  .tl-tag{font-size:11.5px; padding:1px 8px; border-radius:20px; border:1px solid var(--brass-soft); color:var(--brass); background:var(--brass-tint); white-space:nowrap;}
-  .tl-tag.warn{border-color:var(--debt-bg); color:var(--debt); background:var(--debt-bg);}
+  .tl-tag{font-size:11.5px; padding:1px 8px; border-radius:20px; border:1px solid var(--card-line); color:var(--ink-soft); background:var(--chip-bg); white-space:nowrap;}
+  .tl-tag.warn{border-color:var(--card-line); color:var(--danger); background:var(--chip-bg);}
   .tl-tag.muted{border-color:var(--card-line); color:var(--ink-soft); background:transparent;}
   .tl-tag.off{border-color:var(--card-line); color:var(--ink-soft); background:var(--zero-bg);}
   .tl-editor, .tl-composer{margin-top:12px; padding-top:12px; border-top:1px dashed var(--card-line);}
