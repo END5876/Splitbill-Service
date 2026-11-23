@@ -1,7 +1,7 @@
 :root{
     /* 配色：G 風格——#f8f9fa 畫布、白色卡片、#dadce0 細線。整個畫面只有兩個彩色：
-       藍色（#1a73e8）只給可以點的東西與選取中的狀態；紅色給欠錢、錯誤與刪除。其餘一律灰階，
-       「可拿回」用一般黑字加「＋」號，狀態靠文字與正負號，不靠底色。
+       藍色（#1a73e8）只給可以點的東西與選取中的狀態；綠色給可拿回與成功；紅色給欠錢、錯誤與刪除。
+       綠、紅只染文字與小圓點，不加色塊底；其餘一律灰階。
        （--brass* 這組變數名稱沿用舊版，現在代表主色藍。強調色的淡底仍用 color-mix() 從主色推導。） */
     --font-text:'DM Sans','Noto Sans TC',system-ui,sans-serif;
     --font-display:'DM Sans','Noto Sans TC',system-ui,sans-serif;
@@ -15,7 +15,7 @@
     --brass:#1A73E8;         /* 主色文字／連結（白底 4.5:1） */
     --brass-bg:#1A73E8;      /* 填色徽章／按鈕底；上面疊 --on-brass（白字） */
     --brass-soft:#AECBFA;    /* 邊框／焦點框用的淡主色 */
-    --credit:var(--ink);          /* 可拿回：一般黑字（靠「＋」號區分） */
+    --credit:#188038;             /* 可拿回：綠字，不加色塊底 */
     --credit-bg:var(--chip-bg);
     --debt:#D93025;               /* 欠錢：紅字，不加色塊底 */
     --debt-bg:var(--chip-bg);
@@ -69,7 +69,7 @@
     --header-btn-bg:transparent;
     --header-btn-line:#DADCE0;
     --header-btn-hover:#F1F3F4;
-    --sync-idle:#9AA0A6; --sync-ok:var(--sync-idle); --sync-busy:var(--sync-idle); --sync-err:#D93025; --sync-ro:var(--sync-idle);
+    --sync-idle:#9AA0A6; --sync-ok:#188038; --sync-busy:var(--sync-idle); --sync-err:#D93025; --sync-ro:var(--sync-idle);
     --sync-err-bg:color-mix(in srgb, #D93025 9%, #FFFFFF); --sync-err-line:#F4B5AF; --sync-err-text:#C5221F;
     --header-accent:#202124;      /* 頁首品牌字 */
 
@@ -97,7 +97,7 @@
     --brass:#8AB4F8;
     --brass-bg:#8AB4F8;          /* 上面疊 --on-brass（深字） */
     --brass-soft:#3F5C88;        /* 暗色下當邊框用，壓低亮度避免框線搶眼 */
-    --credit:var(--ink);
+    --credit:#81C995;
     --credit-bg:var(--chip-bg);
     --debt:#F28B82;
     --debt-bg:var(--chip-bg);
@@ -129,7 +129,7 @@
     --header-btn-bg:transparent;
     --header-btn-line:#5F6368;
     --header-btn-hover:#3C4043;
-    --sync-idle:#9AA0A6; --sync-ok:var(--sync-idle); --sync-busy:var(--sync-idle); --sync-err:#F28B82; --sync-ro:var(--sync-idle);
+    --sync-idle:#9AA0A6; --sync-ok:#81C995; --sync-busy:var(--sync-idle); --sync-err:#F28B82; --sync-ro:var(--sync-idle);
     --sync-err-bg:color-mix(in srgb, #F28B82 16%, #292A2D); --sync-err-line:#8C3A33; --sync-err-text:#F6AEA9;
 
     --emphasis:#8AB4F8;
@@ -1203,7 +1203,7 @@
   }
   .bar-fill-pos{
     position:absolute; left:50%; height:18px; top:5px;
-    background:var(--ink-soft); border-radius:0 4px 4px 0;
+    background:var(--credit); border-radius:0 4px 4px 0;
     transition:width .45s cubic-bezier(.4,0,.2,1);
     min-width:0;
   }
@@ -1516,7 +1516,7 @@
   .discord-status{display:flex; align-items:center; flex-wrap:wrap; gap:4px 8px; font-weight:700; margin-bottom:8px; color:var(--ink);}
   .discord-status code{word-break:break-all;}
   .discord-status .dot{width:8px; height:8px; border-radius:50%; background:var(--sync-idle); flex-shrink:0;}
-  .discord-status.on .dot{background:var(--ink);}
+  .discord-status.on .dot{background:var(--credit);}
   .discord-steps{margin:8px 0 12px; padding-left:20px; color:var(--ink-soft); font-size:14.5px; line-height:1.8;}
   .bind-code-box{
     margin:4px 0 12px; padding:16px; text-align:center;
