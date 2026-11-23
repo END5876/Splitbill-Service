@@ -25,7 +25,7 @@ let shareMode = null;
 
 function memberName(id){ const m = trip.members.find(x=>x.id===id); return m ? m.name : '（已刪除成員）'; }
 function currencyOptions(selected){
-  return Object.keys(trip.rates).sort().map(c=>`<option value="${c}" ${c===selected?'selected':''}>${c}${c===trip.baseCurrency?'（結算用）':''}</option>`).join('');
+  return Object.keys(trip.rates).sort().map(c=>`<option value="${c}" ${c===selected?'selected':''}>${c}</option>`).join('');
 }
 
 /* ===================== tabs ===================== */
