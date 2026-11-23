@@ -17,7 +17,7 @@ function syncThemeToggleUI(theme){
   if (btn){ btn.title = label; btn.setAttribute('aria-label', label); }
 }
 // 瀏覽器網址列／PWA 狀態列顏色，對應 style.css 裡兩個主題的頁首底色
-const THEME_COLORS = { light: '#24272F', dark: '#1E1F22' };
+const THEME_COLORS = { light: '#FFFFFF', dark: '#292A2D' };
 function setTheme(theme, persist){
   document.documentElement.setAttribute('data-theme', theme);
   const meta = document.querySelector('meta[name="theme-color"]');

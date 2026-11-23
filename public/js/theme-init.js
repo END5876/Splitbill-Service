@@ -6,6 +6,6 @@
     var theme = saved || ((window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light');
     document.documentElement.setAttribute('data-theme', theme);
     // 跟 js/theme.js 的 THEME_COLORS 保持一致（瀏覽器網址列／PWA 狀態列顏色）
-    if (theme === 'dark') document.querySelector('meta[name="theme-color"]').setAttribute('content', '#1E1F22');
+    if (theme === 'dark') document.querySelector('meta[name="theme-color"]').setAttribute('content', '#292A2D');
   }catch(e){}
 })();
