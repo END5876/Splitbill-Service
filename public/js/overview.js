@@ -176,7 +176,7 @@ function renderMyStatusCard(net){
   el.innerHTML = `
     <div class="receipt-head my-status-head">
       <div class="my-status-main">
-        <div class="my-status-who">${memberAvatarHtml(me)}${escapeHtml(me.name)}在這個行程</div>
+        <div class="my-status-who">${escapeHtml(me.name)}在這個行程</div>
         <div class="t1 my-status-headline ${state === 'zero' ? '' : state}">${headline}</div>
       </div>
       <div class="stamp my-status-stamp ${state}">${stamp}</div>
