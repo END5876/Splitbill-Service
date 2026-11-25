@@ -61,12 +61,12 @@ async function renderDebtSectionUI(){
 
   const isTransfer = debtViewMode !== 'pairwise';
   const sourceList = isTransfer ? lastTransferTx : lastPairwiseDebts;
-  const verb = isTransfer ? '付給' : '欠';
-  const emptyMsg = isTransfer ? '目前不需要轉帳。' : '目前沒有人要付錢給別人。';
+  const verb = isTransfer ? '→' : '欠';
+  const emptyMsg = isTransfer ? '無需轉帳' : '無欠款';
   if (subtitleEl){
     subtitleEl.textContent = isTransfer
-      ? '最少轉帳次數，一次結清'
-      : '只算兩人之間互相要付多少';
+      ? '最少轉帳次數'
+      : '兩人之間互欠';
   }
 
   const wantedCurrency = debtDisplayCurrency || trip.baseCurrency;
@@ -111,7 +111,7 @@ function settleGroupsHtml(list, verb, currency, canMark){
   return [...groups].map(([from, rows]) => `<div class="settle-box">
       <div class="settle-group-head">
         <span class="settle-party">${settleNameHtml(from)}</span>
-        ${rows.length > 1 ? `<span class="settle-sum">共${verb === '欠' ? '欠' : '要付'} <span class="num">${fmtMoneyCompact(round2(rows.reduce((s, t) => s + t.amount, 0)))}</span> ${currency}</span>` : ''}
+        ${rows.length > 1 ? `<span class="settle-sum">${verb === '欠' ? '欠' : '應付'} <span class="num">${fmtMoneyCompact(round2(rows.reduce((s, t) => s + t.amount, 0)))}</span> ${currency}</span>` : ''}
       </div>
       ${rows.map(t => settleRowHtml(t, `<span class="settle-verb lead">${verb}</span>${settleNameHtml(t.to)}`, t.amount, currency, canMark)).join('')}
     </div>`).join('');
@@ -126,9 +126,9 @@ function settleNameHtml(memberId){
 function settleRowHtml(t, whoHtml, amount, currency, canMark){
   const inner = `<span class="settle-party">${whoHtml}</span><span class="settle-amt">${fmtMoneyCompact(amount)}<span class="settle-amt-cur">${currency}</span></span>`;
   if (!canMark) return `<div class="settle-item">${inner}</div>`;
-  return `<div class="settle-sw"><div class="settle-in">
-      <button type="button" class="settle-act" data-write-only tabindex="-1" aria-hidden="true" ${act('click','markTransferPaid',t.from,t.to,'$el')}><span>標記已付</span></button>
-      <div class="settle-item settle-tap" role="button" tabindex="0" aria-expanded="false">${inner}</div>
+  return `<div class="swipe-box"><div class="swipe-in">
+      <button type="button" class="swipe-act" data-write-only tabindex="-1" aria-hidden="true" ${act('click','markTransferPaid',t.from,t.to,'$el')}><span>標記已付</span></button>
+      <div class="settle-item swipe-row" role="button" tabindex="0" aria-expanded="false">${inner}</div>
     </div></div>`;
 }
 let markingPaid = false;
@@ -155,7 +155,7 @@ async function markTransferPaid(fromId, toId, el){
   trip.deposits.push(dep);
   renderAll();
   const saved = (currentTripId || shareMode) ? syncEntry('deposits', dep.id, dep) : Promise.resolve();
-  toastUndo(`已標記：${memberName(fromId)}付給${memberName(toId)} ${fmtMoney(amount, base)} ${base}`, async () => {
+  toastUndo(`已標記：${memberName(fromId)} → ${memberName(toId)} ${fmtMoney(amount, base)} ${base}`, async () => {
     await saved; // 等新增存完再刪，順序不會顛倒
     if (trip.id !== tripId) return;
     const i = trip.deposits.findIndex(d => d.id === dep.id);
@@ -175,7 +175,7 @@ async function markTransferPaid(fromId, toId, el){
 function archiveOfferHtml(isTransfer){
   if (!isTransfer || trip.archived || !trip.expenses.length || !canManageCurrentTrip()) return '';
   return `<div class="archive-offer" data-write-only>
-    <span>大家都結清了。行程結束的話，可以封存起來。</span>
+    <span>已全部結清，可封存行程。</span>
     <button type="button" class="btn btn-ghost btn-sm" data-click="archiveCurrentTrip">封存這個行程</button>
   </div>`;
 }
@@ -191,19 +191,19 @@ function renderMyStatusCard(net){
   // 右上角蓋一個狀態章（待付款／待收款／已結清）
   const state = v < -0.01 ? 'neg' : v > 0.01 ? 'pos' : 'zero';
   const stamp = { neg: '待付款', pos: '待收款', zero: '已結清' }[state];
-  const headline = state === 'neg' ? `你要付 <b>${fmtMoneyCompact(-v)}</b> ${base}`
-    : state === 'pos' ? `你可以拿回 <b>${fmtMoneyCompact(v)}</b> ${base}`
-    : '你已經結清了';
+  const headline = state === 'neg' ? `應付 <b>${fmtMoneyCompact(-v)}</b> ${base}`
+    : state === 'pos' ? `應收 <b>${fmtMoneyCompact(v)}</b> ${base}`
+    : '已結清';
   const rows = mine.map(t => {
     const paying = t.from === me.id;
     const name = `<span class="settle-name">${escapeHtml(memberName(paying ? t.to : t.from))}</span>`;
-    const who = paying ? `<span class="settle-verb lead">付給</span>${name}` : `${name}<span class="settle-verb">要付給你</span>`;
+    const who = paying ? `${settleNameHtml(me.id)}<span class="settle-verb" aria-label="付給">→</span>${name}` : `${name}<span class="settle-verb" aria-label="付給">→</span>${settleNameHtml(me.id)}`;
     return settleRowHtml(t, who, t.amount, base, true);
   }).join('');
   el.innerHTML = `
     <div class="receipt-head my-status-head">
       <div class="my-status-main">
-        <div class="my-status-who">${escapeHtml(me.name)}在這個行程</div>
+        <div class="my-status-who">${escapeHtml(me.name)}</div>
         <div class="t1 my-status-headline ${state === 'zero' ? '' : state}">${headline}</div>
       </div>
       <div class="stamp my-status-stamp ${state}">${stamp}</div>
@@ -231,7 +231,7 @@ function renderMemberDetails(net) {
   const el = document.getElementById('memberDetailList');
   if (!el) return;
   if (!trip.members.length) {
-    el.innerHTML = '<p class="hint" style="padding:14px 0 6px;">尚未新增任何成員。</p>';
+    el.innerHTML = '<p class="hint" style="padding:14px 0 6px;">尚無成員</p>';
     return;
   }
 
@@ -326,17 +326,17 @@ function renderMemberDetails(net) {
   el.innerHTML = trip.members.map(m => {
     const v = round2(net[m.id] || 0);
     const netCls = v > 0.01 ? 'pos' : (v < -0.01 ? 'neg' : 'zero');
-    const netLabel = Math.abs(v) <= 0.01 ? '已結清' : `${netWords(v, false)} ${fmtMoney(Math.abs(v), trip.baseCurrency)} ${trip.baseCurrency}`;
+    const netLabel = Math.abs(v) <= 0.01 ? '已結清' : `${netWords(v)} ${fmtMoney(Math.abs(v), trip.baseCurrency)} ${trip.baseCurrency}`;
     const ld = ledger[m.id];
     const hasData = ld.paid.length || ld.share.length || ld.transferIn.length || ld.transferOut.length;
 
     // ↓↓↓ 修正處：transferIn 改為 -1（收到預付款＝減少淨額，因為原本墊款義務已被抵銷）
     //             transferOut 改為 +1（付出預付款＝增加淨額，等同預先幫忙代墊）
     // 分類標題用白話描述「這筆錢是怎麼來的」；＋／－ 對淨額的影響已經直接標在每筆金額上
-    const paidSection   = renderSection('先幫大家墊的錢', ld.paid, 'paid', '代墊', 1);
-    const shareSection  = renderSection('自己該分攤的部分', ld.share, 'share', '分攤', -1);
-    const tInSection    = renderSection('別人轉給他的錢', ld.transferIn, 'transfer-in', '收自', -1);
-    const tOutSection   = renderSection('他轉給別人的錢', ld.transferOut, 'transfer-out', '付給', 1);
+    const paidSection   = renderSection('代墊', ld.paid, 'paid', '代墊', 1);
+    const shareSection  = renderSection('分攤', ld.share, 'share', '分攤', -1);
+    const tInSection    = renderSection('收款', ld.transferIn, 'transfer-in', '收自', -1);
+    const tOutSection   = renderSection('付款', ld.transferOut, 'transfer-out', '付給', 1);
 
     const totalPaid  = round2(ld.paid.reduce((s,x)=>s+x.amountInBase,0));
     const totalShare = round2(ld.share.reduce((s,x)=>s+x.amountInBase,0));
@@ -344,10 +344,10 @@ function renderMemberDetails(net) {
     const totalTOut  = round2(ld.transferOut.reduce((s,x)=>s+x.amountInBase,0));
 
     const summaryRows = [
-      totalPaid  ? `<div class="detail-summary-row"><span class="label">墊付合計</span><span class="val pos">+${fmtMoney(totalPaid, trip.baseCurrency)} ${trip.baseCurrency}</span></div>` : '',
+      totalPaid  ? `<div class="detail-summary-row"><span class="label">代墊合計</span><span class="val pos">+${fmtMoney(totalPaid, trip.baseCurrency)} ${trip.baseCurrency}</span></div>` : '',
       totalShare ? `<div class="detail-summary-row"><span class="label">分攤合計</span><span class="val neg">−${fmtMoney(totalShare, trip.baseCurrency)} ${trip.baseCurrency}</span></div>` : '',
-      totalTIn   ? `<div class="detail-summary-row"><span class="label">收到轉帳合計</span><span class="val neg">−${fmtMoney(totalTIn, trip.baseCurrency)} ${trip.baseCurrency}</span></div>` : '',
-      totalTOut  ? `<div class="detail-summary-row"><span class="label">轉出合計</span><span class="val pos">+${fmtMoney(totalTOut, trip.baseCurrency)} ${trip.baseCurrency}</span></div>` : '',
+      totalTIn   ? `<div class="detail-summary-row"><span class="label">收款合計</span><span class="val neg">−${fmtMoney(totalTIn, trip.baseCurrency)} ${trip.baseCurrency}</span></div>` : '',
+      totalTOut  ? `<div class="detail-summary-row"><span class="label">付款合計</span><span class="val pos">+${fmtMoney(totalTOut, trip.baseCurrency)} ${trip.baseCurrency}</span></div>` : '',
     ].filter(Boolean).join('');
 
     const bodyHtml = hasData
@@ -355,11 +355,11 @@ function renderMemberDetails(net) {
          <div style="border-top:1.5px solid var(--card-line);margin-top:8px;padding-top:4px;">
            ${summaryRows}
            <div class="detail-summary-row" style="border-top:1px dashed var(--card-line);margin-top:4px;padding-top:8px;">
-             <span class="label" style="font-weight:700;">${Math.abs(v) <= 0.01 ? '已結清' : netWords(v, false)}</span>
+             <span class="label" style="font-weight:700;">${Math.abs(v) <= 0.01 ? '已結清' : netWords(v)}</span>
              <span class="val ${netCls}" style="font-size:14px;">${Math.abs(v) > 0.01 ? `${fmtMoney(Math.abs(v), trip.baseCurrency)} ${trip.baseCurrency}` : ''}</span>
            </div>
          </div>`
-      : '<p class="hint" style="padding:8px 0 4px;">還沒有帳目。</p>';
+      : '<p class="hint" style="padding:8px 0 4px;">尚無帳目</p>';
 
     const isOpen = openMemberDetailIds.has(m.id);
     return `<div class="member-detail-card ${isOpen ? 'open' : ''}" id="mdc-${m.id}">

@@ -174,7 +174,7 @@ function saveDeposit(){
   } else {
     saved = { id: genId('dep'), payerId, collectorId, amount, currency, amountInBase, note, createdAt: applyDateToTimestamp(dateStr, Date.now()) };
     trip.deposits.push(saved);
-    toast(`已記下 ${memberName(payerId)} 付給 ${memberName(collectorId)} 的轉帳`, 'success');
+    toast(`已記下 ${memberName(payerId)} → ${memberName(collectorId)}`, 'success');
   }
   resetDepositForm();
   renderAll();
@@ -207,34 +207,7 @@ function editDeposit(id){
   showMainTab('deposits');
   document.getElementById('depositFormCard').scrollIntoView({behavior:'smooth'});
 }
-async function deleteDeposit(id){
-  const idx = trip.deposits.findIndex(d => d.id === id);
-  if (idx === -1) return;
-
-  const deposit = trip.deposits[idx];
-  const confirmed = await confirmModal(
-    `「${memberName(deposit.payerId)} → ${memberName(deposit.collectorId)}」這筆轉帳會被刪除，其他成員也會立刻看到。${othersEntryNote(deposit)}需要的話可以到「設定 → 紀錄」還原。`,
-    {
-      title: '刪除這筆轉帳？',
-      confirmText: '刪除轉帳',
-      cancelText: '取消',
-      danger: true,
-    }
-  );
-
-  if (!confirmed) return;
-
-  // 確認視窗開著時 trip 可能被 SSE／存檔換掉或重新排序，要用 id 重新找位置
-  const idxNow = trip.deposits.findIndex(d => d.id === id);
-  if (idxNow !== -1) trip.deposits.splice(idxNow, 1);
-
-  if (editingDepositId === id) {
-    resetDepositForm();
-  }
-
-  renderAll();
-
-  // 確認刪除後立即寫入伺服器；分享連結模式也會自動走對應的 API。
-  await syncEntry('deposits', id, null);
+async function deleteDeposit(id, el){
+  await deleteEntry('deposits', id, el, '轉帳', x => `${memberName(x.payerId)} → ${memberName(x.collectorId)}`, () => { if (editingDepositId === id) resetDepositForm(); });
 }
 

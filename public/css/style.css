@@ -168,7 +168,7 @@
     outline:2px solid var(--brass); outline-offset:2px; border-radius:4px;
   }
   /* 放在 overflow:hidden 圓角區塊裡的整列按鈕：焦點框往內縮，才不會被區塊裁掉 */
-  .ledger-entry-row:focus-visible, .member-detail-head:focus-visible{
+  .member-detail-head:focus-visible{
     outline:2px solid var(--brass); outline-offset:-3px; border-radius:var(--r-md);
   }
 
@@ -734,8 +734,7 @@
   /* 觸控：可點的地方至少 44×44（膠囊、小按鈕 40），視覺可以小、點擊區不能小 */
   @media (pointer:coarse){
     .claim-chip{min-height:40px; padding:9px 14px;}
-    .ledger-search-clear{min-width:40px; min-height:40px;}
-    .seg-tab{min-height:36px;}
+      .seg-tab{min-height:36px;}
     .toast .undo-btn{min-height:40px; padding:8px 14px;}
     .toast-close{width:40px; height:40px;}
     .sync-status{height:36px; margin:-8px 0;} /* 點擊範圍加大，但不撐高頁首 */
@@ -798,63 +797,60 @@
   }
   .ledger-actions{display:flex; gap:6px; margin-top:9px;}
 
-  /* ════════════════════════════════════════════════════════════════
-     🆕 [支出／轉帳明細重新設計] 完整重新設計版面：搜尋工具列 + 依日期
-     分組的「日期徽章」標頭 + 收合式條目列，取代先前逐次小補的版本。
-     設計重點：
-     1. 工具列（.ledger-toolbar）用跟全站 input-with-toggle 一致的
-        「圖示內嵌輸入框」語彙，搜尋框內嵌放大鏡與清除按鈕；成員 chip
-        改成可橫向捲動的單行列，避免成員一多把工具列撐得過高。
-     2. 分組清單：每天一個小標頭（日期＋筆數＋當日小計）加一個圓角區塊，
-        區塊內用內縮分隔線隔開每一筆，層次清楚。
-     3. 條目列：收合時只有兩行「項目｜金額」「誰付的｜你應收或應付」，
-        時間、換算金額、每個人怎麼分都收進展開後，手機上不會一次塞太多資訊。
-     ════════════════════════════════════════════════════════════════ */
-
-  /* --- 搜尋／篩選工具列 --- */
-  .ledger-toolbar{
-    background:var(--chip-bg); border-radius:var(--r-md);
-    padding:10px 12px; margin-bottom:12px;
+  /* ---------- 支出／轉帳明細 ----------
+     一天一組（日期＋當天合計），一列兩行；點開看分攤，左滑刪除。搜尋收在標題右邊 */
+  .ledger-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:40px; margin-bottom:4px; }
+  .ledger-head h2.section-title{ margin:0; }
+  .ledger-n{ font-size:13px; font-weight:400; color:var(--ink-soft); }
+  .ledger-head .link-btn, .ledger-links .link-btn{ min-height:44px; padding:0 4px; font-size:14px; }
+  .ledger-head .link-btn[hidden]{ display:none; }
+  .link-btn.danger{ color:var(--danger); }
+  .link-btn:disabled{ opacity:.5; cursor:not-allowed; text-decoration:none; }
+  .fold{ display:grid; grid-template-rows:0fr; visibility:hidden; transition:grid-template-rows .26s cubic-bezier(.3,0,.2,1), visibility .26s; }
+  .fold > div{ min-height:0; overflow:hidden; }
+  .fold.on{ grid-template-rows:1fr; visibility:visible; }
+  input.ledger-find{ height:44px; margin:2px 0 8px; border-color:transparent; }
+  input.ledger-find:focus-visible{ outline-offset:-2px; }
+  .ledger-find-chips{ display:flex; flex-wrap:wrap; gap:6px; padding-bottom:6px; }
+  .ledger-find-sum{ margin:2px 0 4px; font-size:13px; color:var(--ink-soft); }
+  .ledger-group{ margin-top:10px; background:var(--surface); border-radius:var(--r-lg); overflow:hidden; }
+  .ledger-group-head{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; padding:12px 14px 9px; font-weight:700; font-size:14.5px; }
+  .ledger-group-head span + span{ flex-shrink:0; font-size:13px; font-weight:400; color:var(--ink-soft); font-variant-numeric:tabular-nums; }
+  .ledger-top{ position:relative; overflow:hidden; }
+  .ledger-item{
+    position:relative; display:grid; grid-template-columns:minmax(0,1fr) auto; align-content:center; align-items:center; gap:1px 14px;
+    min-height:60px; padding:9px 14px; background:var(--surface); cursor:pointer;
   }
-  .ledger-search-wrap{ position:relative; }
-  .ledger-search-wrap::before{
-    content:"";
-    position:absolute; left:10px; top:50%; transform:translateY(-50%);
-    width:14px; height:14px;
-    background-color:var(--ink-soft);
-    -webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E");
-    mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E");
-    -webkit-mask-size:contain; mask-size:contain;
-    -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat;
-    -webkit-mask-position:center; mask-position:center;
-    opacity:.6; pointer-events:none;
-  }
-  input.ledger-search{
-    width:100%; padding:9px 34px 9px 30px; font-size:13px;
-    background:var(--surface);
-  }
-  .ledger-search-clear{
-    position:absolute; right:4px; top:50%; transform:translateY(-50%);
-    width:26px; height:26px; border-radius:50%; border:none; padding:0;
-    background:transparent; color:var(--ink-soft); font-size:13px; cursor:pointer;
-    display:flex; align-items:center; justify-content:center;
-  }
-  .ledger-search-clear:hover{ background:var(--chip-bg-hover); color:var(--ink); }
-  .ledger-toolbar-chips{
-    display:flex; gap:6px; overflow-x:auto; margin-top:8px;
-    padding-bottom:2px; -webkit-overflow-scrolling:touch;
-  }
-  .ledger-toolbar-chips .claim-chip{ flex-shrink:0; }
-  .ledger-toolbar-summary{
-    margin-top:8px; padding-top:8px; border-top:1px dashed var(--card-line);
-    font-size:12px; color:var(--ink-soft); font-family:var(--font-num); font-variant-numeric:tabular-nums;
-  }
+  .ledger-title2{ min-width:0; font-weight:700; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ledger-pair{ display:flex; align-items:baseline; gap:6px; }
+  .ledger-pair .ledger-name{ min-width:0; overflow:hidden; text-overflow:ellipsis; }
+  .ledger-pair .you-tag{ margin:0; flex:none; }
+  .ledger-arrow{ flex:none; color:var(--ink-soft); font-weight:400; }
+  .ledger-amount{ text-align:right; white-space:nowrap; font:700 16px/1.4 var(--font-num); font-variant-numeric:tabular-nums; }
+  .ledger-amount .cur{ margin-left:4px; font-size:13px; font-weight:400; color:var(--ink-soft); }
+  .ledger-sub2{ min-width:0; font-size:13px; color:var(--ink-soft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ledger-me{ text-align:right; font-size:13px; white-space:nowrap; }
+  /* 展開後，被截斷的項目與名字顯示全文 */
+  .ledger-item[aria-expanded="true"] :is(.ledger-title2, .ledger-sub2, .ledger-name){ white-space:normal; overflow-wrap:anywhere; overflow:visible; }
+  .ledger-detail{ padding:0 14px 4px; }
+  .ledger-cap{ display:flex; justify-content:space-between; gap:12px; padding:8px 0 6px; border-top:1px dashed var(--card-line); font-size:13px; color:var(--ink-soft); }
+  .ledger-cap span + span{ flex-shrink:0; }
+  
+  .ledger-split{ display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:14px; min-height:32px; font-size:13px; font-variant-numeric:tabular-nums; }
+  .ledger-split:has(.ledger-eq){ padding:4px 0; }
+  .ledger-split-who{ min-width:0; font-size:14px; overflow-wrap:anywhere; }
+  .ledger-split-who .you-tag{ margin:0; }
+  .ledger-eq{ display:block; font-size:13px; color:var(--ink-soft); }
+  .ledger-foot{ display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:44px; font-size:13px; color:var(--ink-soft); }
+  .ledger-foot > span:first-child{ min-width:0; overflow-wrap:anywhere; }
+  .ledger-links{ flex:none; display:flex; align-items:center; gap:10px; }
+  @media (prefers-reduced-motion: reduce){ .fold{ transition:none; } }
 
   /* 目前登入者在名字後面的「你」標記 */
   .you-tag{
     display:inline-block; margin-left:4px; padding:0 5px; border-radius:4px;
     font-size:11.5px; font-weight:700; line-height:16px; vertical-align:1px;
-    background:var(--chip-bg); color:var(--ink-soft);
+    background:var(--brass-tint); color:var(--on-emphasis);
   }
   /* 應收／應付的文字顏色（明細列「你應收 X」、展開清單的每位成員） */
   .amt-pos{ color:var(--credit); }
@@ -872,66 +868,6 @@
   .ledger-day-sum{ font:12px var(--font-num); color:var(--ink-soft); white-space:nowrap; }
   .ledger-day-box{
     background:var(--surface); border:1px solid var(--card-line); border-radius:var(--r-lg); overflow:hidden;
-  }
-
-  /* --- 條目列：收合時固定兩行、左右對齊——「項目｜金額」與「誰付的（轉帳是備註）｜你應收或應付」。
-         時間、換算金額、每個人怎麼分都收進展開後，手機的窄畫面一次只放最需要的資訊 --- */
-  /* 內縮分隔線用偽元素畫，整列仍維持全寬——展開時的底色才會一路填到左邊 */
-  .ledger-entry{ position:relative; }
-  .ledger-entry + .ledger-entry::before{
-    content:""; position:absolute; top:0; left:14px; right:0; height:1px; background:var(--card-line);
-  }
-  .ledger-entry.open{ background:color-mix(in srgb, var(--brass) 5%, var(--surface)); }
-  .ledger-entry-row{
-    display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:baseline; gap:3px 14px;
-    padding:12px 14px; cursor:pointer; user-select:none;
-    background:none; border:none; width:100%; text-align:left; font:inherit; color:inherit;
-  }
-  .ledger-entry-title{
-    font-weight:700; font-size:14.5px; line-height:1.4;
-    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-  }
-  .ledger-entry-row:hover .ledger-entry-title{ color:var(--brass); }
-  .ledger-entry-arrow{ color:var(--ink-soft); font-weight:400; margin:0 6px; }
-  .ledger-entry-amt{ text-align:right; white-space:nowrap; font:600 15px/1.4 var(--font-num); }
-  .ledger-entry-amt .cur{ font-size:12px; opacity:.9; color:var(--ink-soft); font-weight:500; margin-left:4px; }
-  .ledger-entry-sub{ font-size:13px; color:var(--ink-soft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .ledger-entry-sub .muted{ font-style:italic; opacity:.75; }
-  /* 轉帳列：付款人與收款人各自截斷，箭頭與「你」標記不縮 */
-  .ledger-transfer{ display:flex; align-items:baseline; min-width:0; }
-  .ledger-party{ display:inline-flex; align-items:baseline; min-width:0; flex:0 1 auto; }
-  .ledger-party-name{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .ledger-transfer .ledger-entry-arrow, .ledger-party .you-tag{ flex-shrink:0; }
-  /* 展開後：被截斷的項目名稱、收款人、備註都顯示全文 */
-  .ledger-entry.open .ledger-entry-title, .ledger-entry.open .ledger-entry-sub,
-  .ledger-entry.open .ledger-party-name{ white-space:normal; overflow-wrap:anywhere; overflow:visible; }
-  /* 展開後改回一般文字排列，名字很長時箭頭跟著文字換行，不會單獨掉到一行 */
-  .ledger-entry.open .ledger-transfer{ display:block; }
-  .ledger-entry.open .ledger-party{ display:inline; }
-  .ledger-entry-me{ text-align:right; font-size:13px; font-weight:700; white-space:nowrap; }
-  .ledger-entry-me .num{ font-family:var(--font-num); font-variant-numeric:tabular-nums; }
-  .ledger-entry-detail{ padding:0 14px 14px; }
-  .ledger-entry-facts{ font-size:13px; color:var(--ink-soft); margin-bottom:10px; }
-  .ledger-entry-facts .sep{ opacity:.5; margin:0 4px; }
-  .ledger-entry-detail .ledger-actions{ margin-top:12px; }
-
-  /* 展開明細：一個小框，上方一句「怎麼分」，底下每位成員一行（名字｜這筆應收／應付），見 render.js 的 renderExpenseSplit() */
-  .split-box{ max-width:480px; background:var(--card); border:1px solid var(--card-line); border-radius:var(--r-md); }
-  .split-caption{ padding:9px 12px; font-size:13px; color:var(--ink-soft); border-bottom:1px solid var(--card-line); }
-  .split-caption b{ font-family:var(--font-num); font-variant-numeric:tabular-nums; font-weight:600; color:var(--ink); }
-  .split-list{ list-style:none; margin:0; padding:0; }
-  .split-list li{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; padding:8px 12px; font-size:13px; }
-  .split-list li + li{ border-top:1px dashed var(--card-line); }
-  .split-name{ min-width:0; overflow-wrap:anywhere; }
-  .split-name small{ display:block; margin-top:1px; font:11.5px var(--font-num); color:var(--ink-soft); }
-  /* 右側兩欄：「應收／應付」｜數字。數字欄固定寬度（--num-w，見 renderExpenseSplit）並靠右，位數不同也對齊 */
-  .split-net{ flex-shrink:0; display:inline-flex; align-items:baseline; gap:8px; font-size:13px; font-weight:700; white-space:nowrap; }
-  .split-net .num{ min-width:var(--num-w, auto); text-align:right; font-family:var(--font-num); font-variant-numeric:tabular-nums; }
-
-  @media (max-width:520px){
-    .ledger-entry-row{ column-gap:10px; padding:11px 12px; }
-    .ledger-entry + .ledger-entry::before{ left:12px; }
-    .ledger-entry-detail{ padding:0 12px 14px; }
   }
 
   .empty-state{
@@ -1037,7 +973,7 @@
   .settle-sum{ flex-shrink:0; font-size:13px; font-weight:500; color:var(--ink-soft); }
   .settle-item{ position:relative; display:flex; align-items:center; gap:8px; min-height:50px; padding:0 14px; font-size:14.5px; background:var(--surface); }
   /* 分隔線畫在外層，滑動時不跟著跑 */
-  .settle-sw:not(:first-child) .settle-in::before, .settle-item:not(:first-child):not(.settle-tap)::before{
+  .swipe-box:not(:first-child) .swipe-in::before, .settle-item:not(:first-child):not(.swipe-row)::before{
     content:""; position:absolute; top:0; left:14px; right:14px; height:1px; z-index:1; background:color-mix(in srgb, var(--card-line) 60%, transparent);
   }
   .settle-party{ display:flex; align-items:baseline; min-width:0; flex:1 1 auto; white-space:nowrap; }
@@ -1048,21 +984,24 @@
   .settle-amt{ flex-shrink:0; white-space:nowrap; font-family:var(--font-num); font-variant-numeric:tabular-nums; font-weight:700; font-size:15px; }
   .settle-amt-cur{ margin-left:4px; font-size:13px; font-weight:400; color:var(--ink-soft); }
   /* 左滑標記已付（swipeRows.js） */
-  .settle-sw{ display:grid; grid-template-rows:1fr; transition:grid-template-rows .28s cubic-bezier(.3,0,.2,1), opacity .2s; }
-  .settle-sw.gone{ grid-template-rows:0fr; opacity:0; }
-  .settle-in{ position:relative; min-height:0; overflow:hidden; }
-  .settle-tap{ touch-action:pan-y; user-select:none; -webkit-user-select:none; -webkit-tap-highlight-color:transparent; cursor:grab; will-change:transform; }
-  .settle-tap:focus-visible{ outline:2px solid var(--brass); outline-offset:-3px; border-radius:var(--r-md); }
+  .swipe-box{ display:grid; grid-template-rows:1fr; transition:grid-template-rows .28s cubic-bezier(.3,0,.2,1), opacity .2s; }
+  .swipe-box.gone{ grid-template-rows:0fr; opacity:0; }
+  .swipe-in{ position:relative; min-height:0; overflow:hidden; }
+  .ledger-item.swipe-row{ cursor:pointer; }
+  .swipe-row{ touch-action:pan-y; user-select:none; -webkit-user-select:none; -webkit-tap-highlight-color:transparent; cursor:grab; will-change:transform; }
+  .swipe-row:focus-visible{ outline:2px solid var(--brass); outline-offset:-3px; border-radius:var(--r-md); }
   /* 看得到的膠囊 30px，可點範圍 44px */
-  .settle-act{
+  .swipe-act{
     position:absolute; right:14px; top:50%; height:44px; margin-top:-22px; padding:0; border:0; background:none;
     display:flex; align-items:center; opacity:0; transform:scale(.6); transform-origin:right center; cursor:pointer;
   }
-  .settle-act span{ padding:0 12px; border-radius:999px; background:var(--brass-tint); color:var(--on-emphasis); font:600 13px/30px var(--font-text); white-space:nowrap; }
-  .settle-act:hover span, .settle-act:active span{ background:var(--brass-bg); color:var(--on-brass); }
-  .settle-tap.snap{ transition:transform .42s cubic-bezier(.2,1.12,.32,1); }
-  .settle-act.snap{ transition:transform .42s cubic-bezier(.2,1.12,.32,1), opacity .25s; }
-  body.share-readonly .settle-tap, body.trip-archived .settle-tap{ cursor:default; }
+  .swipe-act span{ padding:0 12px; border-radius:999px; background:var(--brass-tint); color:var(--on-emphasis); font:600 13px/30px var(--font-text); white-space:nowrap; }
+  .swipe-act.danger span{ background:var(--danger-bg); color:var(--danger); }
+  .swipe-act.danger:hover span, .swipe-act.danger:active span{ background:var(--danger); color:var(--card); }
+  .swipe-act:hover span, .swipe-act:active span{ background:var(--brass-bg); color:var(--on-brass); }
+  .swipe-row.snap{ transition:transform .42s cubic-bezier(.2,1.12,.32,1); }
+  .swipe-act.snap{ transition:transform .42s cubic-bezier(.2,1.12,.32,1), opacity .25s; }
+  body.share-readonly .settle-item.swipe-row, body.trip-archived .settle-item.swipe-row{ cursor:default; }
 
   /* 🆕「建議轉帳」「彼此累計欠款總額」的幣別換算列：小型下拉選單＋匯率提示文字
      並排在同一行，取代原本另外佔一整個欄位的大型 select。 */

@@ -222,33 +222,36 @@ function othersEntryNote(x){
   const who = authorName(x.createdBy);
   return who && who !== '你' ? `這筆是${who}記的。` : '';
 }
-async function deleteExpense(id){
-  const idx = trip.expenses.findIndex(e => e.id === id);
-  if (idx === -1) return;
-
-  const expense = trip.expenses[idx];
-  const confirmed = await confirmModal(
-    `「${expense.description || '未命名支出'}」會被刪除，其他成員也會立刻看到。${othersEntryNote(expense)}需要的話可以到「設定 → 紀錄」還原。`,
-    {
-      title: '刪除這筆支出？',
-      confirmText: '刪除支出',
-      cancelText: '取消',
-      danger: true,
-    }
-  );
-
-  if (!confirmed) return;
-
-  // 確認視窗開著時 trip 可能被 SSE／存檔換掉或重新排序，要用 id 重新找位置
-  const idxNow = trip.expenses.findIndex(e => e.id === id);
-  if (idxNow !== -1) trip.expenses.splice(idxNow, 1);
-
-  if (editingExpenseId === id) {
-    resetExpenseForm();
+// 刪一筆帳：自己記的直接刪、提示可以復原；別人記的（含認不出是誰、訪客）先確認
+async function deleteEntry(kind, id, el, kindName, label, afterDelete){
+  const entry = trip[kind].find(x => x.id === id);
+  if (!entry || document.body.matches('.share-readonly, .trip-archived')) return;
+  if (authorName(entry.createdBy) !== '你'){
+    const ok = await confirmModal(
+      `「${label(entry)}」會被刪除，其他成員也會立刻看到。${othersEntryNote(entry)}需要的話可以到「設定 → 紀錄」還原。`,
+      { title: `刪除這筆${kindName}？`, confirmText: `刪除${kindName}`, cancelText: '取消', danger: true }
+    );
+    if (!ok) return;
   }
-
+  const tripId = trip.id;
+  await swipeRowOut(el);
+  if (trip.id !== tripId) return;
+  // 確認視窗、動畫期間 trip 可能被 SSE／存檔換掉，要用 id 重新找位置
+  const idx = trip[kind].findIndex(x => x.id === id);
+  if (idx === -1){ renderAll(); return; }
+  const [removed] = trip[kind].splice(idx, 1);
+  afterDelete();
   renderAll();
-
-  // 確認刪除後立即寫入伺服器；分享連結模式也會自動走對應的 API。
-  await syncEntry('expenses', id, null);
+  const saved = syncEntry(kind, id, null);
+  toastUndo(`已刪除「${label(removed)}」`, async () => {
+    await saved; // 等刪除存完再還原，順序不會顛倒
+    if (trip.id !== tripId || trip[kind].some(x => x.id === id)) return;
+    trip[kind].push(removed);
+    renderAll();
+    await syncEntry(kind, id, removed, { restore: true });
+  });
+  await saved;
+}
+async function deleteExpense(id, el){
+  await deleteEntry('expenses', id, el, '支出', x => x.description || '未命名支出', () => { if (editingExpenseId === id) resetExpenseForm(); });
 }

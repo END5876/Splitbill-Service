@@ -94,7 +94,7 @@ async function removeMember(id){
     const name = trip.members[idx].name;
     const where = [nExp ? `${nExp} 筆支出` : '', nDep ? `${nDep} 筆轉帳` : ''].filter(Boolean).join('、');
     const ok = await confirmModal(
-      `${name}在 ${where}裡。刪除後這些金額不會算進結算，其他人的要付、可拿回金額會跟著改變。`,
+      `${name}在 ${where}裡。刪除後這些金額不會算進結算，其他人的應付、應收金額會跟著改變。`,
       { title: `刪除成員「${name}」？`, confirmText:'仍要刪除', cancelText:'先查看他的帳目', danger:true }
     );
     if (!ok){

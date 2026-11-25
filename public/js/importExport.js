@@ -107,7 +107,7 @@ function buildTripCsv(t){
     }
     for (const id of memberIds) totals[id] = round2(totals[id] + effect[id]);
   }
-  rows.push(['合計（正數＝可拿回，負數＝要付）', '', '', '', '', '', '', '', ...memberIds.map(id => totals[id])]);
+  rows.push(['合計（正數＝應收，負數＝應付）', '', '', '', '', '', '', '', ...memberIds.map(id => totals[id])]);
 
   rows.push([]);
   rows.push(['建議轉帳']);

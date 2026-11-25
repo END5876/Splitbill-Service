@@ -40,8 +40,8 @@ const UI_ACTIONS = new Set([
   'saveDepositAndSync', 'saveExpenseAndSync', 'saveLinkEdit', 'saveMyNickname',
   'setSplitMode', 'setExpenseStep', 'nextExpenseStep', 'amountKey', 'setDepositStep', 'nextDepositStep', 'pickDepositParty', 'toggleAllParticipants', 'setLinkComposerDays', 'setLinkComposerJoin', 'setLinkComposerLabel',
   'setLinkEditGuest', 'setLinkEditJoin', 'setLinkEditLabel', 'setShowAllTrips', 'showMainTab',
-  'showSettingsSub', 'extendTripLink', 'clearExpiredLinks', 'archiveCurrentTrip', 'unarchiveCurrentTrip', 'unarchiveSelectedTrip', 'openQuickAdd', 'closeQuickAdd', 'switchQuickAdd', 'startFirstDeposit', 'startFirstExpense', 'startLoginHandoff', 'switchAccount', 'toggleDepositExpand',
-  'toggleDepositFilterMember', 'toggleExpenseExpand', 'toggleExpenseFilterMember', 'toggleFormCard',
+  'showSettingsSub', 'extendTripLink', 'clearExpiredLinks', 'archiveCurrentTrip', 'unarchiveCurrentTrip', 'unarchiveSelectedTrip', 'openQuickAdd', 'closeQuickAdd', 'switchQuickAdd', 'startFirstDeposit', 'startFirstExpense', 'startLoginHandoff', 'switchAccount', 
+  'toggleDepositFilterMember', 'toggleLedgerFind', 'toggleExpenseFilterMember', 'toggleFormCard',
   'toggleLinkEditor', 'toggleMemberDetail', 'toggleTheme', 'unlinkAccount', 'unlinkMember', 'updateDeleteTripButton', 'updateRate',
 ]);
 

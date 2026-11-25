@@ -132,7 +132,7 @@
       <div class="receipt-head">
         <div>
           <div class="t1">怎麼結清</div>
-          <div class="t2" id="debtViewSubtitle">最少轉帳次數，一次結清</div>
+          <div class="t2" id="debtViewSubtitle">最少轉帳次數</div>
         </div>
         <div class="seg-tabs" role="tablist" aria-label="切換要顯示的結算方式">
           <button type="button" role="tab" class="seg-tab" data-view="transfer" aria-selected="true" data-click="onDebtViewChange" data-args='["transfer"]'>建議轉帳</button>
@@ -162,7 +162,7 @@
       <div class="receipt-head">
         <div>
           <div class="t1">各成員收支明細</div>
-          <div class="t2">點成員看每一筆帳目</div>
+          <div class="t2">點擊查看帳目</div>
         </div>
       </div>
       <div class="member-detail-list" id="memberDetailList"></div>
@@ -264,16 +264,15 @@
     </div>
 
     <div class="card">
-      <h2 class="section-title">支出明細 <span class="n" id="expenseCount"></span>
-      </h2>
-      <div class="ledger-toolbar">
-        <div class="ledger-search-wrap">
-          <input type="text" id="expenseFilterText" class="ledger-search" placeholder="搜尋項目說明…" data-input="onExpenseFilterChange">
-          <button type="button" class="ledger-search-clear" id="expenseFilterClearBtn" data-click="clearExpenseFilter" title="清除篩選" aria-label="清除篩選" style="display:none;">✕</button>
-        </div>
-        <div class="ledger-toolbar-chips" id="expenseFilterMemberChips"></div>
-        <div class="ledger-toolbar-summary" id="expenseFilterSummary" style="display:none;"></div>
+      <div class="ledger-head">
+        <h2 class="section-title">支出明細 <span class="ledger-n" id="expenseCount"></span></h2>
+        <button type="button" class="link-btn" id="expenseFindBtn" aria-controls="expenseFind" aria-expanded="false" data-click="toggleLedgerFind" data-args='["expenses"]'>搜尋</button>
       </div>
+      <div class="fold" id="expenseFind"><div>
+        <input type="text" id="expenseFilterText" class="ledger-find" placeholder="搜尋項目" aria-label="搜尋項目" data-input="onExpenseFilterChange">
+        <div class="ledger-find-chips" id="expenseFilterMemberChips"></div>
+        <p class="ledger-find-sum" id="expenseFilterSummary" hidden></p>
+      </div></div>
       <div id="expenseList"></div>
     </div>
   </div>
@@ -330,16 +329,15 @@
     </div>
 
     <div class="card">
-      <h2 class="section-title">轉帳明細 <span class="n" id="depositCount"></span>
-      </h2>
-      <div class="ledger-toolbar">
-        <div class="ledger-search-wrap">
-          <input type="text" id="depositFilterText" class="ledger-search" placeholder="搜尋備註…" data-input="onDepositFilterChange">
-          <button type="button" class="ledger-search-clear" id="depositFilterClearBtn" data-click="clearDepositFilter" title="清除篩選" aria-label="清除篩選" style="display:none;">✕</button>
-        </div>
-        <div class="ledger-toolbar-chips" id="depositFilterMemberChips"></div>
-        <div class="ledger-toolbar-summary" id="depositFilterSummary" style="display:none;"></div>
+      <div class="ledger-head">
+        <h2 class="section-title">轉帳明細 <span class="ledger-n" id="depositCount"></span></h2>
+        <button type="button" class="link-btn" id="depositFindBtn" aria-controls="depositFind" aria-expanded="false" data-click="toggleLedgerFind" data-args='["deposits"]'>搜尋</button>
       </div>
+      <div class="fold" id="depositFind"><div>
+        <input type="text" id="depositFilterText" class="ledger-find" placeholder="搜尋備註" aria-label="搜尋備註" data-input="onDepositFilterChange">
+        <div class="ledger-find-chips" id="depositFilterMemberChips"></div>
+        <p class="ledger-find-sum" id="depositFilterSummary" hidden></p>
+      </div></div>
       <div id="depositList"></div>
     </div>
   </div>

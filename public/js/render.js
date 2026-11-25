@@ -22,83 +22,66 @@ function emptyState(icon, text, ctaLabel, ctaAction){
   </div>`;
 }
 
-// 🆕 [日期分組＋收合明細] 展開/收合單一筆支出／轉帳的詳細內容。
-// 直接呼叫 renderAll() 重繪整頁——跟 editExpense() 等既有操作走同一套模式，
-// 筆數量級下（數百筆內）效能沒有問題，也不用另外維護局部更新的邏輯。
-function toggleExpenseExpand(id){
-  if (expandedExpenseIds.has(id)) expandedExpenseIds.delete(id); else expandedExpenseIds.add(id);
-  renderExpenseList();
-}
-function toggleDepositExpand(id){
-  if (expandedDepositIds.has(id)) expandedDepositIds.delete(id); else expandedDepositIds.add(id);
-  renderDepositList();
+// 展開／收合一筆明細：只動這一列，不重畫清單，展開才有動畫
+function toggleLedgerRow(row){
+  const { ledger: kind, id } = row.dataset;
+  const set = kind === 'expenses' ? expandedExpenseIds : expandedDepositIds;
+  const on = !set.has(id);
+  if (on) set.add(id); else set.delete(id);
+  const fold = row.closest('.swipe-in').querySelector('.fold');
+  if (on){
+    const x = trip[kind].find(e => e.id === id);
+    if (x) fold.firstElementChild.innerHTML = ledgerDetailHtml(kind, x);
+    void fold.offsetHeight; // 內容先排好，才會從 0 展開
+  }
+  fold.classList.toggle('on', on);
+  row.setAttribute('aria-expanded', String(on));
 }
 
-// 🆕 [明細改版] 成員名字＋「你」標記（目前登入者連結的成員）。
+// 成員名字；目前登入者只寫「你」
 function ledgerWho(memberId){
   const me = myTripMember();
-  return `${escapeHtml(memberName(memberId))}${me && me.id === memberId ? '<span class="you-tag">你</span>' : ''}`;
+  return me && me.id === memberId ? '<span class="you-tag">你</span>' : `<span class="ledger-name">${escapeHtml(memberName(memberId))}</span>`;
 }
 
-// 淨額的說法（跨產品用詞表）：數字不帶正負號，方向靠文字。
-// 說「你」：你可以拿回 X／你要付 X／你已經結清；說別人：可拿回 X／要付 X／已結清
-function netWords(net, you){
-  if (Math.abs(net) < 0.005) return you ? '你已經結清' : '已結清';
-  if (net > 0) return you ? '你可以拿回' : '可拿回';
-  return you ? '你要付' : '要付';
+// 淨額的說法（跨產品用詞）：應收／應付／已結清。數字不帶正負號，方向靠文字
+function netWords(net){
+  if (Math.abs(net) < 0.005) return '已結清';
+  return net > 0 ? '應收' : '應付';
 }
-// 正＝別人要給他，負＝他要給別人。who＝'你' 時用「你…」的說法
-function netPhraseHtml(net, currency, who){
-  const you = who === '你';
-  if (Math.abs(net) < 0.005) return `<span class="amt-zero">${netWords(net, you)}</span>`;
-  const unit = currency ? ` ${currency}` : '';
-  return `<span class="${net > 0 ? 'amt-pos' : 'amt-neg'}">${netWords(net, you)} <span class="num">${fmtMoneyCompact(Math.abs(net))}${unit}</span></span>`;
+function netPhraseHtml(net){
+  if (Math.abs(net) < 0.005) return '<span class="amt-zero">已結清</span>';
+  return `<span class="${net > 0 ? 'amt-pos' : 'amt-neg'}">${netWords(net)} <span class="num">${fmtMoneyCompact(Math.abs(net))}</span></span>`;
 }
 
-// 這筆支出對「我」的影響（先付 − 分攤），用這筆的幣別並標出幣別（當天合計是結算幣別，不標會看錯）；
-// 換算成結算幣別的數字放在展開後。我沒參與、或沒有連結成員時回傳空字串。
+// 這筆支出對「我」的影響（代墊 − 分攤），跟上一行同一個幣別。
+// 我沒參與、沒有連結成員或是訪客時回傳空字串。
 function ledgerMeHtml(e){
   const me = myTripMember();
   if (!me) return '';
-  const paid = e.payers.filter(p=>p.userId===me.id).reduce((s,p)=>s+p.amount,0);
-  const share = e.participants.filter(p=>p.userId===me.id).reduce((s,p)=>s+p.amount,0);
-  if (!paid && !share) return '';
-  return netPhraseHtml(round2(paid - share), e.currency, '你');
+  const paid = shareOf(e.payers, me.id), share = shareOf(e.participants, me.id);
+  return paid || share ? netPhraseHtml(round2(paid - share)) : '';
+}
+function shareOf(list, id){ return round2(list.filter(p=>p.userId===id).reduce((s,p)=>s+p.amount, 0)); }
+
+// 外幣換算成結算幣別
+function ledgerBaseNote(x){
+  return x.currency !== trip.baseCurrency && typeof x.amountInBase === 'number'
+    ? `≈ ${fmtMoneyCompact(x.amountInBase)} ${trip.baseCurrency}` : '';
 }
 
-// 原幣金額（整數不顯示 .00）
-function ledgerAmountHtml(amount, currency){
-  return `${fmtMoneyCompact(amount)}<span class="cur">${currency}</span>`;
-}
-// 外幣換算成基準幣別的說明，放在展開後
-function ledgerBaseNote(amount, currency, amountInBase){
-  return currency !== trip.baseCurrency && typeof amountInBase === 'number'
-    ? `約 ${fmtMoneyCompact(amountInBase)} ${trip.baseCurrency}` : '';
-}
-
-// 展開明細：一個小框，上方一句說明怎麼分，底下每位相關成員一行，右側是這筆的「應收／應付」
-// （先付 − 分攤）。有先付錢的人，名字下方補一行「先付 X・分攤 Y」。直式清單只會往下長，窄螢幕也不會擠。
-function renderExpenseSplit(e, evenShare){
+// 展開支出：怎麼分，然後每人一行。代墊的人排前面，名字下面列算式「代墊 X − 分攤 Y」
+function expenseSplitHtml(e){
   const ids = [...new Set([...e.payers.map(p=>p.userId), ...e.participants.map(p=>p.userId)])];
-  const sum = (list, id) => list.filter(p=>p.userId===id).reduce((s,p)=>s+p.amount, 0);
-  const caption = evenShare
-    ? `${e.participants.length} 人平均分攤，每人 <b>${fmtMoneyCompact(e.participants[0].amount)} ${e.currency}</b>`
-    : `依金額分攤（${e.currency}）`;
-  // 右側拆成「應收／應付」與數字兩欄：數字欄寬取這筆裡最長的數字（等寬字型的 ch），
-  // 每一列的數字都靠右對齊、「應收／應付」也因此排成一直線。
-  const items = ids.map(id=>{
-    const paid = sum(e.payers, id), share = sum(e.participants, id);
-    const net = round2(paid - share);
-    return { id, paid, share, net, numText: Math.abs(net) < 0.005 ? '' : fmtMoneyCompact(Math.abs(net)) };
-  });
-  const numWidth = Math.max(1, ...items.map(it=>it.numText.length));
-  const rows = items.map(({ id, paid, share, net, numText })=>{
-    const note = paid ? `<small>先付 ${fmtMoneyCompact(paid)}・${share ? `分攤 ${fmtMoneyCompact(share)}` : '不分攤'}</small>` : '';
-    const cls = numText ? (net > 0 ? 'amt-pos' : 'amt-neg') : 'amt-zero';
-    const label = netWords(numText ? net : 0, false);
-    return `<li><span class="split-name">${ledgerWho(id)}${note}</span><span class="split-net ${cls}"><span>${label}</span><span class="num">${numText}</span></span></li>`;
-  }).join('');
-  return `<div class="split-box"><div class="split-caption">${caption}</div><ul class="split-list" style="--num-w:${numWidth}ch">${rows}</ul></div>`;
+  const even = e.participants.length > 1 && e.participants.every(p=>Math.abs(p.amount - e.participants[0].amount) < 0.05);
+  const caption = even ? `${e.participants.length} 人均分 · 每人 ${fmtMoneyCompact(e.participants[0].amount)}` : '自訂分攤';
+  const rows = ids.map(id => ({ id, paid: shareOf(e.payers, id), share: shareOf(e.participants, id) }))
+    .sort((a, b) => (b.paid > 0) - (a.paid > 0))
+    .map(({ id, paid, share }) => `<div class="ledger-split">
+      <span class="ledger-split-who">${ledgerWho(id)}${paid ? `<span class="ledger-eq">代墊 ${fmtMoneyCompact(paid)} − 分攤 ${fmtMoneyCompact(share)}</span>` : ''}</span>
+      ${netPhraseHtml(round2(paid - share))}
+    </div>`).join('');
+  return `<div class="ledger-cap"><span>${caption}</span><span>${ledgerBaseNote(e)}</span></div>${rows}`;
 }
 
 // 誰記的、誰改過：帳號（createdBy／updatedBy）換成行程裡的名字，自己寫「你」，訪客寫「訪客」；
@@ -111,14 +94,11 @@ function authorName(account){
   const me = typeof myTripMember === 'function' ? myTripMember() : null;
   return me && me.id === m.id ? '你' : m.name;
 }
-// 展開後的「10:30 阿華記錄」「小明改過」
+// 「20:14 · 你新增 · 小明 修改」；看不出是誰（訪客看到的、舊資料）就只寫時間
 function authorFacts(x){
-  const c = authorName(x.createdBy);
-  const u = authorName(x.updatedBy);
-  return [
-    `${fmtTime(x.createdAt)} ${c ? escapeHtml(c) : ''}記錄`,
-    x.updatedBy ? `${u ? escapeHtml(u) : ''}改過` : null,
-  ];
+  const by = (name, verb) => name ? `${escapeHtml(name)}${/[\x21-\x7e]$/.test(name) ? ' ' : ''}${verb}` : '';
+  return [fmtTime(x.createdAt), by(authorName(x.createdBy), '新增'), x.updatedBy ? by(authorName(x.updatedBy), '修改') : '']
+    .filter(Boolean).join(' · ');
 }
 
 // 沒有網路時不能改、刪舊帳目（新增的帳目送不出去會先存在手機，舊的改了卻沒地方放，見第 2 批 C2）
@@ -128,85 +108,86 @@ const offlineNote = () => (navigator.onLine === false ? '<span class="ledger-off
 window.addEventListener('online', () => { if (currentTripId) renderAll(); });
 window.addEventListener('offline', () => { if (currentTripId) renderAll(); });
 
-// 展開後最上方的一行補充資訊（時間、換算金額…），用「・」串起來
-function ledgerFactsHtml(parts){
-  const list = parts.filter(Boolean);
-  return list.length ? `<div class="ledger-entry-facts">${list.join('<span class="sep">・</span>')}</div>` : '';
-}
-
-// 單筆支出列：收合時只有兩行——「項目｜金額」與「誰付的｜你應收或應付」，手機上一眼掃得完；
-// 時間、換算金額、每個人怎麼分都收進展開後，避免筆數一多畫面被撐開。
-function renderExpenseRow(e){
-  const expanded = expandedExpenseIds.has(e.id);
-  // 多人代墊時只列第一位
-  const firstPayer = e.payers[0] ? escapeHtml(memberName(e.payers[0].userId)) : '?';
-  const payerText = e.payers.length > 1 ? `${firstPayer} 等 ${e.payers.length} 人付` : `${firstPayer} 付`;
-  const evenShare = e.participants.length > 1 && e.participants.every(p=>Math.abs(p.amount - e.participants[0].amount) < 0.005);
-  const detailHtml = expanded ? `
-      <div class="ledger-entry-detail">
-        ${ledgerFactsHtml([...authorFacts(e), ledgerBaseNote(e.amount, e.currency, e.amountInBase)])}
-        ${renderExpenseSplit(e, evenShare)}
-        <div class="ledger-actions" data-write-only>
-          <button class="btn btn-ghost btn-sm" ${act('click','editExpense',e.id)} ${offlineLock()}>編輯</button>
-          <button class="btn btn-danger btn-sm" ${act('click','deleteExpense',e.id)} ${offlineLock()}>刪除</button>
-          ${offlineNote()}
+// 一列明細：兩行，左邊項目、右邊金額靠右；左滑出現「刪除」，點一下展開（swipeRows.js）
+function ledgerRowHtml(kind, x, title, sub, me){
+  const on = (kind === 'expenses' ? expandedExpenseIds : expandedDepositIds).has(x.id);
+  return `<div class="swipe-box"><div class="swipe-in">
+      <div class="ledger-top">
+        <button type="button" class="swipe-act danger" data-write-only tabindex="-1" aria-hidden="true" ${act('click', kind === 'expenses' ? 'deleteExpense' : 'deleteDeposit', x.id, '$el')}><span>刪除</span></button>
+        <div class="ledger-item swipe-row" role="button" tabindex="0" aria-expanded="${on}" data-ledger="${kind}" data-id="${escapeHtml(x.id)}">
+          ${title}
+          <span class="ledger-amount">${fmtMoneyCompact(x.amount)}<span class="cur">${x.currency}</span></span>
+          ${sub || me ? `<span class="ledger-sub2">${sub}</span><span class="ledger-me">${me}</span>` : ''}
         </div>
-      </div>` : '';
-  return `
-    <div class="ledger-entry ${expanded?'open':''}">
-      <button type="button" class="ledger-entry-row" ${act('click','toggleExpenseExpand',e.id)} aria-expanded="${expanded}">
-        <span class="ledger-entry-title">${escapeHtml(e.description)}</span>
-        <span class="ledger-entry-amt">${ledgerAmountHtml(e.amount, e.currency)}</span>
-        <span class="ledger-entry-sub">${payerText}</span>
-        <span class="ledger-entry-me">${ledgerMeHtml(e)}</span>
-      </button>
-      ${detailHtml}
-    </div>`;
-}
-
-// 轉帳列的付款人／收款人：兩個名字平分寬度，太長時各自截斷，箭頭和「你」標記一定看得到；展開後顯示全文
-function ledgerPartyHtml(memberId){
-  const me = myTripMember();
-  return `<span class="ledger-party"><span class="ledger-party-name">${escapeHtml(memberName(memberId))}</span>${me && me.id === memberId ? '<span class="you-tag">你</span>' : ''}</span>`;
-}
-
-// 單筆轉帳列：收合時兩行——「付款人 → 收款人｜金額」與備註；時間、換算金額與編輯/刪除收進展開後。
-function renderDepositRow(d){
-  const expanded = expandedDepositIds.has(d.id);
-  const detailHtml = expanded ? `
-      <div class="ledger-entry-detail">
-        ${ledgerFactsHtml([...authorFacts(d), ledgerBaseNote(d.amount, d.currency, d.amountInBase)])}
-        <div class="ledger-actions" data-write-only>
-          <button class="btn btn-ghost btn-sm" ${act('click','editDeposit',d.id)} ${offlineLock()}>編輯</button>
-          <button class="btn btn-danger btn-sm" ${act('click','deleteDeposit',d.id)} ${offlineLock()}>刪除</button>
-          ${offlineNote()}
-        </div>
-      </div>` : '';
-  return `
-    <div class="ledger-entry ${expanded?'open':''}">
-      <button type="button" class="ledger-entry-row" ${act('click','toggleDepositExpand',d.id)} aria-expanded="${expanded}">
-        <span class="ledger-entry-title ledger-transfer">${ledgerPartyHtml(d.payerId)}<span class="ledger-entry-arrow">→</span>${ledgerPartyHtml(d.collectorId)}</span>
-        <span class="ledger-entry-amt">${ledgerAmountHtml(d.amount, d.currency)}</span>
-        <span class="ledger-entry-sub">${d.note ? escapeHtml(d.note) : '<span class="muted">無備註</span>'}</span>
-      </button>
-      ${detailHtml}
-    </div>`;
-}
-
-// 🆕 把一組已排序好的帳目依日期分組渲染成 HTML：每組一個小標頭（左邊日期，右邊當日小計），
-// 底下是一個圓角區塊裝著該日期所有項目（用 rowRenderer 渲染單筆）。
-function renderDateGroupedList(items, rowRenderer){
-  const groups = groupItemsByDate(items);
-  return groups.map(g=>`
-    <div class="ledger-day">
-      <div class="ledger-day-head">
-        <span class="ledger-day-date">${escapeHtml(g.label)}</span>
-        <span class="ledger-day-sum">${fmtMoneyCompact(g.subtotal)} ${trip.baseCurrency}</span>
       </div>
-      <div class="ledger-day-box">${g.items.map(rowRenderer).join('')}</div>
+      <div class="fold ${on ? 'on' : ''}"><div>${on ? ledgerDetailHtml(kind, x) : ''}</div></div>
+    </div></div>`;
+}
+function ledgerDetailHtml(kind, x){
+  const expense = kind === 'expenses';
+  const base = ledgerBaseNote(x);
+  const body = expense ? expenseSplitHtml(x)
+    : base ? `<div class="ledger-cap"><span></span><span>${base}</span></div>` : '';
+  return `<div class="ledger-detail">${body}
+    <div class="ledger-foot"><span>${authorFacts(x)}</span><span class="ledger-links" data-write-only>${offlineNote()}
+      <button type="button" class="link-btn" ${act('click', expense ? 'editExpense' : 'editDeposit', x.id)} ${offlineLock()}>編輯</button>
+      <button type="button" class="link-btn danger" ${act('click', expense ? 'deleteExpense' : 'deleteDeposit', x.id, '$el')} ${offlineLock()}>刪除</button>
+    </span></div></div>`;
+}
+function renderExpenseRow(e){
+  const me = myTripMember();
+  const first = e.payers[0] ? e.payers[0].userId : null;
+  const name = first ? memberName(first) : '';
+  const payer = e.payers.length > 1 ? `${e.payers.length} 人代墊`
+    : me && first === me.id ? '你代墊' : `${escapeHtml(name)} 代墊`;
+  return ledgerRowHtml('expenses', e, `<span class="ledger-title2">${escapeHtml(e.description)}</span>`, payer, ledgerMeHtml(e));
+}
+function renderDepositRow(d){
+  return ledgerRowHtml('deposits', d,
+    `<span class="ledger-title2 ledger-pair">${ledgerWho(d.payerId)}<span class="ledger-arrow" aria-label="付給">→</span>${ledgerWho(d.collectorId)}</span>`,
+    escapeHtml(d.note || ''), '');
+}
+// 一天一組：日期寫一次，右邊是當天合計（結算幣別）
+function renderDateGroupedList(items, rowRenderer){
+  return groupItemsByDate(items).map(g=>`
+    <div class="ledger-group">
+      <div class="ledger-group-head"><span>${escapeHtml(g.label)}</span><span>${fmtMoneyCompact(g.subtotal)} ${trip.baseCurrency}</span></div>
+      ${g.items.map(rowRenderer).join('')}
     </div>`).join('');
 }
 
+// 搜尋與成員篩選平常收起來，標題右邊的按鈕展開；篩選中按鈕變成「清除」
+const ledgerFindOpen = { expenses: false, deposits: false };
+function ledgerFilterActive(kind){
+  return kind === 'expenses' ? !!(expenseFilterText.trim() || expenseFilterMemberIds.size)
+    : !!(depositFilterText.trim() || depositFilterMemberIds.size);
+}
+function toggleLedgerFind(kind){
+  const exp = kind === 'expenses';
+  if (ledgerFilterActive(kind)){
+    ledgerFindOpen[kind] = false;
+    return exp ? clearExpenseFilter() : clearDepositFilter();
+  }
+  ledgerFindOpen[kind] = !ledgerFindOpen[kind];
+  if (exp) renderExpenseList(); else renderDepositList();
+}
+function renderLedgerHead(kind, all, shown){
+  const p = kind === 'expenses' ? 'expense' : 'deposit';
+  const active = ledgerFilterActive(kind);
+  document.getElementById(p + 'Count').textContent = `${all.length} 筆`;
+  const btn = document.getElementById(p + 'FindBtn');
+  const open = ledgerFindOpen[kind] || active;
+  btn.hidden = !all.length && !active;
+  btn.textContent = active ? '清除' : open ? '收起' : '搜尋';
+  btn.setAttribute('aria-expanded', String(open));
+  document.getElementById(p + 'Find').classList.toggle('on', open);
+  const sumEl = document.getElementById(p + 'FilterSummary');
+  sumEl.hidden = !active;
+  if (active){
+    const total = round2(shown.reduce((s,x)=>s+(typeof x.amountInBase==='number'?x.amountInBase:(x.amount||0)),0));
+    sumEl.textContent = `${shown.length} 筆 · ${fmtMoneyCompact(total)} ${trip.baseCurrency}`;
+  }
+}
 
 // 🆕 [篩選／搜尋] 成員篩選改為複選 chip：把成員清單畫成可各自切換的按鈕，
 // 沿用帳單辨識既有的 .claim-chip 樣式（開/關兩態視覺語彙一致）。
@@ -244,7 +225,7 @@ function filterDeposits(list){
 }
 
 // 篩選列輸入變動時呼叫：把 DOM 上的值同步回全域篩選狀態，再重繪整頁。
-// 跟 toggleExpenseExpand() 等既有操作一樣直接 renderAll()，篩選文字輸入框
+// 只重畫清單，篩選文字輸入框
 // 本身是 index.html 裡的靜態元素、不會被 renderAll() 的 innerHTML 覆寫，
 // 所以重繪不會讓使用者正在打的字或游標位置跑掉。
 function onExpenseFilterChange(){
@@ -277,6 +258,7 @@ function clearDepositFilter(){
 // 🆕 換行程（載入／匯入／清空重開／進入分享模式）時呼叫：清空篩選條件，
 // 避免用舊行程篩出來的成員 id、關鍵字誤套用到新行程上。
 function resetListFilters(){
+  ledgerFindOpen.expenses = ledgerFindOpen.deposits = false;
   expenseFilterText = ''; expenseFilterMemberIds.clear();
   depositFilterText = ''; depositFilterMemberIds.clear();
   const et = document.getElementById('expenseFilterText'); if (et) et.value = '';
@@ -287,46 +269,26 @@ function resetListFilters(){
 // 只重繪清單就好，不必整頁 renderAll()（打字搜尋時才不會卡）。
 function renderExpenseList(){
   document.getElementById('expenseFilterMemberChips').innerHTML = renderFilterMemberChips(expenseFilterMemberIds, 'toggleExpenseFilterMember');
-  const allExpenses = trip.expenses.slice().sort((a,b)=>b.createdAt-a.createdAt);
-  const filteredExpenses = filterExpenses(allExpenses);
-  const filterActive = !!(expenseFilterText.trim() || expenseFilterMemberIds.size);
-  document.getElementById('expenseCount').textContent = `(${allExpenses.length})`;
-  document.getElementById('expenseFilterClearBtn').style.display = filterActive ? '' : 'none';
-  const expSummaryEl = document.getElementById('expenseFilterSummary');
-  if (filterActive){
-    const filteredSubtotal = round2(filteredExpenses.reduce((s,e)=>s+(typeof e.amountInBase==='number'?e.amountInBase:(e.amount||0)),0));
-    expSummaryEl.style.display = '';
-    expSummaryEl.textContent = `${filteredExpenses.length} / ${allExpenses.length} 筆，小計 ${fmtMoney(filteredSubtotal, trip.baseCurrency)} ${trip.baseCurrency}`;
-  } else {
-    expSummaryEl.style.display = 'none';
-  }
-  document.getElementById('expenseList').innerHTML = filteredExpenses.length
-    ? renderDateGroupedList(filteredExpenses, renderExpenseRow)
-    : (allExpenses.length
-        ? emptyState(icon('search'), '沒有符合篩選條件的支出。', '清除篩選', "clearExpenseFilter")
-        : emptyState(icon('receipt'), '還沒有任何支出。', '記第一筆支出', "startFirstExpense"));
+  const all = trip.expenses.slice().sort((a,b)=>b.createdAt-a.createdAt);
+  const shown = filterExpenses(all);
+  renderLedgerHead('expenses', all, shown);
+  document.getElementById('expenseList').innerHTML = shown.length
+    ? renderDateGroupedList(shown, renderExpenseRow)
+    : (all.length
+        ? emptyState(icon('search'), '無符合項目', '清除', "clearExpenseFilter")
+        : emptyState(icon('receipt'), '尚無支出', '記第一筆支出', "startFirstExpense"));
 }
 // 轉帳／預收清單，同上。
 function renderDepositList(){
   document.getElementById('depositFilterMemberChips').innerHTML = renderFilterMemberChips(depositFilterMemberIds, 'toggleDepositFilterMember');
-  const allDeposits = trip.deposits.slice().sort((a,b)=>b.createdAt-a.createdAt);
-  const filteredDeposits = filterDeposits(allDeposits);
-  const filterActive = !!(depositFilterText.trim() || depositFilterMemberIds.size);
-  document.getElementById('depositCount').textContent = `(${allDeposits.length})`;
-  document.getElementById('depositFilterClearBtn').style.display = filterActive ? '' : 'none';
-  const depSummaryEl = document.getElementById('depositFilterSummary');
-  if (filterActive){
-    const filteredSubtotal = round2(filteredDeposits.reduce((s,d)=>s+(typeof d.amountInBase==='number'?d.amountInBase:(d.amount||0)),0));
-    depSummaryEl.style.display = '';
-    depSummaryEl.textContent = `${filteredDeposits.length} / ${allDeposits.length} 筆，小計 ${fmtMoney(filteredSubtotal, trip.baseCurrency)} ${trip.baseCurrency}`;
-  } else {
-    depSummaryEl.style.display = 'none';
-  }
-  document.getElementById('depositList').innerHTML = filteredDeposits.length
-    ? renderDateGroupedList(filteredDeposits, renderDepositRow)
-    : (allDeposits.length
-        ? emptyState(icon('search'), '沒有符合篩選條件的轉帳或預收款。', '清除篩選', "clearDepositFilter")
-        : emptyState(icon('transfer'), '還沒有任何轉帳或預收款。', '記第一筆轉帳', "startFirstDeposit"));
+  const all = trip.deposits.slice().sort((a,b)=>b.createdAt-a.createdAt);
+  const shown = filterDeposits(all);
+  renderLedgerHead('deposits', all, shown);
+  document.getElementById('depositList').innerHTML = shown.length
+    ? renderDateGroupedList(shown, renderDepositRow)
+    : (all.length
+        ? emptyState(icon('search'), '無符合項目', '清除', "clearDepositFilter")
+        : emptyState(icon('transfer'), '尚無轉帳', '記第一筆轉帳', "startFirstDeposit"));
 }
 
 function renderAll(){
