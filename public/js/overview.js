@@ -61,7 +61,6 @@ async function renderDebtSectionUI(){
 
   const isTransfer = debtViewMode !== 'pairwise';
   const sourceList = isTransfer ? lastTransferTx : lastPairwiseDebts;
-  const verb = isTransfer ? '→' : '欠';
   const emptyMsg = isTransfer ? '無需轉帳' : '無欠款';
   if (subtitleEl){
     subtitleEl.textContent = isTransfer
@@ -91,7 +90,7 @@ async function renderDebtSectionUI(){
   if (noteEl) noteEl.textContent = rateNote;
 
   listEl.innerHTML = sourceList.length
-    ? settleGroupsHtml(displayList, verb, effectiveCurrency, isTransfer)
+    ? settleGroupsHtml(displayList, effectiveCurrency, isTransfer)
     : `<p class="empty-state" style="padding:16px;">${emptyMsg}</p>${archiveOfferHtml(isTransfer)}`;
   swipeRowPeek();
 }
@@ -102,7 +101,7 @@ async function renderDebtSectionUI(){
    金額一律用基準幣別（清單計算本來就是基準幣別），不受換算幣別影響。
 ===================================================================== */
 // 依付款人分組：付款人寫一次（兩筆以上加合計），下面每列「付給誰｜金額」。
-function settleGroupsHtml(list, verb, currency, canMark){
+function settleGroupsHtml(list, currency, canMark){
   const groups = new Map();
   for (const t of list){
     if (!groups.has(t.from)) groups.set(t.from, []);
@@ -111,9 +110,9 @@ function settleGroupsHtml(list, verb, currency, canMark){
   return [...groups].map(([from, rows]) => `<div class="settle-box">
       <div class="settle-group-head">
         <span class="settle-party">${settleNameHtml(from)}</span>
-        ${rows.length > 1 ? `<span class="settle-sum">${verb === '欠' ? '欠' : '應付'} <span class="num">${fmtMoneyCompact(round2(rows.reduce((s, t) => s + t.amount, 0)))}</span> ${currency}</span>` : ''}
+        ${rows.length > 1 ? `<span class="settle-sum">應付 <span class="num">${fmtMoneyCompact(round2(rows.reduce((s, t) => s + t.amount, 0)))}</span> ${currency}</span>` : ''}
       </div>
-      ${rows.map(t => settleRowHtml(t, `<span class="settle-verb lead">${verb}</span>${settleNameHtml(t.to)}`, t.amount, currency, canMark)).join('')}
+      ${rows.map(t => settleRowHtml(t, `<span class="settle-verb lead">應付</span>${settleNameHtml(t.to)}`, t.amount, currency, canMark)).join('')}
     </div>`).join('');
 }
 // 名字太長時只截名字本身；自己只寫「你」
@@ -140,8 +139,15 @@ async function markTransferPaid(fromId, toId, el){
   const base = trip.baseCurrency;
   const tripId = trip.id;
   markingPaid = true;
-  try{ await swipeRowOut(el); } finally { markingPaid = false; }
-  // 動畫期間換了行程，或別人剛好改了帳：不要記錯
+  try{
+    const ok = await confirmModal('會新增一筆轉帳，結算結果也會更新。', {
+      title: `標記 ${memberName(fromId)} 已付給 ${memberName(toId)} ${fmtMoney(amount, base)} ${base}？`,
+      confirmText: '標記已付', cancelText: '取消',
+    });
+    if (!ok){ closeSwipeRow(); return; }
+    await swipeRowOut(el);
+  } finally { markingPaid = false; }
+  // 確認、動畫期間換了行程，或別人剛好改了帳：不要記錯
   const now = trip.id === tripId && lastTransferTx.find(x => x.from === fromId && x.to === toId);
   if (!now || round2(now.amount) !== amount){
     renderAll();
@@ -197,7 +203,7 @@ function renderMyStatusCard(net){
   const rows = mine.map(t => {
     const paying = t.from === me.id;
     const name = `<span class="settle-name">${escapeHtml(memberName(paying ? t.to : t.from))}</span>`;
-    const who = paying ? `${settleNameHtml(me.id)}<span class="settle-verb" aria-label="付給">→</span>${name}` : `${name}<span class="settle-verb" aria-label="付給">→</span>${settleNameHtml(me.id)}`;
+    const who = paying ? `${settleNameHtml(me.id)}<span class="settle-verb">應付</span>${name}` : `${name}<span class="settle-verb">應付</span>${settleNameHtml(me.id)}`;
     return settleRowHtml(t, who, t.amount, base, true);
   }).join('');
   el.innerHTML = `

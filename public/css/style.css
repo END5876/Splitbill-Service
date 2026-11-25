@@ -837,8 +837,11 @@
   .ledger-cap{ display:flex; justify-content:space-between; gap:12px; padding:8px 0 6px; border-top:1px dashed var(--card-line); font-size:13px; color:var(--ink-soft); }
   .ledger-cap span + span{ flex-shrink:0; }
   
-  .ledger-split{ display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:14px; min-height:32px; font-size:13px; font-variant-numeric:tabular-nums; }
-  .ledger-split:has(.ledger-eq){ padding:4px 0; }
+  .ledger-splits{ display:grid; grid-template-columns:minmax(0,1fr) auto auto; align-items:center; column-gap:8px; font-size:13px; font-variant-numeric:tabular-nums; }
+  .ledger-split{ display:contents; }
+  .ledger-split-who{ display:flex; flex-direction:column; align-items:flex-start; justify-content:center; min-height:32px; padding:4px 6px 4px 0; }
+  .ledger-net-num{ text-align:right; white-space:nowrap; }
+  .ledger-net-zero{ grid-column:span 2; color:var(--ink-soft); }
   .ledger-split-who{ min-width:0; font-size:14px; overflow-wrap:anywhere; }
   .ledger-split-who .you-tag{ margin:0; }
   .ledger-eq{ display:block; font-size:13px; color:var(--ink-soft); }
@@ -973,7 +976,7 @@
   /* 結算列：依付款人分組，一組一個圓角區塊；每列「付給誰｜金額」（overview.js settleGroupsHtml） */
   .settle-box{ background:var(--surface); border-radius:var(--r-lg); overflow:hidden; }
   .settle-box + .settle-box{ margin-top:10px; }
-  .settle-group-head{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; padding:12px 14px 9px; font-weight:700; font-size:14.5px; }
+  .settle-group-head{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; padding:12px 14px 9px; font-weight:700; font-size:16px; }
   .settle-sum{ flex-shrink:0; font-size:13px; font-weight:500; color:var(--ink-soft); }
   .settle-item{ position:relative; display:flex; align-items:center; gap:8px; min-height:50px; padding:0 14px; font-size:14.5px; background:var(--surface); }
   /* 分隔線畫在外層，滑動時不跟著跑 */

@@ -100,6 +100,8 @@ let swipeOpenRow = null;
     if (ev.key === 'Escape' && cur && cur.parentNode.contains(ev.target)){ set(cur, false); cur.focus(); }
   });
 
+  window.closeSwipeRow = function(){ const cur = openRow(); if (cur) set(cur, false); };
+
   // 標記後：這一列往左滑出，底下的列補上來
   window.swipeRowOut = async function(el){
     const sw = el && el.closest('.swipe-box');

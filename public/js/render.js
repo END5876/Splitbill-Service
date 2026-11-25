@@ -70,6 +70,13 @@ function ledgerBaseNote(x){
     ? `≈ ${fmtMoneyCompact(x.amountInBase)} ${trip.baseCurrency}` : '';
 }
 
+// 展開清單右側兩欄：「應收／應付」靠左、金額靠右，各列對齊
+function splitNetHtml(net){
+  if (Math.abs(net) < 0.005) return '<span class="ledger-net-zero">已結清</span>';
+  const cls = net > 0 ? 'amt-pos' : 'amt-neg';
+  return `<span class="${cls}">${netWords(net)}</span><span class="ledger-net-num ${cls}">${fmtMoneyCompact(Math.abs(net))}</span>`;
+}
+
 // 展開支出：怎麼分，然後每人一行。代墊的人排前面，名字下面列算式「代墊 X − 分攤 Y」
 function expenseSplitHtml(e){
   const ids = [...new Set([...e.payers.map(p=>p.userId), ...e.participants.map(p=>p.userId)])];
@@ -79,9 +86,9 @@ function expenseSplitHtml(e){
     .sort((a, b) => (b.paid > 0) - (a.paid > 0))
     .map(({ id, paid, share }) => `<div class="ledger-split">
       <span class="ledger-split-who">${ledgerWho(id)}${paid ? `<span class="ledger-eq">代墊 ${fmtMoneyCompact(paid)} − 分攤 ${fmtMoneyCompact(share)}</span>` : ''}</span>
-      ${netPhraseHtml(round2(paid - share))}
+      ${splitNetHtml(round2(paid - share))}
     </div>`).join('');
-  return `<div class="ledger-cap"><span>${caption}</span><span>${ledgerBaseNote(e)}</span></div>${rows}`;
+  return `<div class="ledger-cap"><span>${caption}</span><span>${ledgerBaseNote(e)}</span></div><div class="ledger-splits">${rows}</div>`;
 }
 
 // 誰記的、誰改過：帳號（createdBy／updatedBy）換成行程裡的名字，自己寫「你」，訪客寫「訪客」；

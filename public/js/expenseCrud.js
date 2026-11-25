@@ -48,7 +48,7 @@ function saveExpense(){
     setExpenseStep(0);
     descEl.setAttribute('aria-invalid', 'true');
     descEl.focus();
-    toast('請填寫項目說明，之後查帳才認得出這筆是什麼。', 'error');
+    toast('請填寫項目說明。', 'error');
     return false;
   }
   const dateStr = document.getElementById('expDate').value;

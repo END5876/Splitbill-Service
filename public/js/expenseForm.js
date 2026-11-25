@@ -377,7 +377,7 @@ function nextExpenseStep(){
       // 在金額按 Enter：先跳到項目說明；已經在項目說明或按按鈕才提示
       if (document.activeElement !== document.getElementById('expAmount')){
         desc.setAttribute('aria-invalid', 'true');
-        toast('請填寫項目說明，之後查帳才認得出這筆是什麼。', 'error');
+        toast('請填寫項目說明', 'error');
       }
       desc.focus();
       return;
