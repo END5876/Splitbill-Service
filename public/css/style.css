@@ -503,12 +503,14 @@
   .exp-pane[hidden], .expense-save-row .btn[hidden]{ display:none; }
   .exp-amount{ display:flex; align-items:center; gap:12px; margin-bottom:10px; }
   .exp-amount select{ flex:0 0 96px; width:96px; height:46px; }
-  input[type=text].amount-big{ flex:1 1 0; min-width:0; height:58px; padding:0 4px; border:0; background:transparent; text-align:right; font-size:40px; font-weight:600; }
+  input[type=text].amount-big{ flex:1 1 0; min-width:0; height:58px; padding:0 4px; border:0; background:transparent; text-align:right; font-size:44px !important; font-weight:600; } /* 觸控裝置的輸入框一律 16px，這裡要蓋過去 */
   .exp-keys{ display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:6px; margin-bottom:12px; }
   .exp-keys button{
     height:46px; border:0; border-radius:var(--r-md); background:var(--surface); color:var(--ink);
     font:500 20px/1 var(--font-num); cursor:pointer; touch-action:manipulation;
+    -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;
   }
+  @media (pointer:coarse){ .exp-keys button{ font-size:24px; } }
   .exp-keys button:hover{ background:var(--surface-hover); }
   .exp-keys button:active{ background:var(--brass-tint); }
 

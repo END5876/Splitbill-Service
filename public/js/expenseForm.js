@@ -398,6 +398,34 @@ function amountKey(inputId, k){
   el.value = k === '⌫' ? el.value.slice(0, -1) : cleanAmountText(el.value + k);
   el.dispatchEvent(new Event('input', { bubbles: true }));
 }
+// 長按刪除鍵半秒：整個金額清空；放開時的那一下 click 不再多刪
+{
+  let timer = null, swallow = false;
+  const delKey = ev => {
+    const b = ev.target.closest && ev.target.closest('.exp-keys button');
+    return b && b.textContent === '⌫' ? b : null;
+  };
+  const stop = () => { clearTimeout(timer); timer = null; };
+  document.addEventListener('pointerdown', ev => {
+    stop();
+    swallow = false;
+    const b = ev.button === 0 && delKey(ev);
+    if (!b) return;
+    timer = setTimeout(() => {
+      timer = null; swallow = true;
+      const el = b.closest('.exp-pane').querySelector('.amount-big');
+      el.value = '';
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    }, 500);
+  });
+  ['pointerup', 'pointercancel'].forEach(t => document.addEventListener(t, stop));
+  document.addEventListener('pointerout', ev => { if (delKey(ev)) stop(); });
+  document.addEventListener('contextmenu', ev => { if (delKey(ev)) ev.preventDefault(); });
+  document.addEventListener('click', ev => {
+    if (swallow && ev.detail && delKey(ev)){ ev.stopPropagation(); ev.preventDefault(); }
+    swallow = false;
+  }, true);
+}
 // 只留數字和一個小數點、小數最多兩位；貼上「1,200」也能用
 function cleanAmountText(v){
   const s = String(v).normalize('NFKC').replace(/[^\d.]/g, '');
