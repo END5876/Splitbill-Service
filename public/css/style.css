@@ -833,8 +833,9 @@
   .ledger-me{ text-align:right; font-size:13px; white-space:nowrap; }
   /* 展開後，被截斷的項目與名字顯示全文 */
   .ledger-item[aria-expanded="true"] :is(.ledger-title2, .ledger-sub2, .ledger-name){ white-space:normal; overflow-wrap:anywhere; overflow:visible; }
-  .ledger-detail{ padding:0 14px 4px; }
-  .ledger-cap{ display:flex; justify-content:space-between; gap:12px; padding:8px 0 6px; border-top:1px dashed var(--card-line); font-size:13px; color:var(--ink-soft); }
+  /* 點開的內容是內縮的底色區塊：裡面的線是「人」，外面的線才是「項目」 */
+  .ledger-detail{ margin:0 8px 10px; padding:2px 10px; background:var(--card); border-radius:var(--r-md); }
+  .ledger-cap{ display:flex; justify-content:space-between; gap:12px; padding:8px 0 6px; font-size:13px; color:var(--ink-soft); }
   .ledger-cap span + span{ flex-shrink:0; }
   
   .ledger-splits{ display:grid; grid-template-columns:minmax(0,1fr) auto auto; align-items:center; column-gap:8px; font-size:13px; font-variant-numeric:tabular-nums; }
