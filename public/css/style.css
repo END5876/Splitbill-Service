@@ -1140,6 +1140,8 @@
   .detail-tag.share{ background:var(--debt-bg); color:var(--debt); }
   .detail-tag.transfer-in{ background:var(--debt-bg); color:var(--debt); }
   .detail-tag.transfer-out{ background:var(--credit-bg); color:var(--credit); }
+  /* 合計放在點開後的最上面，內縮底色跟下面的逐筆帳目分開 */
+  .detail-totals{ margin:10px 0 4px; padding:2px 10px 6px; background:var(--card); border-radius:var(--r-md); }
   .detail-summary-row{
     display:flex; justify-content:space-between; align-items:center;
     padding:9px 0 4px; font-size:13px;

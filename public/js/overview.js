@@ -357,14 +357,13 @@ function renderMemberDetails(net) {
     ].filter(Boolean).join('');
 
     const bodyHtml = hasData
-      ? `${paidSection}${shareSection}${tInSection}${tOutSection}
-         <div style="border-top:1.5px solid var(--card-line);margin-top:8px;padding-top:4px;">
+      ? `<div class="detail-totals">
            ${summaryRows}
            <div class="detail-summary-row" style="border-top:1px dashed var(--card-line);margin-top:4px;padding-top:8px;">
              <span class="label" style="font-weight:700;">${Math.abs(v) <= 0.01 ? '已結清' : netWords(v)}</span>
              <span class="val ${netCls}" style="font-size:14px;">${Math.abs(v) > 0.01 ? `${fmtMoney(Math.abs(v), trip.baseCurrency)} ${trip.baseCurrency}` : ''}</span>
            </div>
-         </div>`
+         </div>${paidSection}${shareSection}${tInSection}${tOutSection}`
       : '<p class="hint" style="padding:8px 0 4px;">尚無帳目</p>';
 
     const isOpen = openMemberDetailIds.has(m.id);
