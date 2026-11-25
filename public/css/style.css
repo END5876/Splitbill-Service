@@ -168,7 +168,7 @@
     outline:2px solid var(--brass); outline-offset:2px; border-radius:4px;
   }
   /* 放在 overflow:hidden 圓角區塊裡的整列按鈕：焦點框往內縮，才不會被區塊裁掉 */
-  .ledger-entry-row:focus-visible, .member-detail-head:focus-visible, .settle-paid-link:focus-visible{
+  .ledger-entry-row:focus-visible, .member-detail-head:focus-visible{
     outline:2px solid var(--brass); outline-offset:-3px; border-radius:var(--r-md);
   }
 
@@ -733,7 +733,6 @@
 
   /* 觸控：可點的地方至少 44×44（膠囊、小按鈕 40），視覺可以小、點擊區不能小 */
   @media (pointer:coarse){
-    .settle-paid-link{min-height:44px; padding:0 12px;}
     .claim-chip{min-height:40px; padding:9px 14px;}
     .ledger-search-clear{min-width:40px; min-height:40px;}
     .seg-tab{min-height:36px;}
@@ -1031,40 +1030,24 @@
   .stamp.settled{color:var(--credit); border-color:var(--credit);}
 
   .settle-list{padding:12px 18px 16px;}
-  /* 結算列（分組清單樣式）：放在 .settle-box 圓角區塊裡，每列「誰付給誰｜金額｜標記已付」，
-     「標記已付」是右側的文字按鈕。窄螢幕上名字獨佔第一行，金額和按鈕排在第二行左右兩端。 */
-  .settle-box{ background:var(--surface); border:1px solid var(--card-line); border-radius:var(--r-lg); overflow:hidden; }
-  .settle-item{ display:flex; align-items:center; gap:4px 14px; padding:12px 14px; font-size:14.5px; }
-  .settle-item + .settle-item{ border-top:1px solid var(--card-line); margin-left:14px; padding-left:0; }
-  /* 付款人、收款人各自截斷名字；動詞（付給、應付你）與「你」標記不縮，一定看得到要付給誰 */
-  .settle-who{ flex:1; min-width:0; display:flex; align-items:baseline; gap:0 6px; white-space:nowrap; font-weight:600; }
-  .settle-party{ display:flex; align-items:baseline; min-width:0; flex:0 1 auto; }
-  /* 名字至少留兩個字的寬度：長名字被截時，短名字（例如「小明」）不會跟著被擠成「小…」 */
-  .settle-name{ min-width:min(2.2em, 100%); overflow:hidden; text-overflow:ellipsis; }
-  .settle-who .settle-verb, .settle-who .you-tag{ flex-shrink:0; }
-  .settle-who .you-tag{ margin:0 4px 0 0; }
-  .settle-verb{ color:var(--ink-soft); font-weight:400; margin:0 6px; }
-  .settle-verb.lead{ margin-left:0; } /* 句首的動詞（例如「付給 小美」）不需要左邊距 */
-  .settle-amt{ flex-shrink:0; white-space:nowrap; font-family:var(--font-num); font-variant-numeric:tabular-nums; font-weight:700; font-size:14.5px; }
-  .settle-paid-link{
-    flex-shrink:0; display:inline-flex; align-items:center; gap:6px;
-    background:none; border:none; border-left:1px solid var(--card-line);
-    padding:4px 0 4px 12px; cursor:pointer;
-    color:var(--brass); font:600 13px var(--font-text);
-  }
-  .settle-paid-link:hover{ text-decoration:underline; }
-  .settle-paid-link:disabled{ opacity:.6; cursor:wait; text-decoration:none; }
-  @media (max-width:520px){
-    /* 左邊名字、金額上下兩行，右邊「標記已付」跨兩行置中；名字一行放不下才換行 */
-    .settle-item{ display:grid; grid-template-columns:minmax(0,1fr) auto; gap:1px 12px; padding-top:9px; padding-bottom:9px; }
-    .settle-who{ flex-wrap:wrap; }
-    .settle-party{ max-width:100%; }
-    .settle-amt{ grid-column:1; grid-row:2; }
-    .settle-paid-link{ grid-column:2; grid-row:1 / 3; align-self:center; }
-    /* 沒有按鈕的列（彼此欠款）：金額放右邊 */
-    .settle-item:not(:has(.settle-paid-link)) .settle-amt{ grid-column:2; grid-row:1; }
-  }
-  .settle-amt-cur{font-size:12px; font-weight:500; color:var(--ink-soft); margin-left:3px;}
+  /* 結算列：依付款人分組，一組一個圓角區塊；每列「付給誰｜金額｜✓」（overview.js settleGroupsHtml） */
+  .settle-box{ background:var(--surface); border-radius:var(--r-lg); padding:4px 8px 4px 14px; }
+  .settle-box + .settle-box{ margin-top:10px; }
+  .settle-group-head{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; padding:9px 6px 7px 0; font-weight:700; font-size:14.5px; }
+  .settle-sum{ flex-shrink:0; font-size:13px; font-weight:500; color:var(--ink-soft); }
+  .settle-item{ display:flex; align-items:center; gap:8px; min-height:50px; font-size:14.5px; }
+  .settle-item:not(:first-child){ border-top:1px solid color-mix(in srgb, var(--card-line) 60%, transparent); }
+  .settle-party{ display:flex; align-items:baseline; min-width:0; flex:1 1 auto; white-space:nowrap; }
+  .settle-party .you-tag{ flex-shrink:0; margin:0; }
+  .settle-name{ min-width:0; overflow:hidden; text-overflow:ellipsis; }
+  .settle-verb{ flex-shrink:0; color:var(--ink-soft); font-size:13px; font-weight:400; margin:0 6px; }
+  .settle-verb.lead{ margin-left:0; }
+  .settle-amt{ flex-shrink:0; white-space:nowrap; padding-right:6px; font-family:var(--font-num); font-variant-numeric:tabular-nums; font-weight:700; font-size:15px; }
+  /* 標記已付：外圈 44px 好點，看得到的圓 30px */
+  .settle-check{ flex:none; display:grid; place-items:center; width:44px; height:44px; padding:0; border:0; border-radius:50%; background:none; cursor:pointer; }
+  .settle-check > span{ display:grid; place-items:center; width:30px; height:30px; border-radius:50%; background:var(--brass-tint); color:var(--on-emphasis); transition:background .15s, color .15s; }
+  .settle-check .ic{ width:16px; height:16px; stroke-width:2.6; }
+  .settle-check:hover > span, .settle-check:active > span{ background:var(--brass-bg); color:var(--on-brass); }
 
   /* 🆕「建議轉帳」「彼此累計欠款總額」的幣別換算列：小型下拉選單＋匯率提示文字
      並排在同一行，取代原本另外佔一整個欄位的大型 select。 */

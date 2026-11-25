@@ -90,9 +90,9 @@ async function renderDebtSectionUI(){
   }
   if (noteEl) noteEl.textContent = rateNote;
 
-  listEl.innerHTML = sourceList.length ? `<div class="settle-box">${displayList.map(t => settleRowHtml(t,
-      `<span class="settle-party">${settleNameHtml(t.from)}</span><span class="settle-party"><span class="settle-verb lead">${verb}</span>${settleNameHtml(t.to)}</span>`,
-      t.amount, effectiveCurrency, isTransfer)).join('')}</div>` : `<p class="empty-state" style="padding:16px;">${emptyMsg}</p>${archiveOfferHtml(isTransfer)}`;
+  listEl.innerHTML = sourceList.length
+    ? settleGroupsHtml(displayList, verb, isTransfer)
+    : `<p class="empty-state" style="padding:16px;">${emptyMsg}</p>${archiveOfferHtml(isTransfer)}`;
 }
 
 /* =====================================================================
@@ -100,24 +100,40 @@ async function renderDebtSectionUI(){
    讓「看結算 → 實際轉錢 → 回來記帳」在同一個地方完成。
    金額一律用基準幣別（清單計算本來就是基準幣別），不受換算幣別影響。
 ===================================================================== */
-// 結算列（放在 .settle-box 圓角區塊裡）：誰付給誰（太長截斷）｜金額｜「標記已付」文字按鈕。
-// 窄螢幕上名字獨佔第一行，金額和按鈕排在第二行左右兩端（見 style.css 的 .settle-item）。
-// 結算列裡的一個名字：名字太長時只截名字本身，「你」標記放在名字前面、一定看得到
+// 依付款人分組：付款人寫一次（兩筆以上加合計），下面每列「付給誰｜金額｜✓」。
+// 金額的幣別就是上方「換算幣別」選的那個，列裡不重複寫。
+function settleGroupsHtml(list, verb, withPaidBtn){
+  const groups = new Map();
+  for (const t of list){
+    if (!groups.has(t.from)) groups.set(t.from, []);
+    groups.get(t.from).push(t);
+  }
+  return [...groups].map(([from, rows]) => `<div class="settle-box">
+      <div class="settle-group-head">
+        <span class="settle-party">${settleNameHtml(from)}</span>
+        ${rows.length > 1 ? `<span class="settle-sum">共${verb === '欠' ? '欠' : '要付'} <span class="num">${fmtMoneyCompact(round2(rows.reduce((s, t) => s + t.amount, 0)))}</span></span>` : ''}
+      </div>
+      ${rows.map(t => settleRowHtml(t, `<span class="settle-verb lead">${verb}</span>${settleNameHtml(t.to)}`, t.amount, withPaidBtn)).join('')}
+    </div>`).join('');
+}
+// 名字太長時只截名字本身；自己只寫「你」
 function settleNameHtml(memberId){
   const me = typeof myTripMember === 'function' ? myTripMember() : null;
-  const you = me && me.id === memberId ? '<span class="you-tag">你</span>' : '';
-  return `${you}<span class="settle-name">${escapeHtml(memberName(memberId))}</span>`;
+  return me && me.id === memberId ? '<span class="you-tag">你</span>'
+    : `<span class="settle-name">${escapeHtml(memberName(memberId))}</span>`;
 }
-function settleRowHtml(t, whoHtml, amount, currency, withPaidBtn){
+function settleRowHtml(t, whoHtml, amount, withPaidBtn){
   return `<div class="settle-item">
-      <span class="settle-who">${whoHtml}</span>
-      <span class="settle-amt">${fmtMoneyCompact(amount)}<span class="settle-amt-cur">${currency}</span></span>
+      <span class="settle-party">${whoHtml}</span>
+      <span class="settle-amt">${fmtMoneyCompact(amount)}</span>
       ${withPaidBtn ? markPaidButtonHtml(t) : ''}
     </div>`;
 }
+// 圓形 ✓：按下去會先跳確認，說明是誰付給誰、多少錢
 function markPaidButtonHtml(t){
-  return `<button type="button" class="settle-paid-link" data-write-only
-    ${act('click','markTransferPaid',t.from,t.to)} data-loading="記錄中…">標記已付</button>`;
+  return `<button type="button" class="settle-check" data-write-only title="標記已付"
+    aria-label="標記已付：${escapeHtml(memberName(t.from))}付給${escapeHtml(memberName(t.to))}"
+    ${act('click','markTransferPaid',t.from,t.to)}><span><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg></span></button>`;
 }
 async function markTransferPaid(fromId, toId){
   const t = lastTransferTx.find(x => x.from === fromId && x.to === toId);
@@ -168,10 +184,9 @@ function renderMyStatusCard(net){
     : '你已經結清了';
   const rows = mine.map(t => {
     const paying = t.from === me.id;
-    const who = paying
-      ? `<span class="settle-party"><span class="settle-verb lead">付給</span><span class="settle-name">${escapeHtml(memberName(t.to))}</span></span>`
-      : `<span class="settle-party"><span class="settle-name">${escapeHtml(memberName(t.from))}</span><span class="settle-verb">要付給你</span></span>`;
-    return settleRowHtml(t, who, t.amount, base, true);
+    const name = `<span class="settle-name">${escapeHtml(memberName(paying ? t.to : t.from))}</span>`;
+    const who = paying ? `<span class="settle-verb lead">付給</span>${name}` : `${name}<span class="settle-verb">要付給你</span>`;
+    return settleRowHtml(t, who, t.amount, true);
   }).join('');
   el.innerHTML = `
     <div class="receipt-head my-status-head">
