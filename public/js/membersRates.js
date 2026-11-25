@@ -1,5 +1,50 @@
 'use strict';
 // 成員與匯率設定分頁：新增/改名/刪除成員、新增/修改/刪除匯率。
+/* ===================== avatars ===================== */
+// 成員頭像：已連結而且登入過的成員用 LINE／Discord 的頭貼，其他人用名字第一個字
+let memberAvatars = {};       // 成員 id → 網址（GET /api/trip/:tripId/avatars）
+let memberAvatarsKey = '';    // 上次載入的是哪個行程、哪些連結
+let memberAvatarsAt = 0;
+const brokenAvatars = new Set(); // 載入失敗的網址（例如換過頭貼、舊網址失效）：退回字首
+function memberAvatarHtml(m){
+  if (!m) return '';
+  const url = memberAvatars[m.id];
+  if (url && !brokenAvatars.has(url)){
+    return `<img class="mav" data-member="${escapeHtml(m.id)}" src="${escapeHtml(url)}" alt="" referrerpolicy="no-referrer">`;
+  }
+  const ch = (String(m.name || '').trim().match(/[\p{L}\p{N}]/u) || [''])[0].toUpperCase();
+  return `<span class="mav" data-member="${escapeHtml(m.id)}" aria-hidden="true">${escapeHtml(ch)}</span>`;
+}
+// 只換頭像，不重畫整份名單（使用者可能正在改名字）
+function refreshMemberAvatars(){
+  document.querySelectorAll('#memberList .mav').forEach(el => {
+    const m = trip.members.find(x => x.id === el.dataset.member);
+    if (m) el.outerHTML = memberAvatarHtml(m);
+  });
+}
+async function loadMemberAvatars(){
+  if (!currentTripId || shareMode || !currentUser) return;
+  const key = currentTripId + '|' + trip.members.map(m => `${m.id}:${memberAccountId(m) || ''}`).join(',');
+  // 同一份名單五分鐘內不重複問（別人剛登入換了頭貼，過一會就會更新）
+  if (key === memberAvatarsKey && Date.now() - memberAvatarsAt < 5 * 60 * 1000) return;
+  // 換行程或有人換了連結：先清掉，不要讓舊頭像留在別人名字旁邊
+  if (key !== memberAvatarsKey) memberAvatars = {};
+  memberAvatarsKey = key; memberAvatarsAt = Date.now();
+  try{
+    const body = await apiJson(await fetch(tripApiUrl('/avatars'), { credentials: 'same-origin' }));
+    if (memberAvatarsKey !== key) return; // 等待期間又換了行程
+    memberAvatars = body.avatars || {};
+    refreshMemberAvatars();
+  }catch(e){ if (memberAvatarsKey === key) memberAvatarsAt = 0; /* 拿不到就先用字首，下次重畫再試 */ }
+}
+// 圖片的 error 事件不會往上傳，用 capture 接（CSP 不允許 inline onerror）
+document.addEventListener('error', ev => {
+  const el = ev.target;
+  if (!(el instanceof HTMLImageElement) || !el.classList.contains('mav')) return;
+  brokenAvatars.add(el.getAttribute('src'));
+  refreshMemberAvatars();
+}, true);
+
 /* ===================== members ===================== */
 function addMember(){
   const input = document.getElementById('newMemberName');

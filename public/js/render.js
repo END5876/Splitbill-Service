@@ -339,7 +339,6 @@ function renderDepositList(){
 
 function renderAll(){
   renderHistoryIfVisible(); // 「設定 → 紀錄」開著時，行程有更新就重新載入（js/history.js）
-  renderDescSuggest();
   renderArchivedState();
   // cover
   const titleEl = document.getElementById('tripName');
@@ -348,6 +347,7 @@ function renderAll(){
   document.getElementById('baseLabel').textContent = trip.baseCurrency;
 
   // members tab
+  if (currentSettingsSub === 'people' && document.body.dataset.tab === 'settings') loadMemberAvatars();
   document.getElementById('memberCount').textContent = `(${trip.members.length})`;
   document.getElementById('memberList').innerHTML = trip.members.map(m=>`
     <div class="member-tag">

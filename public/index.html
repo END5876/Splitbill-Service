@@ -122,8 +122,7 @@
   <div class="panel active" id="panel-overview" data-panel="overview">
     <!-- 版面順序依「打開總覽最想知道什麼」排列：我的狀態 → 怎麼結清 → 統計 → 逐筆明細。
          「你的狀態」只有在能辨識出你是哪位成員（登入且已連結）時才會顯示，見 js/overview.js 的 renderMyStatusCard()。 -->
-    <!-- 平板與桌機的欄位安排見 style.css 的「平板與桌機版面」：
-         ≥1024 左欄 .ov-main、右欄 .ov-side、成員明細在下方；700～1023 成員明細整列 -->
+    <!-- ≥1024（style.css）：摘要一整列，下面左欄「你的狀態＋怎麼結清」、右欄成員明細 -->
     <div class="ov-main">
     <div class="receipt my-status-card" id="myStatusCard" style="display:none; margin-bottom:14px;"></div>
 
@@ -203,35 +202,32 @@
           <span class="form-card-badge">編輯中</span>
           <span class="form-card-chevron" aria-hidden="true">▾</span>
         </button>
+        <span class="seg-tabs quick-add-only quick-add-switch"><button type="button" class="seg-tab" aria-pressed="true" data-click="switchQuickAdd" data-args='["expenses"]'>支出</button><button type="button" class="seg-tab" aria-pressed="false" data-click="switchQuickAdd" data-args='["deposits"]'>轉帳／預收</button></span>
         <label class="link-btn quick-add-only" for="receiptFileInput">拍收據</label>
         <button type="button" class="quick-add-close quick-add-only" data-click="closeQuickAdd" aria-label="關閉"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
       </h2>
       <div class="form-card-body" id="expenseFormBody">
-      <div class="row">
-        <div class="field field-amount" style="max-width:160px;">
+      <div class="entry-grid">
+        <div class="field">
           <label for="expAmount">金額</label>
           <input type="number" inputmode="decimal" id="expAmount" class="num" placeholder="0" step="0.01">
         </div>
-        <div class="field field-currency" style="max-width:130px;">
+        <div class="field">
           <label for="expCurrency">幣別</label>
           <select id="expCurrency"></select>
         </div>
-        <div class="field date-field">
+        <div class="field">
+          <label for="expDesc">項目說明</label>
+          <input type="text" id="expDesc" placeholder="例如：晚餐" data-input="clearInvalid" data-args='["$el"]'>
+        </div>
+        <div class="field">
           <label for="expDate">日期</label>
           <input type="date" id="expDate">
         </div>
       </div>
-      <div class="row">
-        <div class="field" style="flex:2;">
-          <label for="expDesc">項目說明</label>
-          <input type="text" id="expDesc" placeholder="例如：晚餐、租車費" data-input="clearInvalid" data-args='["$el"]'>
-          <div class="desc-suggest" id="expDescSuggest"></div>
-        </div>
-      </div>
       <div class="field" id="expBaseAmountField" hidden>
         <label for="expAmountInBase">實際花了多少 <span id="expBaseCurrencyLabel"></span>？（選填）</label>
-        <input type="number" inputmode="decimal" id="expAmountInBase" class="num" placeholder="沒填就用匯率換算" step="0.01">
-        <p class="hint">例如刷卡實際扣的金額。</p>
+        <input type="number" inputmode="decimal" id="expAmountInBase" class="num" placeholder="例如刷卡金額，沒填用匯率換算" step="0.01">
       </div>
       <p class="hint" id="expBaseHint"></p>
 
@@ -253,15 +249,15 @@
           <label>誰要分攤？</label>
           <div class="field-tools">
             <span class="field-meta" id="participantFieldMeta">已選 0 人</span>
+            <button type="button" class="link-btn" id="btnAllParticipants" data-click="toggleAllParticipants">全選</button>
           </div>
         </div>
-        <div class="chip-select" id="participantChips"></div>
-        <!-- 窄螢幕會隱藏 .lbl-long 的字，讓三顆按鈕維持在同一行（「重新平均／全部平均／各付各的」） -->
-        <div class="btn-row split-actions">
-          <button class="btn btn-ghost btn-sm" data-click="equalFillChips" data-args='["participant"]' title="依已勾選人數重新平均"><span><span class="lbl-long">依已勾選人數</span>重新平均</span></button>
-          <button class="btn btn-ghost btn-sm" data-click="checkAllParticipants" title="全部人平均分攤"><span>全部<span class="lbl-long">人</span>平均<span class="lbl-long">分攤</span></span></button>
-          <button class="btn btn-ghost btn-sm" data-click="selfShareParticipants" title="每個人只算自己付的錢">各付各的</button>
+        <div class="seg-tabs split-mode" role="group" aria-label="怎麼分攤">
+          <button type="button" class="seg-tab" data-split="equal" aria-pressed="true" data-click="setSplitMode" data-args='["equal"]'>平均分攤</button>
+          <button type="button" class="seg-tab" data-split="custom" aria-pressed="false" data-click="setSplitMode" data-args='["custom"]'>自訂金額</button>
+          <button type="button" class="seg-tab" data-split="self" aria-pressed="false" data-click="setSplitMode" data-args='["self"]'>各付各的</button>
         </div>
+        <div class="chip-select" id="participantChips"></div>
       </div>
 
       <div class="btn-row expense-save-row">
@@ -296,10 +292,12 @@
           <span class="form-card-badge">編輯中</span>
           <span class="form-card-chevron" aria-hidden="true">▾</span>
         </button>
+        <span class="seg-tabs quick-add-only quick-add-switch"><button type="button" class="seg-tab" aria-pressed="false" data-click="switchQuickAdd" data-args='["expenses"]'>支出</button><button type="button" class="seg-tab" aria-pressed="true" data-click="switchQuickAdd" data-args='["deposits"]'>轉帳／預收</button></span>
+        <button type="button" class="quick-add-close quick-add-only" data-click="closeQuickAdd" aria-label="關閉"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
       </h2>
       <div class="form-card-body" id="depositFormBody">
       <p class="hint" style="margin:0 0 12px;">預收款＝出發前先向大家收的錢，例如團費。</p>
-      <div class="row">
+      <div class="entry-grid">
         <div class="field">
           <label for="depPayer">付款人</label>
           <select id="depPayer"></select>
@@ -308,15 +306,21 @@
           <label for="depCollector">收款人</label>
           <select id="depCollector"></select>
         </div>
-      </div>
-      <div class="row">
-        <div class="field" style="max-width:160px;">
+        <div class="field">
           <label for="depAmount">金額</label>
           <input type="number" inputmode="decimal" id="depAmount" class="num" placeholder="0" step="0.01">
         </div>
-        <div class="field" style="max-width:130px;">
+        <div class="field">
           <label for="depCurrency">幣別</label>
           <select id="depCurrency"></select>
+        </div>
+        <div class="field">
+          <label for="depNote">備註（選填）</label>
+          <input type="text" id="depNote" placeholder="例如：收團費">
+        </div>
+        <div class="field">
+          <label for="depDate">日期</label>
+          <input type="date" id="depDate">
         </div>
       </div>
       <div class="field" id="depBaseAmountField" hidden>
@@ -324,17 +328,7 @@
         <input type="number" inputmode="decimal" id="depAmountInBase" class="num" placeholder="沒填就用匯率換算" step="0.01">
       </div>
       <p class="hint" id="depBaseHint"></p>
-      <div class="row">
-        <div class="field" style="flex:2;">
-          <label for="depNote">備註（選填）</label>
-          <input type="text" id="depNote" placeholder="例如：提前收團費">
-        </div>
-        <div class="field date-field">
-          <label for="depDate">日期</label>
-          <input type="date" id="depDate">
-        </div>
-      </div>
-      <div class="btn-row">
+      <div class="btn-row expense-save-row">
         <button class="btn btn-brass btn-block" id="btnSaveDepositSync" data-click="saveDepositAndSync" data-loading="儲存中…">記下這筆</button>
         <button class="btn btn-ghost" id="btnResetDeposit" data-click="resetDepositForm">清空表單</button>
       </div>

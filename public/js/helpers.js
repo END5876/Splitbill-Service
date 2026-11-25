@@ -19,16 +19,6 @@ function fmtMoney(amount, currency){
 }
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
-// 成員字首頭像：依成員 id 在 8 個低飽和色相裡挑一個（避開紅綠，紅綠留給應付／應收），
-// 用在結算列、成員明細、成員名單，讓同一個人在每個地方都是同一個顏色
-const AVATAR_HUES = [35, 55, 190, 212, 236, 262, 290, 318];
-function memberAvatarHtml(m){
-  if (!m) return '';
-  let h = 0;
-  for (const c of String(m.id || '')) h = (h * 31 + c.codePointAt(0)) >>> 0;
-  const ch = (String(m.name || '').trim().match(/[\p{L}\p{N}]/u) || [''])[0].toUpperCase();
-  return `<span class="mav" style="--mav-h:${AVATAR_HUES[h % AVATAR_HUES.length]}" aria-hidden="true">${escapeHtml(ch)}</span>`;
-}
 // 明細與結算的金額：整數就不顯示 .00，手機上省版面
 function fmtMoneyCompact(amount){
   if (!Number.isFinite(amount)) return '-';

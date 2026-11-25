@@ -417,6 +417,12 @@
   .form-card.editing{ border-color:var(--ink-soft); box-shadow:inset 4px 0 0 var(--ink-soft), var(--shadow); }
   .form-card.editing .form-card-badge{ display:inline-block; }
   .row{display:flex; gap:12px; flex-wrap:wrap;}
+  /* 記帳表單的欄位：等寬兩欄對齊，高度一致 */
+  .entry-grid{display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:10px 12px; margin-bottom:12px;}
+  .entry-grid > .field{margin:0; min-width:0;}
+  .entry-grid input, .entry-grid select{height:46px; min-width:0;}
+  .expense-save-row{flex-wrap:nowrap;}
+  .expense-save-row .btn-block{width:auto; flex:1 1 auto; max-width:none;}
   .row > .field{flex:1; min-width:130px;}
   input[type=text], input[type=number], input[type=password], input[type=date], select, textarea{
     width:100%; border:1px solid var(--card-line); background:var(--surface);
@@ -485,102 +491,59 @@
   .btn-ghost .spinner, .btn-danger .spinner{border-color:var(--card-line); border-top-color:var(--ink);}
   @keyframes spin{to{transform:rotate(360deg);}}
 
-  /* ════════════════════════════════════════════════════════════════
-     🆕 [成員膠囊重新設計] 誰代墊／誰分攤：完整重新設計，取代舊版一路
-     小補的 chip 實作。設計重點：
-     1. .chip-select 用 grid + minmax(min(100%,230px), 1fr)：手機螢幕
-        寬度不足 230px 時自動退化成單欄撐滿整行，平板/桌機隨寬度自動
-        增加欄數，且同一個 grid 裡每一欄永遠等寬。
-     2. .chip 本身也是一個 2 欄 grid：左邊（可點擊的勾選+名字）彈性寬、
-        右邊金額欄位固定 96px。因為外層欄寬已經統一、內層金額欄位又是
-        固定寬度放在最右側，金額輸入框在「所有」chip 上的水平位置必然
-        對齊，跟成員名字長短完全無關，不需要任何 JS 或額外計算。
-     3. 金額欄位不再用 display/visibility 切換顯示——未勾選時用
-        disabled + 虛線＋淡化樣式呈現「幽靈槽位」，勾選後才變成一般
-        實線輸入框；因為欄位本身的存在與寬度全程不變，不會有版面跳動。
-     4. 原生 checkbox 保留在 DOM 裡（供鍵盤 Tab／螢幕報讀器使用），只是
-        視覺上隱藏，改用旁邊的 .chip-box 自訂方塊呈現勾選狀態，儲值/
-        勾選行為仍是原生 checkbox 語意，無障礙支援比純 CSS 模擬更完整。
-     ════════════════════════════════════════════════════════════════ */
-  .chip-select{
-    display:grid;
-    grid-template-columns:repeat(auto-fill, minmax(min(100%, 230px), 1fr));
-    gap:8px;
-  }
-  .chip{
-    position:relative;
-    display:grid; grid-template-columns:minmax(0,1fr) 96px; align-items:center;
-    min-height:46px; padding-right:7px;
-    border:1.5px solid var(--card-line); border-radius:var(--r-md); background:var(--surface);
-    transition:border-color .15s, background .15s;
-  }
-  .chip:hover{border-color:var(--brass-soft);}
-  .chip.checked{border-color:var(--brass-bg); background:var(--brass-tint);}
-  /* 🆕 [手動標記視覺化] 使用者手動輸入過金額的 chip：邊框加一圈內陰影強調＋
-     右上角小徽章（鉛筆符號），跟「系統自動平分」的 chip 區分開來，一眼就
-     能看出哪筆金額不會被自動覆寫。取消勾選、按「重新平均」等操作會清空
-     手動集合，這個標記也會跟著消失（見 expenseForm.js 的 syncManualMarks()）。 */
-  .chip.manual{
-    border-color:var(--brass-bg);
-    box-shadow:inset 0 0 0 1px var(--brass-bg);
-  }
-  .chip.manual .amt{
-    border-color:var(--brass-bg);
-    background:var(--brass-tint);
-  }
-  .chip.manual::after{
-    content:"✎";
-    position:absolute; top:-6px; right:-6px;
-    width:16px; height:16px; border-radius:50%;
-    background:var(--brass-bg); color:var(--on-brass);
-    font-size:11px; line-height:16px; text-align:center;
-    box-shadow:var(--shadow-sm);
-    pointer-events:none;
-  }
-  /* 可點擊區：整個左半部（勾選方塊＋名字）都是 label，觸控目標 ≥ 44px 高 */
+  /* ---------- 誰代墊／誰分攤 ----------
+     上面一排名字膠囊（點一下勾選），下面才是金額；金額只在 .show-amt 時出現
+     （代墊兩人以上，或分攤選「自訂金額」，見 expenseForm.js 的 applyChipLayout()）。
+     .chip 用 display:contents，讓名字（order 1）和金額（order 3）分成兩區：
+     勾選時上面的膠囊位置不會跳動。原生 checkbox 保留給鍵盤與螢幕閱讀器。 */
+  .chip-select{ display:flex; flex-wrap:wrap; gap:8px; }
+  .chip-select[hidden]{ display:none; }
+  .chip{ display:contents; }
+  .chip-select.show-amt::after{ content:""; order:2; flex:0 0 100%; height:0; margin-top:-8px; }
   .chip .chip-main{
-    display:flex; align-items:center; gap:10px; min-width:0;
-    align-self:stretch; padding:0 6px 0 12px; cursor:pointer; user-select:none;
+    order:1; position:relative; display:inline-flex; align-items:center; gap:8px; max-width:100%; min-height:40px;
+    margin:0; padding:0 14px 0 10px;
+    border:1.5px solid var(--card-line); border-radius:999px; background:var(--surface); color:var(--ink);
+    cursor:pointer; user-select:none; transition:border-color .15s, background .15s;
   }
-  /* 原生 checkbox 視覺隱藏但保留互動（鍵盤/讀屏），改由 .chip-box 呈現勾選狀態 */
+  @media (min-width:1024px) and (pointer:fine){ .chip .chip-main{ min-height:36px; } }
+  @media (pointer:coarse){ .chip .chip-main{ min-height:44px; } }
+  .chip .chip-main:hover{ border-color:var(--brass-soft); }
+  .chip.checked .chip-main{ border-color:var(--brass-bg); background:var(--brass-tint); }
   .chip-checkbox{position:absolute; opacity:0; width:1px; height:1px; margin:0; pointer-events:none;}
   .chip-box{
-    width:18px; height:18px; flex-shrink:0; position:relative; border-radius:var(--r-sm);
+    width:16px; height:16px; flex-shrink:0; position:relative; border-radius:var(--r-sm);
     border:1.5px solid var(--ink-soft); background:var(--surface);
-    transition:background .15s, border-color .15s, box-shadow .15s;
+    transition:background .15s, border-color .15s;
   }
   .chip-box::after{
-    content:""; position:absolute; left:5px; top:1px; width:5px; height:10px;
+    content:""; position:absolute; left:4px; top:0; width:5px; height:9px;
     border:solid var(--on-brass); border-width:0 2px 2px 0;
     transform:rotate(45deg) scale(0); transition:transform .12s ease-out;
   }
   .chip-checkbox:checked ~ .chip-box{background:var(--brass-bg); border-color:var(--brass-bg);}
   .chip-checkbox:checked ~ .chip-box::after{transform:rotate(45deg) scale(1);}
-  .chip-checkbox:focus-visible ~ .chip-box{box-shadow:var(--focus-ring);}
-  .chip-label{
-    flex:1; min-width:0; font-size:13px; line-height:1.3;
-    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  .chip-main:has(.chip-checkbox:focus-visible){box-shadow:var(--focus-ring);}
+  .chip-label{ min-width:0; font-size:13px; line-height:1.3; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .amt-row{ display:none; }
+  .chip-select.show-amt .chip.checked .amt-row{
+    order:3; display:flex; align-items:center; gap:8px; flex:0 1 calc(50% - 4px); min-width:0;
   }
-  /* 金額欄位：跟全站 input 一致的實線框＋圓角；未勾選時變成「幽靈槽位」
-     （虛線、淡化、disabled），寬度全程不變，不會跳動、左右永遠對齊。 */
+  .amt-name{ flex:1 1 0; min-width:0; font-size:13px; color:var(--ink-soft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .chip .amt{
-    width:100%; height:32px; margin:0;
-    border:1px solid var(--card-line); border-radius:var(--r-sm); background:var(--card);
+    flex:0 0 84px; width:84px; height:38px; margin:0; padding:0 8px; text-align:right;
+    border:1px solid var(--card-line); border-radius:var(--r-sm); background:var(--surface); color:var(--ink);
     font-family:var(--font-num); font-variant-numeric:tabular-nums; font-size:16px; /* ≥16px 避免 iOS 聚焦時自動縮放頁面 */
-    text-align:right; padding:0 8px; color:var(--ink);
-    transition:opacity .15s, border-color .15s, background .15s;
   }
-  .chip .amt::placeholder{color:var(--ink-soft); opacity:.75;}
-  .chip .amt:focus{outline:2px solid var(--brass-soft); outline-offset:1px;}
-  .chip.checked .amt{border-color:var(--brass-soft);}
-  .chip .amt:disabled{opacity:.38; border-style:dashed; background:transparent; pointer-events:none;}
-  .chip .amt.invalid{border-color:var(--danger); background:var(--danger-bg);}
+  /* 自己改過的金額（平分差額時不會被改掉）：主色粗框 */
+  .chip.manual .amt{ border-color:var(--brass-bg); box-shadow:inset 0 0 0 1px var(--brass-bg); }
   .chip .amt::-webkit-outer-spin-button, .chip .amt::-webkit-inner-spin-button{-webkit-appearance:none; margin:0;}
   .chip .amt[type=number]{-moz-appearance:textfield; appearance:textfield;}
-  @media (min-width:860px){
-    .chip{min-height:44px;}
-    .chip .amt{font-size:13px; height:30px;}
-  }
+  @media (min-width:860px){ .chip .amt{font-size:14px;} }
+  /* 分攤方式：整列三等分的分段按鈕 */
+  .seg-tabs.split-mode{ display:flex; margin-bottom:10px; }
+  .split-mode .seg-tab{ flex:1 1 0; min-height:36px; padding:6px 4px; }
+  @media (pointer:coarse){ .split-mode .seg-tab{ min-height:40px; } }
 
   /* ---------- 帳單照片辨識 ---------- */
   /* 🆕 [帳單辨識區塊重新設計] 整條可點擊橫幅（icon + 標題 + 說明 + 箭頭），
@@ -598,7 +561,7 @@
   .receipt-scan-trigger{
     display:block; width:100%; cursor:pointer; text-align:left;
     border:1.5px dashed var(--brass-soft); border-radius:var(--r-lg);
-    background:var(--surface); padding:14px 16px;
+    background:var(--surface); padding:9px 14px;
     transition:border-color .15s, background .15s, transform .1s;
   }
   .receipt-scan-trigger:hover{border-color:var(--brass-bg); background:var(--brass-tint);}
@@ -608,8 +571,10 @@
   .receipt-scan-trigger-body{
     display:flex; align-items:center; gap:14px;
   }
+  /* 還沒上傳時整張卡就是上傳按鈕，不再多包一層 */
+  #receiptScanCard:has(> #receiptWorkArea[style*="none"]){padding:0; border:0; background:none;}
   .receipt-scan-ic{
-    width:46px; height:46px; flex-shrink:0; border-radius:var(--r-md);
+    width:36px; height:36px; flex-shrink:0; border-radius:var(--r-md);
     display:flex; align-items:center; justify-content:center;
     font-size:20px; background:var(--chip-bg); color:var(--ink-soft);
   }
@@ -961,13 +926,12 @@
     background:var(--surface); border:1px solid var(--card-line); border-radius:var(--r-md);
     padding:8px 10px 8px 12px;
   }
-  /* 成員字首頭像（helpers.js memberAvatarHtml）：同一個人在每個地方同一個顏色 */
+  /* 成員頭像（membersRates.js memberAvatarHtml）：LINE／Discord 頭貼，沒有就用名字第一個字 */
   .mav{
-    --mav-h:212; flex:none; display:inline-grid; place-items:center; width:24px; height:24px; border-radius:50%;
+    flex:none; display:inline-grid; place-items:center; width:28px; height:28px; border-radius:50%; object-fit:cover;
     background:var(--chip-bg); color:var(--ink-soft);
-    font:700 12px/1 var(--font-text); margin-right:8px; vertical-align:middle;
+    font:700 13px/1 var(--font-text); margin-right:8px; vertical-align:middle;
   }
-  /* 頭像：不分顏色，只靠名字第一個字辨認（深色模式靠 --chip-bg 自動切換） */
   .member-tag .mav{ margin-right:2px; }
   .member-tag input{border:none; background:transparent; font-size:14.5px; flex:1 1 auto; width:auto; min-width:0; padding:2px;}
   .member-tag .member-actions{display:flex; align-items:center; gap:8px; flex-shrink:0;}
@@ -980,9 +944,6 @@
     .member-btn .btn-ic{display:block;}
     .member-btn .btn-label{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap;}
     .member-tag .link-badge{padding:2px 6px;}
-    .split-actions{flex-wrap:nowrap;}
-    .split-actions .btn{flex:1 1 0; min-width:0; padding-left:6px; padding-right:6px;}
-    .split-actions .lbl-long{display:none;}
     /* 改名在左、刪除靠右，維持同一行 */
     .trip-actions{flex-wrap:nowrap;}
   }
@@ -1011,17 +972,9 @@
     color:var(--ink-soft); cursor:pointer; white-space:nowrap;
   }
   .seg-tab:hover{ color:var(--ink); }
-  .seg-tab[aria-selected="true"]{ background:var(--card); color:var(--ink); box-shadow:var(--shadow-sm); }
+  .seg-tab[aria-selected="true"], .seg-tab[aria-pressed="true"]{ background:var(--card); color:var(--ink); box-shadow:var(--shadow-sm); }
 
-  /* 你的狀態卡片（分帳的「一處大膽」）：做成一張收據——底邊鋸齒、右上角蓋狀態章，
-     結清時吉祥物出來。標題直接寫出「你要付／你可以拿回」的金額 */
-  .my-status-card{
-    --zz:8px;
-    border-color:var(--card-border); border-bottom:0; border-radius:var(--r-lg) var(--r-lg) 0 0; box-shadow:none;
-    padding-bottom:var(--zz);
-    -webkit-mask:linear-gradient(#000 0 0) top/100% calc(100% - var(--zz)) no-repeat, conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) bottom/calc(var(--zz) * 2) var(--zz) repeat-x;
-    mask:linear-gradient(#000 0 0) top/100% calc(100% - var(--zz)) no-repeat, conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) bottom/calc(var(--zz) * 2) var(--zz) repeat-x;
-  }
+  /* 你的狀態卡片：外框跟其他卡片一樣（.receipt），右上角蓋狀態章，標題直接寫出金額 */
   .my-status-head{ flex-wrap:nowrap; align-items:center; gap:12px; border-bottom-style:dashed; }
   .my-status-main{ flex:1; min-width:0; }
   .my-status-who{ display:flex; align-items:center; font-size:13px; color:var(--ink-soft); }
@@ -1131,6 +1084,7 @@
   .cur-hint:empty{display:none;}
   .cur-hint[data-state="error"]{color:var(--danger);}
 
+  .hint:empty{display:none;}
   .hint{font-size:12px; color:var(--ink-soft); margin-top:6px; line-height:1.6;}
   code.inline{background:var(--chip-bg); border-radius:4px; padding:1px 5px; font-family:var(--font-code); font-size:12px; word-break:break-all;}
 
@@ -1277,9 +1231,9 @@
   }
 
   /* ═════════ 平板與桌機版面（ui-review 第 4 批）═════════
-     700～1023：摘要 4 欄、支出表單「金額＋幣別＋日期」同一列
+     700～1023：摘要 4 欄、支出表單四個欄位同一列
      ≥1024：版面放寬到 1120px；支出／轉帳左欄表單（捲動時固定）、右欄明細；
-            總覽左欄「你的狀態＋怎麼結清」、右欄摘要，成員明細在下方 */
+            總覽上方摘要一列，左欄「你的狀態＋怎麼結清」、右欄成員明細 */
   @media (min-width:700px){
     .kv-summary{grid-template-columns:repeat(4,1fr);}
     .btn-block{max-width:320px;}
@@ -1290,26 +1244,24 @@
     #panel-overview.active > *, #panel-overview .ov-main > *, #panel-overview .kv-summary{grid-column:1 / -1;}
     #panel-overview .member-detail-list{padding-top:12px;}
 
-    .form-card:not(.collapsed) #expenseFormBody{display:grid; grid-template-columns:minmax(0,1fr) 140px 180px; column-gap:12px;}
-    #expenseFormBody > *, #expenseFormBody .field:has(#expDesc){grid-column:1 / -1;}
-    #expenseFormBody > .row:nth-child(-n+2){display:contents;}
-    #expenseFormBody .row > .field{grid-column:auto; max-width:none !important; min-width:0;}
+    #expenseFormBody .entry-grid{grid-template-columns:repeat(2, minmax(0,1fr)) minmax(0,1.5fr) minmax(0,1.2fr);}
   }
   @media (min-width:1024px){
     .wrap, .app-header-inner{max-width:1120px;}
-    .ledger-panel.active{display:grid; grid-template-columns:minmax(340px,400px) minmax(0,1fr); column-gap:20px; align-items:start;}
+    .ledger-panel.active{display:grid; grid-template-columns:minmax(380px,440px) minmax(0,1fr); column-gap:20px; align-items:start;}
     .ledger-panel > :not(.ledger-side){grid-column:2;}
     /* 表單欄捲動時固定在頁首下方；比畫面高時自己捲動 */
     .ledger-side{grid-column:1; position:sticky; top:calc(var(--header-h, 73px) + 16px); max-height:calc(100dvh - var(--header-h, 73px) - 32px); overflow-y:auto; overscroll-behavior:contain;}
     .ledger-side > .card:last-child{margin-bottom:0;}
-    .ledger-side .btn-block{width:auto; flex:1 1 auto; max-width:none;} /* 「儲存」和「清空表單」同一行 */
     body.share-readonly .ledger-panel.active{display:block;}
 
-    #panel-overview.active{display:grid; grid-template-columns:minmax(0,1.1fr) minmax(0,1fr); column-gap:18px; align-items:start;}
-    #panel-overview .ov-main{grid-column:1;}
-    #panel-overview .ov-side{grid-column:2;}
-    #panel-overview .ov-members{grid-column:1 / -1;}
-    #panel-overview .ov-side .kv-summary{grid-template-columns:repeat(2,1fr);}
+    /* 摘要一整列；下面兩欄等高，不會空一格。點開成員明細時右欄變長，左欄維持內容高度 */
+    #panel-overview.active{display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); column-gap:18px; align-items:stretch;}
+    #panel-overview .ov-side{grid-column:1 / -1; grid-row:1;}
+    #panel-overview .ov-main{grid-column:1; grid-row:2; display:flex; flex-direction:column;}
+    #panel-overview .ov-main > .receipt:last-child{flex:1 0 auto;}
+    #panel-overview .ov-members{grid-column:2; grid-row:2; margin-bottom:14px;}
+    #panel-overview:has(.member-detail-card.open){align-items:start;}
   }
   /* 設定子分頁捲動時固定在頁首下方；「成員與分享」寬螢幕左右兩欄 */
   @media (min-width:860px){
@@ -1378,18 +1330,6 @@
   /* 🆕 [LINE 登入] LINE 官方綠色按鈕；帳號綁定區塊 */
   .btn-line{background:#06C755; color:#fff;}
 
-  /* ---------- 項目說明的建議（最近用過＋常用詞） ---------- */
-  .desc-suggest{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;}
-  .desc-suggest:empty{display:none;}
-  .desc-chip{
-    border:1px solid var(--card-line); background:var(--surface); color:var(--ink-soft);
-    border-radius:999px; padding:5px 12px; font:inherit; font-size:13px; cursor:pointer;
-    max-width:10em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-  }
-  .desc-chip:active{background:var(--brass-tint); color:var(--ink);}
-  @media (hover:hover) and (pointer:fine){ .desc-chip:hover{border-color:var(--brass-soft); color:var(--ink);} }
-  @media (pointer:coarse){ .desc-chip{min-height:36px;} }
-
   /* ---------- 快速記一筆（手機）：右下浮動按鈕＋底部面板 ---------- */
   .quick-add-fab, .quick-add-only{display:none;}
   .quick-add-backdrop{position:fixed; inset:0; z-index:65; background:var(--scrim);}
@@ -1407,15 +1347,16 @@
     /* 頁面最底下多留一顆按鈕的高度，最後一列不會被「＋ 記一筆」蓋住 */
     body:not([data-tab="settings"]):not(.share-readonly){padding-bottom:calc(var(--bottomnav-h) + var(--safe-b) + 80px);}
     body.quick-add{overflow:hidden;}
-    body.quick-add #expenseFormCard{
+    body.quick-add .panel.active .form-card{
       position:fixed; left:0; right:0; bottom:0; z-index:70; margin:0;
       max-height:88vh; max-height:88dvh; overflow-y:auto; overscroll-behavior:contain;
       border-radius:var(--r-lg) var(--r-lg) 0 0; padding-bottom:0;
       padding-left:max(var(--gutter), var(--safe-l)); padding-right:max(var(--gutter), var(--safe-r));
     }
-    body.quick-add #expenseFormCard .form-card-head{display:flex; align-items:center; gap:10px;}
-    body.quick-add #expenseFormCard .form-card-toggle{flex:1; pointer-events:none;}
-    body.quick-add #expenseFormCard .form-card-chevron{display:none;}
+    body.quick-add .form-card-head{display:flex; align-items:center; gap:10px;}
+    body.quick-add .form-card-toggle{display:none;} /* 標題換成「支出｜轉帳／預收」切換 */
+    body.quick-add .quick-add-switch{margin-right:auto;}
+    .quick-add-switch .seg-tab{min-height:40px;}
     body.quick-add .quick-add-only{display:inline-flex; align-items:center;}
     .quick-add-close{border:0; background:none; color:var(--ink-soft); width:44px; height:44px; justify-content:center; margin-right:-10px; cursor:pointer;}
     /* 「記下這筆」固定在面板底部，不用捲到最下面 */

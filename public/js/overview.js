@@ -160,7 +160,7 @@ function renderMyStatusCard(net){
   const base = trip.baseCurrency;
   const v = round2(net[me.id] || 0);
   const mine = lastTransferTx.filter(t => t.from === me.id || t.to === me.id);
-  // 收據造型：右上角蓋一個狀態章（待付款／待收款／已結清）
+  // 右上角蓋一個狀態章（待付款／待收款／已結清）
   const state = v < -0.01 ? 'neg' : v > 0.01 ? 'pos' : 'zero';
   const stamp = { neg: '待付款', pos: '待收款', zero: '已結清' }[state];
   const headline = state === 'neg' ? `你要付 <b>${fmtMoneyCompact(-v)}</b> ${base}`

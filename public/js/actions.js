@@ -21,11 +21,11 @@
      `<button ${act('click', 'editExpense', e.id)}>`
 ===================================================================== */
 const UI_ACTIONS = new Set([
-  'abandonReceiptSession', 'addMember', 'addRate', 'checkAllParticipants', 'chooseGuestMode',
+  'abandonReceiptSession', 'addMember', 'addRate', 'chooseGuestMode',
   'claimJoinAsNew', 'clearDepositFilter', 'clearExpenseFilter', 'clearInvalid', 'closeLinkComposer',
   'confirmJoinClaim', 'copyBindCommand', 'copyInviteLink', 'copyJson', 'copyLinkUrl',
   'createTripLink', 'createTripOnServer', 'deleteDeposit', 'deleteExpense', 'deleteSelectedTrip', 'detachFromDiscord',
-  'downloadCsv', 'downloadJson', 'editDeposit', 'editExpense', 'equalFillChips', 'finalizeReceiptExpense',
+  'downloadCsv', 'downloadJson', 'editDeposit', 'editExpense', 'finalizeReceiptExpense',
   'focusNewMemberInput', 'generateBindCode', 'historyDeleteItem', 'historyRestoreChange', 'historyRestoreRevision',
   'loadHistory', 'loadMoreHistory', 'goHome', 'handleFileImport', 'retryConnection', 'flushPendingEntries', 'reloadForUpdate', 'toggleAccountMenu', 'openAccountSettings',
   'handleReceiptUpload', 'importJsonAsNewTrip', 'joinReceiptSession', 'leaveJoinScreen',
@@ -38,9 +38,9 @@ const UI_ACTIONS = new Set([
   'receiptUpdateServiceChargeRate', 'refreshTripList', 'removeMember', 'removeRate', 'renameMember', 'renameSelectedTrip',
   'resetDepositForm', 'resetExpenseForm', 'revealInviteNewBlock', 'revokeTripLink',
   'saveDepositAndSync', 'saveExpenseAndSync', 'saveLinkEdit', 'saveMyNickname',
-  'selfShareParticipants', 'setLinkComposerDays', 'setLinkComposerJoin', 'setLinkComposerLabel',
+  'setSplitMode', 'toggleAllParticipants', 'setLinkComposerDays', 'setLinkComposerJoin', 'setLinkComposerLabel',
   'setLinkEditGuest', 'setLinkEditJoin', 'setLinkEditLabel', 'setShowAllTrips', 'showMainTab',
-  'showSettingsSub', 'extendTripLink', 'clearExpiredLinks', 'archiveCurrentTrip', 'unarchiveCurrentTrip', 'unarchiveSelectedTrip', 'openQuickAdd', 'closeQuickAdd', 'fillExpenseDesc', 'startFirstDeposit', 'startFirstExpense', 'startLoginHandoff', 'switchAccount', 'toggleDepositExpand',
+  'showSettingsSub', 'extendTripLink', 'clearExpiredLinks', 'archiveCurrentTrip', 'unarchiveCurrentTrip', 'unarchiveSelectedTrip', 'openQuickAdd', 'closeQuickAdd', 'switchQuickAdd', 'startFirstDeposit', 'startFirstExpense', 'startLoginHandoff', 'switchAccount', 'toggleDepositExpand',
   'toggleDepositFilterMember', 'toggleExpenseExpand', 'toggleExpenseFilterMember', 'toggleFormCard',
   'toggleLinkEditor', 'toggleMemberDetail', 'toggleTheme', 'unlinkAccount', 'unlinkMember', 'updateDeleteTripButton', 'updateRate',
 ]);

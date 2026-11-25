@@ -15,8 +15,8 @@ let payerManualIds = new Set();
 // 🆕 [成員膠囊重新設計] 統一「勾選/取消勾選一個人」時要連動處理的三件事：
 // 原生 checkbox 的 checked 狀態、外層 .chip 的 .checked 樣式 class、
 // 金額欄位的 disabled 狀態（取消勾選順便清空金額，避免殘留舊值誤送出）。
-// buildChips() 初始渲染、onChipToggle()、checkAllParticipants()、
-// selfShareParticipants() 都共用這個函式，避免同一段邏輯散落各處。
+// buildChips() 初始渲染、onChipToggle()、toggleAllParticipants()、
+// mirrorPayersToParticipants() 都共用這個函式，避免同一段邏輯散落各處。
 function setChipChecked(chip, checked){
   const checkbox = chip.querySelector('.chip-checkbox');
   if (checkbox) checkbox.checked = checked;
@@ -53,10 +53,19 @@ function updateChipFieldMeta(containerOrId){
   if (!meta) return;
   const checked = [...container.querySelectorAll('.chip.checked')];
   const n = checked.length;
+  if (container.id === 'participantChips' && splitMode !== 'custom'){
+    const total = parseFloat(document.getElementById('expAmount').value);
+    const amts = checked.map(c=>parseFloat(c.querySelector('.amt').value) || 0);
+    const even = amts.every(a=>a === amts[0]);
+    meta.textContent = splitMode === 'self' ? '只算自己付的錢'
+      : `已選 ${n} 人${n && total > 0 ? `，每人${even ? '' : '約'} ${fmtMoney(amts[0])}` : ''}`;
+    meta.dataset.state = '';
+    return;
+  }
   // 即時顯示金額分配是否平衡（取代按下儲存才跳「總和不相符」的錯誤 toast）
   const total = parseFloat(document.getElementById('expAmount').value);
   let status = '', state = '';
-  if (n && total > 0){
+  if (n && total > 0 && !(container.id === 'payerChips' && n === 1)){
     const sum = checked.reduce((s, c)=>s + (parseFloat(c.querySelector('.amt').value) || 0), 0);
     const diff = round2(total - sum);
     if (Math.abs(diff) <= 0.01){ status = '，已分完'; state = 'ok'; }
@@ -76,11 +85,15 @@ function buildChips(containerId, prefix){
         <span class="chip-box" aria-hidden="true"></span>
         <span class="chip-label" title="${escapeHtml(m.name)}">${escapeHtml(m.name)}</span>
       </label>
-      <input type="number" class="amt" inputmode="decimal" step="0.01" min="0"
-        aria-label="${escapeHtml(m.name)} 的金額" data-id="${m.id}" disabled
-        ${act('input', prefix==='payer' ? 'onPayerAmountInput' : 'onParticipantAmountInput', m.id)}>
+      <span class="amt-row">
+        <span class="amt-name" aria-hidden="true">${escapeHtml(m.name)}</span>
+        <input type="number" class="amt" inputmode="decimal" step="0.01" min="0"
+          aria-label="${escapeHtml(m.name)} 的金額" data-id="${m.id}" disabled
+          ${act('input', prefix==='payer' ? 'onPayerAmountInput' : 'onParticipantAmountInput', m.id)}>
+      </span>
     </div>`).join('') || '<p class="hint">尚未新增成員，請先到「設定 → 成員與分享」新增。</p>';
   updateChipFieldMeta(container);
+  applyChipLayout();
   syncManualMarks(prefix); // 🆕 重建後保險起見清掉舊的手動標記樣式（此時集合已重設為空）
 }
 function onChipToggle(prefix, id, checked){
@@ -183,72 +196,74 @@ function rebalanceParticipantAmounts(){
     if (chip) chip.querySelector('.amt').value = s.amount;
   });
 }
-function equalFillChips(prefix){
-  const wrap = document.getElementById(prefix==='payer'?'payerChips':'participantChips');
-  const checked = [...wrap.querySelectorAll('.chip.checked')].map(c=>c.dataset.id);
-  const amount = parseFloat(document.getElementById('expAmount').value);
-  if (!checked.length){ toast(prefix==='payer'?'請先勾選代墊付款人':'請先勾選分攤成員', 'error'); return; }
-  if (!(amount>0)){ toast('請先輸入金額', 'error'); return; }
-  if (prefix === 'participant'){
-    participantsDirty = false;
-    participantManualIds = new Set(); // 🆕 點「平均分配」代表全部重設為自動，清空個別手動標記
-  }
-  if (prefix === 'payer'){
-    payerManualIds = new Set(); // 🆕 同步修正：點「平均分配」也應清空代墊人的手動標記
-  }
-  syncManualMarks(prefix); // 🆕
-  const shares = equalSplit(amount, checked);
-  shares.forEach(s=>{
-    const input = wrap.querySelector(`.chip[data-id="${s.userId}"] .amt`);
-    if (input) input.value = s.amount;
-  });
-  renderExpenseHint();
+/* ---------- 分攤方式：平均分攤／自訂金額／各付各的 ----------
+   equal   所有勾選的人平分，金額不用顯示
+   custom  顯示每個人的金額，改過的鎖定、其他人平分差額
+   self    各付各的：分攤＝代墊的人和金額，跟著代墊即時更新，不會產生欠款 */
+let splitMode = 'equal';
+let idsBeforeSelf = null; // 切到「各付各的」之前勾了誰，切回來時還原
+function setSplitModeState(mode){
+  if (mode !== 'self') idsBeforeSelf = null;
+  splitMode = mode;
+  document.querySelectorAll('.seg-tab[data-split]').forEach(b=>b.setAttribute('aria-pressed', b.dataset.split === mode ? 'true' : 'false'));
+  applyChipLayout();
 }
-function checkAllParticipants(){
+// 金額欄位只在需要時出現：代墊兩個人以上、分攤選「自訂金額」
+function applyChipLayout(){
+  const payers = document.getElementById('payerChips'), parts = document.getElementById('participantChips');
+  payers.classList.toggle('show-amt', payers.querySelectorAll('.chip.checked').length > 1);
+  parts.classList.toggle('show-amt', splitMode === 'custom');
+  parts.hidden = splitMode === 'self';
+  const all = document.getElementById('btnAllParticipants');
+  const boxes = [...parts.querySelectorAll('.chip')];
+  all.hidden = splitMode === 'self' || !boxes.length;
+  all.textContent = boxes.length && boxes.every(c=>c.classList.contains('checked')) ? '全部取消' : '全選';
+}
+function setSplitMode(mode){
+  if (mode === splitMode) return;
   const wrap = document.getElementById('participantChips');
-  const amount = parseFloat(document.getElementById('expAmount').value);
-  const allIds = trip.members.map(m=>m.id);
-  if (!allIds.length){ toast('還沒有成員，請先到「設定 → 成員與分享」新增', 'error'); return; }
-  allIds.forEach(id=>{
-    const chip = wrap.querySelector(`.chip[data-id="${id}"]`);
-    if (!chip) return;
-    setChipChecked(chip, true);
-  });
+  const from = splitMode;
+  const checkedIds = () => [...wrap.querySelectorAll('.chip.checked')].map(c=>c.dataset.id);
+  const restore = idsBeforeSelf;
+  if (from === 'self' && mode === 'equal' && restore){
+    wrap.querySelectorAll('.chip').forEach(c=>setChipChecked(c, restore.includes(c.dataset.id)));
+  }
   participantsDirty = false;
-  participantManualIds = new Set(); // 🆕 全選視為重新平均分配，清空所有手動標記
-  syncManualMarks('participant'); // 🆕
-  if (amount > 0){
-    const shares = equalSplit(amount, allIds);
-    shares.forEach(s=>{
-      const input = wrap.querySelector(`.chip[data-id="${s.userId}"] .amt`);
-      if (input) input.value = s.amount;
-    });
-  }
-  updateChipFieldMeta(wrap);
+  // 各付各的 → 自訂：保留目前的金額當起點；其他情況都重新平分
+  participantManualIds = new Set(from === 'self' && mode === 'custom' ? checkedIds() : []);
+  if (mode === 'self') idsBeforeSelf = checkedIds();
+  setSplitModeState(mode);
+  renderExpenseHint();
+  syncManualMarks('participant');
+}
+function toggleAllParticipants(){
+  const chips = [...document.querySelectorAll('#participantChips .chip')];
+  const on = !chips.every(c=>c.classList.contains('checked'));
+  chips.forEach(c=>setChipChecked(c, on));
+  // 全選＝重新平分：清掉手動金額
+  participantsDirty = false;
+  participantManualIds = new Set();
+  syncManualMarks('participant');
   renderExpenseHint();
 }
-// 🆕「各付各的」（原「自行分擔」）：自己買自己付錢，單純記一筆帳，不用分攤給任何其他人。
-// 直接把「分攤成員」複製成跟「代墊付款人」一模一樣的人跟金額（讀取當下
-// payerChips 已填好的值），讓這筆花費的淨額互相抵銷、不會產生任何欠款，
-// 但仍然完整記錄在支出清單裡，方便日後查帳。
-function selfShareParticipants(){
-  const payers = readChipValues('payer');
-  if (!payers.length){ toast('請先勾選代墊付款人並輸入金額，再使用「各付各的」', 'error'); return; }
-  const wrap = document.getElementById('participantChips');
-  wrap.querySelectorAll('.chip').forEach(chip=>{
-    setChipChecked(chip, false);
+// 各付各的：把分攤名單和金額同步成代墊的人
+function mirrorPayersToParticipants(){
+  const payers = new Map(readChipValues('payer').map(p=>[p.userId, p.amount]));
+  document.querySelectorAll('#participantChips .chip').forEach(chip=>{
+    const on = payers.has(chip.dataset.id);
+    setChipChecked(chip, on);
+    if (on) chip.querySelector('.amt').value = payers.get(chip.dataset.id);
   });
-  payers.forEach(p=>{
-    const chip = wrap.querySelector(`.chip[data-id="${p.userId}"]`);
-    if (!chip) return;
-    setChipChecked(chip, true);
-    chip.querySelector('.amt').value = p.amount;
-  });
-  participantsDirty = true; // 已手動指定金額，之後改動金額/勾選不要被自動平均覆蓋
-  participantManualIds = new Set(payers.map(p=>p.userId)); // 🆕 同步標記為手動金額，維持與代墊付款人一致的鎖定邏輯
-  syncManualMarks('participant'); // 🆕
-  updateChipFieldMeta(wrap);
-  renderExpenseHint();
+}
+// 既有支出是用哪種方式分的。平分要跟現在的算法一模一樣才算，免得一打開就把存好的金額改掉
+function detectSplitMode(exp){
+  const known = new Set(trip.members.map(m=>m.id));
+  if (![...exp.payers, ...exp.participants].every(p=>known.has(p.userId))) return 'custom';
+  const same = (a, b) => a.length === b.length
+    && a.every(x=>b.some(y=>y.userId === x.userId && Math.abs(y.amount - x.amount) < 0.005));
+  if (same(exp.participants, exp.payers)) return 'self';
+  const ids = trip.members.map(m=>m.id).filter(id=>exp.participants.some(p=>p.userId === id));
+  return same(exp.participants, equalSplit(exp.amount, ids)) ? 'equal' : 'custom';
 }
 function readChipValues(prefix){
   const wrap = document.getElementById(prefix==='payer'?'payerChips':'participantChips');
@@ -305,14 +320,16 @@ function renderExpenseHint(){
 
   // 代墊者有尚未手動輸入的金額時，將總額差額平均分配給這些人。
   rebalancePayerAmounts();
+  if (splitMode === 'self') mirrorPayersToParticipants();
   // 🆕 分攤成員：套用相同規則。編輯既有支出時（participantsDirty=true）
   // 完全不自動改寫，尊重原始存檔的分攤金額；新增支出時則平均分配差額
   // 給所有尚未手動輸入過金額的分攤成員。
-  if (!participantsDirty){
+  else if (!participantsDirty){
     rebalanceParticipantAmounts();
   }
   updateChipFieldMeta('payerChips');
   updateChipFieldMeta('participantChips');
+  applyChipLayout();
 }
 document.getElementById('expAmount').addEventListener('input', renderExpenseHint);
 document.getElementById('expAmountInBase').addEventListener('input', renderExpenseHint);

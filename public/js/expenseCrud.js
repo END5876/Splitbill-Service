@@ -22,6 +22,7 @@ function resetExpenseForm(){
   if (typeof dropLayer === 'function') dropLayer('expenseForm');
   editingExpenseId = null;
   participantsDirty = false;
+  setSplitModeState('equal');
   document.getElementById('expenseFormTitle').textContent = '新增一筆支出';
   setFormCardEditing('expenseFormCard', 'btnSaveExpenseSync', 'btnResetExpense', false);
   document.getElementById('expDesc').value = '';
@@ -110,28 +111,41 @@ async function saveExpenseAndSync(){
   await syncEntry('expenses', saved.id, saved, { isNew });
 }
 
-/* ---------- 快速記一筆（手機）：右下浮動按鈕打開底部面板，就是支出分頁的同一張表單 ---------- */
+/* ---------- 快速記一筆（手機）：右下浮動按鈕打開底部面板，就是支出／轉帳分頁的同一張表單，上方可以切換 ---------- */
 let quickAddReturnTab = null; // 從哪個分頁打開的：收起面板時回到那裡
 async function openQuickAdd(){
   if (!trip.members || !trip.members.length){
     toast('先到「設定 → 成員與分享」新增成員，才能記帳', 'info');
     return;
   }
-  // 正在編輯別筆而且改過：先問，不要默默丟掉
-  if (editingExpenseId && isExpenseFormDirty()){
-    const ok = await confirmModal('剛剛改的內容還沒儲存。', { title: '放棄這次修改？', confirmText: '放棄修改', cancelText: '繼續編輯' });
-    if (!ok) return;
-  }
   const tab = document.body.dataset.tab || 'overview';
-  quickAddReturnTab = tab === 'expenses' ? null : tab;
-  if (tab !== 'expenses') showMainTab('expenses');
-  if (editingExpenseId) resetExpenseForm(); // 正在編輯別筆：改成新增
-  setFormCardOpen('expenseFormCard', true);
+  if (!await showQuickAddForm(tab === 'deposits' ? 'deposits' : 'expenses', openQuickAddSheet)) return;
+  quickAddReturnTab = tab;
+}
+function openQuickAddSheet(){
   document.body.classList.add('quick-add');
   document.getElementById('quickAddBackdrop').hidden = false;
   pushLayer('quickAdd', closeQuickAdd); // 返回鍵先收起面板
+}
+// 面板上方「支出｜轉帳／預收」：兩張表單各自保留填到一半的內容
+async function switchQuickAdd(kind){
+  if (document.body.dataset.tab !== kind) await showQuickAddForm(kind);
+}
+async function showQuickAddForm(kind, beforeFocus){
+  const dep = kind === 'deposits';
+  const editing = dep ? editingDepositId : editingExpenseId;
+  // 正在編輯別筆而且改過：先問，不要默默丟掉
+  if (editing && (dep ? isDepositFormDirty() : isExpenseFormDirty())){
+    const ok = await confirmModal('剛剛改的內容還沒儲存。', { title: '放棄這次修改？', confirmText: '放棄修改', cancelText: '繼續編輯' });
+    if (!ok) return false;
+  }
+  if (document.body.dataset.tab !== kind) showMainTab(kind);
+  if (editing) (dep ? resetDepositForm : resetExpenseForm)(); // 正在編輯別筆：改成新增
+  setFormCardOpen(dep ? 'depositFormCard' : 'expenseFormCard', true);
+  if (beforeFocus) beforeFocus();
   // iOS 只有在使用者點擊的同一輪才會跳出鍵盤，不能延遲
-  document.getElementById('expAmount').focus({ preventScroll: true });
+  document.getElementById(dep ? 'depAmount' : 'expAmount').focus({ preventScroll: true });
+  return true;
 }
 function closeQuickAdd(){
   if (!document.body.classList.contains('quick-add')) return;
@@ -140,30 +154,9 @@ function closeQuickAdd(){
   dropLayer('quickAdd');
   const back = quickAddReturnTab;
   quickAddReturnTab = null;
-  if (back) showMainTab(back);
+  if (back && back !== document.body.dataset.tab) showMainTab(back);
 }
 
-/* ---------- 項目說明的建議：最近用過的 5 個名稱＋常用詞，點一下就填入 ---------- */
-const DESC_PRESETS = ['晚餐', '計程車', '便利商店'];
-function renderDescSuggest(){
-  const el = document.getElementById('expDescSuggest');
-  if (!el) return;
-  const seen = new Set();
-  const recent = [];
-  for (const e of [...(trip.expenses || [])].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))){
-    const d = String(e.description || '').trim();
-    if (!d || d.length > 20 || seen.has(d)) continue;
-    seen.add(d); recent.push(d);
-    if (recent.length >= 5) break;
-  }
-  const list = recent.concat(DESC_PRESETS.filter(p => !seen.has(p)));
-  el.innerHTML = list.map(d => `<button type="button" class="desc-chip" ${act('click', 'fillExpenseDesc', d)}>${escapeHtml(d)}</button>`).join('');
-}
-function fillExpenseDesc(text){
-  const input = document.getElementById('expDesc');
-  input.value = text;
-  clearInvalid(input);
-}
 // 表單填了東西但還沒儲存（返回鍵、關閉頁面前提醒用）
 function isExpenseFormDirty(){
   const desc = document.getElementById('expDesc'), amt = document.getElementById('expAmount');
@@ -206,6 +199,11 @@ function editExpense(id){
   participantManualIds = new Set(exp.participants.map(p=>p.userId));
   updateChipFieldMeta('payerChips');
   updateChipFieldMeta('participantChips');
+  // 分攤方式依存檔的金額判斷：存的是平分／各付各的就用那個方式，其他一律當自訂
+  const mode = detectSplitMode(exp);
+  if (mode !== 'custom'){ participantsDirty = false; participantManualIds = new Set(); }
+  idsBeforeSelf = null;
+  setSplitModeState(mode);
   // 🆕 [手動標記視覺化] 編輯既有支出時載入的金額全部視為「手動」，
   // 同步套上 .chip.manual 視覺標記，讓使用者知道這些是原始存檔的值。
   syncManualMarks('payer');

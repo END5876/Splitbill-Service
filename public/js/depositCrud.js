@@ -119,7 +119,9 @@ function saveDeposit(){
 async function saveDepositAndSync(){
   const isNew = !editingDepositId;
   const saved = saveDeposit();
-  if (saved) await syncEntry('deposits', saved.id, saved, { isNew });
+  if (!saved) return;
+  closeQuickAdd(); // 從「＋ 記一筆」打開的：存好就收起來
+  await syncEntry('deposits', saved.id, saved, { isNew });
 }
 function editDeposit(id){
   const dep = trip.deposits.find(d=>d.id===id);

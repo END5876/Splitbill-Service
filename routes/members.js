@@ -14,6 +14,20 @@ module.exports = function createMembersRouter(ctx) {
     return trip;
   }
 
+  // ---- GET /api/trip/:tripId/avatars：已連結成員的頭像 { avatars: { 成員 id: 網址 } } ----
+  // 不放進行程資料：頭像不屬於帳目，也不進歷史版本與匯出檔；分享連結的訪客拿不到。
+  router.get('/trip/:tripId/avatars', (req, res) => {
+    const trip = loadTripOr404(req, res);
+    if (!trip) return;
+    if (!requireTripAccess(req, res, trip, 'member')) return;
+    const avatars = {};
+    for (const m of trip.members) {
+      const url = storage.avatarOf(memberAccountId(m));
+      if (url) avatars[m.id] = url;
+    }
+    res.set('Cache-Control', 'no-store').json({ avatars });
+  });
+
   // ---- POST /api/trip/:tripId/members/:memberId/unlink：解除成員的帳號連結 ----
   // 建立者可以解除任何人；其他人只能解除自己。成員本身與帳目都保留，只是變回未連結。
   router.post('/trip/:tripId/members/:memberId/unlink', (req, res) => {

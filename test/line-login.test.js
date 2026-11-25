@@ -57,12 +57,12 @@ const cookieOf = (res, name) => (res.headers.getSetCookie().find((c) => c.starts
 const pair = (res, name) => cookieOf(res, name).split(';')[0];
 
 // 直接簽一個登入 Cookie（uid＝登入的帳號，可以是 line:U…）
-function sessionCookie(uid) {
+function sessionCookie(uid, avatar = null) {
   process.env.SESSION_SECRET = SESSION_SECRET;
   const session = require('../lib/session');
   let header = [];
   session.writeSession({ getHeader: () => header, setHeader: (_, v) => { header = v; } },
-    { id: uid, name: 'u', provider: uid.startsWith('line:') ? 'line' : 'discord' });
+    { id: uid, name: 'u', avatar, provider: uid.startsWith('line:') ? 'line' : 'discord' });
   return header[0].split(';')[0];
 }
 const web = (cookie, extra = {}) => ({ cookie, 'x-requested-with': 'splitbill', 'content-type': 'application/json', ...extra });
@@ -389,4 +389,24 @@ test('取消等待確認的綁定：什麼都不變', async () => {
 test('寫入請求一樣要 CSRF 標頭', async () => {
   const r = await fetch(`${BASE}/api/account-link`, { method: 'DELETE', headers: { cookie: sessionCookie(D1) } });
   assert.equal(r.status, 403);
+});
+
+test('成員頭像：登入過的成員看得到彼此的頭像，舊 session 不會蓋掉新的，外人與訪客拿不到', async () => {
+  const A = '500000000000000091', B = L(92), PIC = 'https://profile.line-scdn.net/b';
+  const oldA = sessionCookie(A, 'https://cdn.discordapp.com/avatars/old.png');
+  await new Promise((r) => setTimeout(r, 10));
+  const a = sessionCookie(A, 'https://cdn.discordapp.com/avatars/new.png');
+  const b = sessionCookie(B, PIC);
+  const trip = await createTrip(a, '頭像');
+  const memberB = await joinTrip(a, trip.id, b, '小B');
+  const memberA = trip.members[0].id;
+  const get = (ck) => api(`/api/trip/${trip.id}/avatars`, ck);
+  assert.deepEqual((await get(a)).body.avatars, {});
+  for (const ck of [a, oldA, b]) await api('/api/me', ck);
+  assert.deepEqual((await get(b)).body.avatars, {
+    [memberA]: 'https://cdn.discordapp.com/avatars/new.png', [memberB]: PIC,
+  });
+  assert.notEqual((await get(sessionCookie('500000000000000093'))).status, 200);
+  assert.notEqual((await fetch(`${BASE}/api/trip/${trip.id}/avatars`)).status, 200);
+  assert.ok(!JSON.stringify((await api(`/api/trip/${trip.id}`, a)).body).includes('cdn.discordapp'));
 });

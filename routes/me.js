@@ -30,6 +30,9 @@ module.exports = function createMeRouter(ctx) {
     let user = null;
     if (p && p.kind === 'user') {
       const aliases = storage.listAccountAliases(p.userId);
+      // 頭像記在登入帳號上，給同行程的成員看（routes/members.js 的 /avatars）；記不起來不影響登入
+      try { storage.rememberAvatar(p.loginId, p.avatar, p.sessionExp); }
+      catch (err) { console.warn('[me] 頭像沒有記下來：', err.message); }
       user = {
         id: p.userId,
         name: p.name,
