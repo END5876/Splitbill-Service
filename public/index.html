@@ -35,6 +35,7 @@
   <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></symbol>
   <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></symbol>
   <symbol id="i-switch" viewBox="0 0 24 24"><path d="M7 15l5 5 5-5M7 9l5-5 5 5"/></symbol>
+  <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
   <symbol id="i-camera" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></symbol>
   <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></symbol>
   <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></symbol>
@@ -71,24 +72,24 @@
 <div id="noAccessScreen" role="alert" aria-live="assertive"></div>
 <header class="app-header" id="appHeader">
   <div class="app-header-inner">
+    <!-- 頁首（G 風格）：一行——左邊行程名稱（點了切換行程），右邊帳號頭像。
+         同步狀態是頭像外圈的環：平常淡灰、儲存中藍色、沒存到變紅並加「!」，點頭像在選單裡看原因與重試（js/account.js、js/tripSync.js）。
+         用免登入連結開啟、沒有頭像時，改用小字同步狀態＋深淺色切換鈕。 -->
     <div class="header-row1">
-      <span class="brand">裊器分帳</span>
-      <!-- 行程名稱只顯示；改名一律在「設定 → 行程 → 我的行程」 -->
-      <h1 class="trip-title" id="tripName"></h1>
-      <button class="header-icon-btn" id="tripSwitchBtn" type="button" data-click="openTripSwitcher" aria-label="切換行程" title="切換行程" style="display:none;"><svg class="ic" aria-hidden="true"><use href="#i-switch"/></svg></button>
-      <span class="header-currency" id="baseCurrencyLabel" title="結算用的幣別，建立行程時決定，之後不能改"></span>
-      <!-- 同步狀態：已同步／儲存中／未儲存（點擊重試）／未開啟行程／唯讀，見 js/tripSync.js 的 renderSyncStatus() -->
+      <!-- 行程名稱：改名一律在「設定 → 行程 → 我的行程」；能切換行程時才可以點（js/tripSync.js 控制） -->
+      <h1 class="trip-title"><button class="trip-pick" id="tripPickBtn" type="button" data-click="openTripSwitcher" title="切換行程" disabled><span id="tripName"></span><svg class="ic trip-caret" id="tripSwitchBtn" aria-hidden="true" style="display:none;"><use href="#i-chevron-down"/></svg><span class="visually-hidden">，切換行程</span></button></h1>
+      <!-- 同步狀態（沒有頭像時才顯示）：已同步／儲存中／未儲存（點擊重試）／未開啟行程／唯讀 -->
       <button class="sync-status" id="syncStatus" type="button" data-click="onSyncStatusClick" data-state="offline">
         <span class="sync-dot" aria-hidden="true"></span><span class="sync-label">未開啟行程</span>
       </button>
-      <!-- 帳號鈕：看得到登入的是誰，選單裡有換帳號、登出（js/account.js 的 renderHeaderAccount） -->
-      <span class="header-acct">
-        <button class="header-acct-btn" id="headerAcctBtn" type="button" data-click="toggleAccountMenu" aria-label="帳號" aria-expanded="false" aria-controls="headerAcctMenu" hidden></button>
-        <div class="acct-menu" id="headerAcctMenu" hidden></div>
-      </span>
       <button class="theme-toggle-btn" id="themeToggleBtn" data-click="toggleTheme" type="button" aria-label="切換深色/淺色模式" title="切換深色/淺色模式">
         <svg class="ic" aria-hidden="true"><use id="themeToggleIcon" href="#i-moon"/></svg>
       </button>
+      <!-- 帳號鈕：外圈的環＝同步狀態；選單裡有同步狀態、帳號設定、深淺色、換帳號、登出（js/account.js 的 renderHeaderAccount） -->
+      <span class="header-acct">
+        <button class="header-acct-btn" id="headerAcctBtn" type="button" data-click="toggleAccountMenu" aria-label="帳號" aria-expanded="false" aria-controls="headerAcctMenu" data-sync="offline" hidden></button>
+        <div class="acct-menu" id="headerAcctMenu" hidden></div>
+      </span>
     </div>
   </div>
 </header>

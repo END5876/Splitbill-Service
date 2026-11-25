@@ -182,75 +182,46 @@
     box-shadow:var(--header-shadow);
   }
   .app-header-inner{max-width:880px; margin:0 auto;}
-  .header-row1{display:flex; align-items:center; gap:10px;}
-  .header-row1 .brand{
-    font-family:var(--font-display); font-weight:900; font-size:16px;
-    color:var(--header-accent); white-space:nowrap; letter-spacing:.02em;
+  /* 頁首：一行——左邊行程名稱▾，右邊帳號頭像（外圈的環＝同步狀態） */
+  .header-row1{display:flex; align-items:center; gap:8px; min-height:44px;}
+  .trip-title{flex:1; margin:0; min-width:0; font:inherit;}
+  .trip-pick{
+    display:inline-flex; align-items:center; gap:2px; max-width:100%; min-height:40px;
+    margin:0 0 0 -6px; padding:0 4px 0 6px; border:0; border-radius:var(--r-md); background:none;
+    color:var(--on-dark); font-family:var(--font-display); font-weight:500; font-size:20px; line-height:1.3; cursor:pointer;
   }
-  #tripName{
-    flex:1; min-width:0; margin:0;
-    color:var(--on-dark);
-    font-family:var(--font-display); font-weight:700; font-size:16px; line-height:1.4;
-    padding:6px 8px;
-    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-  }
-  #tripName.is-empty{color:var(--on-dark-faint); font-weight:500;}
-  .header-currency{
-    background:var(--header-btn-bg); border:1px solid var(--header-btn-line);
-    color:var(--on-dark); padding:6px 8px; border-radius:var(--r-md); font-size:13px;
-    font-family:var(--font-num); font-variant-numeric:tabular-nums; flex-shrink:0;
-    white-space:nowrap; display:inline-flex; align-items:center;
-  }
-  /* 🆕 這行原本只設定文字色，假設展開清單背景永遠是瀏覽器預設的淺色；
-     現在全站 select option 統一補上背景色（見下方 select option 規則），
-     背景會跟著 --card 變數走，深色模式下會變成深色——這裡的下拉選單卻是
-     頁首那顆「固定深色底、不隨主題切換」的特例（見上面 .header-currency
-     本身的設計說明），所以背景也要一併鎖死成淺色，避免深色模式下背景跟
-     文字都變深色、選單本身反而看不清楚。 */
-  .header-currency option{background-color:var(--card); color:var(--ink);}
-  /* 🆕 深色/淺色模式切換鈕：跟旁邊的幣別選單用一樣的視覺語言（半透明白底、淡邊框），
-     因為頁首本身固定深色，不隨主題切換，這裡沿用同一套 header 專用配色即可，
-     不需要另外引用 --surface 之類會隨主題翻轉的變數。 */
+  .trip-pick:disabled{cursor:default;}
+  .trip-pick:not(:disabled):hover{background:var(--header-btn-hover);}
+  .trip-pick:focus-visible{outline:none; box-shadow:var(--focus-ring);}
+  #tripName{min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  #tripName.is-empty{color:var(--on-dark-faint); font-weight:400;}
+  .trip-caret{width:20px; height:20px; color:var(--on-dark-muted); flex-shrink:0;}
+  .visually-hidden{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap;}
+  /* 深淺色切換：只有沒有帳號鈕（免登入連結）時才出現在頁首 */
   .theme-toggle-btn{
-    background:var(--header-btn-bg); border:1px solid var(--header-btn-line);
-    color:var(--on-dark); width:34px; height:34px; border-radius:var(--r-md);
-    display:flex; align-items:center; justify-content:center;
-    font-size:16px; line-height:1; cursor:pointer; flex-shrink:0; padding:0;
+    background:none; border:0; color:var(--on-dark-muted); width:40px; height:40px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; padding:0;
   }
-  .theme-toggle-btn:hover{background:var(--header-btn-hover);}
-  .theme-toggle-btn .ic, .header-icon-btn .ic{width:17px; height:17px;}
-  .header-icon-btn{display:flex; align-items:center; justify-content:center;}
-  /* 頁首小圖示按鈕（切換行程），跟深色模式切換鈕同一套固定深色頁首配色 */
-  .header-icon-btn{
-    background:var(--header-btn-bg); border:1px solid var(--header-btn-line);
-    color:var(--on-dark); width:34px; height:34px; border-radius:var(--r-md); flex-shrink:0; padding:0;
-    font-size:14.5px; line-height:1; cursor:pointer;
-  }
-  .header-icon-btn:hover{background:var(--header-btn-hover);}
+  .theme-toggle-btn[hidden]{display:none;}
+  .theme-toggle-btn:hover{background:var(--header-btn-hover); color:var(--on-dark);}
+  .theme-toggle-btn .ic{width:20px; height:20px;}
 
-  /* 頁首同步狀態：圓點顏色表示狀態；窄螢幕只留圓點，但「未儲存」「唯讀」一定顯示文字 */
+  /* 同步狀態小字：只在沒有帳號鈕（免登入連結）時出現；「未儲存」變紅並加粗，點一下重試 */
   .sync-status{
-    display:inline-flex; align-items:center; gap:6px; flex-shrink:0;
-    height:34px; padding:0 10px; border-radius:var(--r-md); cursor:pointer;
-    background:var(--header-btn-bg); border:1px solid var(--header-btn-line);
+    display:inline-flex; align-items:center; gap:5px; flex-shrink:0;
+    height:24px; margin:-2px 0; padding:0; border:0; background:none; cursor:pointer;
     color:var(--on-dark-muted); font-family:var(--font-text); font-size:12px; font-weight:500; white-space:nowrap;
   }
-  .sync-status:hover{background:var(--header-btn-hover);}
-  .sync-dot{width:8px; height:8px; border-radius:50%; background:var(--sync-idle); flex-shrink:0;}
+  .sync-status[hidden]{display:none;}
+  .sync-status:hover .sync-label{text-decoration:underline; text-underline-offset:3px;}
+  .sync-status:focus-visible{outline:none; box-shadow:var(--focus-ring); border-radius:var(--r-sm);}
+  .sync-dot{width:7px; height:7px; border-radius:50%; background:var(--sync-idle); flex-shrink:0;}
   .sync-status[data-state="saved"] .sync-dot{background:var(--sync-ok);}
   .sync-status[data-state="saving"] .sync-dot{background:var(--sync-busy); animation:sync-pulse 1s ease-in-out infinite;}
-  .sync-status[data-state="error"]{background:var(--sync-err-bg); border-color:var(--sync-err-line); color:var(--sync-err-text);}
+  .sync-status[data-state="error"]{color:var(--danger); font-weight:700;}
   .sync-status[data-state="error"] .sync-dot{background:var(--sync-err);}
   .sync-status[data-state="readonly"] .sync-dot{background:var(--sync-ro);}
   @keyframes sync-pulse{50%{opacity:.35;}}
-  /* 窄手機：頁首四顆按鈕已經佔掉大半寬度，品牌字讓位給行程名稱 */
-  @media (max-width:400px){
-    .header-row1 .brand{display:none;}
-  }
-  @media (max-width:520px){
-    .sync-status:not([data-state="error"]):not([data-state="readonly"]){padding:0; width:34px; justify-content:center;}
-    .sync-status:not([data-state="error"]):not([data-state="readonly"]) .sync-label{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap;}
-  }
 
   /* 🆕 [行程連結] 訪客模式（用連結、不登入開啟）下的畫面收斂：
      - data-owner-only：只有登入的成員才看得到的東西，例如「設定」分頁。
@@ -780,8 +751,7 @@
     .seg-tab{min-height:36px;}
     .toast .undo-btn{min-height:40px; padding:8px 14px;}
     .toast-close{width:40px; height:40px;}
-    .header-icon-btn{width:40px; height:40px;}
-    .sync-status{height:40px;}
+    .sync-status{height:36px; margin:-8px 0;} /* 點擊範圍加大，但不撐高頁首 */
   }
 
   /* ---------- Modal system ---------- */
@@ -1020,7 +990,7 @@
 
   /* ---------- Overview / receipt ---------- */
   .receipt{
-    background:var(--card); border:1px solid var(--card-line); border-radius:var(--r-lg);
+    background:var(--card); border:1px solid var(--card-border); border-radius:var(--r-lg);
     box-shadow:var(--shadow); position:relative; overflow:hidden;
   }
   .receipt-head{
@@ -1047,7 +1017,7 @@
      結清時吉祥物出來。標題直接寫出「你要付／你可以拿回」的金額 */
   .my-status-card{
     --zz:8px;
-    border-color:var(--card-line); border-bottom:0; border-radius:var(--r-lg) var(--r-lg) 0 0; box-shadow:none;
+    border-color:var(--card-border); border-bottom:0; border-radius:var(--r-lg) var(--r-lg) 0 0; box-shadow:none;
     padding-bottom:var(--zz);
     -webkit-mask:linear-gradient(#000 0 0) top/100% calc(100% - var(--zz)) no-repeat, conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) bottom/calc(var(--zz) * 2) var(--zz) repeat-x;
     mask:linear-gradient(#000 0 0) top/100% calc(100% - var(--zz)) no-repeat, conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) bottom/calc(var(--zz) * 2) var(--zz) repeat-x;
@@ -1130,7 +1100,7 @@
   .convert-note{ font-size:11.5px; color:var(--ink-soft); line-height:1.5; }
 
   .kv-summary{display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:14px;}
-  .kv-card{background:var(--card); border:1px solid var(--card-line); border-radius:var(--r-md); padding:12px 14px;}
+  .kv-card{background:var(--card); border:1px solid var(--card-border); border-radius:var(--r-md); padding:12px 14px;}
   .kv-card .k{font-size:13px; color:var(--ink-soft);}
   .kv-card .v{font-family:var(--font-display); font-weight:700; font-size:20px; margin-top:4px; word-break:break-all;}
 
@@ -1298,8 +1268,7 @@
     body{padding-bottom:60px;}
     :root{--gutter:20px;}
     .app-header{padding-top:16px; padding-bottom:16px;}
-    .header-row1 .brand{font-size:17px;}
-    #tripName{font-size:20px;}
+    .trip-pick{font-size:22px;}
     .top-nav{display:flex;}
     .bottom-nav{display:none;}
     main.wrap{padding-top:20px;}
@@ -1359,8 +1328,33 @@
     background:none; border:none; border-radius:50%; cursor:pointer;
   }
   .header-acct-btn[hidden]{display:none;}
-  .header-acct-avatar{width:30px; height:30px; border-radius:50%; object-fit:cover; border:1px solid var(--header-btn-line); font-size:13px;}
-  .header-acct-btn:hover .header-acct-avatar, .header-acct-btn[aria-expanded="true"] .header-acct-avatar{border-color:var(--brass);}
+  /* 頭像外圈的環＝同步狀態：平常淡灰、儲存中藍色閃動、沒存到紅色＋右下角「!」 */
+  .header-acct-btn{position:relative; --acct-ring:var(--card-line);}
+  .header-acct-btn[data-sync="saving"]{--acct-ring:var(--brass);}
+  .header-acct-btn[data-sync="error"]{--acct-ring:var(--danger);}
+  .header-acct-avatar{width:30px; height:30px; border-radius:50%; object-fit:cover; font-size:13px; border:0;
+    box-shadow:0 0 0 2px var(--header-bg), 0 0 0 4px var(--acct-ring);}
+  .header-acct-btn[data-sync="saving"] .header-acct-avatar{animation:acct-ring-pulse 1.2s ease-in-out infinite;}
+  @keyframes acct-ring-pulse{50%{box-shadow:0 0 0 2px var(--header-bg), 0 0 0 4px color-mix(in srgb, var(--brass) 35%, transparent);}}
+  .header-acct-btn:hover .header-acct-avatar, .header-acct-btn[aria-expanded="true"] .header-acct-avatar{filter:brightness(.96);}
+  .acct-sync-badge{
+    display:none; position:absolute; right:1px; bottom:1px; width:15px; height:15px; border-radius:50%;
+    background:var(--danger); color:var(--card); font:700 11px/15px var(--font-text); text-align:center;
+    box-shadow:0 0 0 2px var(--header-bg);
+  }
+  .header-acct-btn[data-sync="error"] .acct-sync-badge{display:block;}
+  .acct-menu-sync{display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:8px 10px 10px; margin-bottom:4px; border-bottom:1px solid var(--card-line); font-size:13px; color:var(--ink-soft);}
+  .acct-menu-sync:empty{display:none;}
+  .acct-menu-sync .sync-dot{width:8px; height:8px; border-radius:50%; background:var(--sync-idle); flex-shrink:0;}
+  .acct-menu-sync[data-state="saved"] .sync-dot{background:var(--sync-ok);}
+  .acct-menu-sync[data-state="saving"] .sync-dot{background:var(--brass);}
+  .acct-menu-sync[data-state="error"] .sync-dot{background:var(--danger);}
+  .acct-menu-sync[data-state="error"]{color:var(--danger);}
+  .acct-sync-text{flex:1 1 160px; min-width:0; line-height:1.5;}
+  .acct-sync-text b{display:block; color:var(--ink); font-size:14px;}
+  .acct-menu-sync[data-state="error"] .acct-sync-text b{color:var(--danger);}
+  .acct-menu-sync .btn{flex-shrink:0;}
+  @media (prefers-reduced-motion: reduce){ .header-acct-btn[data-sync="saving"] .header-acct-avatar{animation:none;} }
   .header-acct{position:relative; display:inline-flex; flex-shrink:0;}
   .header-acct:has(> .header-acct-btn[hidden]){display:none;} /* 沒登入時不佔頁首的間距 */
   .acct-menu{

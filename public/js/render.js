@@ -345,7 +345,6 @@ function renderAll(){
   const titleEl = document.getElementById('tripName');
   titleEl.textContent = trip.name || '未開啟行程';
   titleEl.classList.toggle('is-empty', !trip.name);
-  document.getElementById('baseCurrencyLabel').textContent = trip.baseCurrency;
   document.getElementById('baseLabel').textContent = trip.baseCurrency;
 
   // members tab

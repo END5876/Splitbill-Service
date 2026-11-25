@@ -19,16 +19,25 @@ function renderHeaderAccount(){
   if (!btn || !menu) return;
   const show = !!currentUser && !shareMode;
   btn.hidden = !show;
+  // 有帳號鈕時，深淺色切換在帳號選單裡、同步狀態是頭像外圈的環；沒有帳號鈕（免登入連結）才顯示在頁首
+  const themeBtn = document.getElementById('themeToggleBtn');
+  if (themeBtn) themeBtn.hidden = show;
+  const syncEl = document.getElementById('syncStatus');
+  if (syncEl) syncEl.hidden = show;
   if (!show){ setAccountMenu(false); return; }
   const via = PROVIDER_LABELS[currentUser.provider] || 'Discord';
   const name = currentUser.name || `${via} 使用者`;
-  btn.innerHTML = accountAvatarHtml('header-acct-avatar');
+  btn.innerHTML = accountAvatarHtml('header-acct-avatar') + '<span class="acct-sync-badge" aria-hidden="true">!</span>';
+  btn.dataset.name = name;
   btn.setAttribute('aria-label', `帳號：${name}`);
   menu.innerHTML = `
     <div class="acct-menu-info"><b>${escapeHtml(name)}</b><span>已用 ${via} 登入${currentUser.admin ? '，管理員' : ''}</span></div>
+    <div class="acct-menu-sync" id="acctSyncRow" role="status"></div>
     <button class="acct-menu-item" type="button" data-click="openAccountSettings">帳號設定</button>
+    <button class="acct-menu-item" id="acctThemeItem" type="button" data-click="toggleTheme">${document.documentElement.getAttribute('data-theme') === 'dark' ? '切換為淺色模式' : '切換為深色模式'}</button>
     <button class="acct-menu-item" type="button" data-click="switchAccount">換帳號</button>
     <button class="acct-menu-item" type="button" data-click="logout">登出</button>`;
+  if (typeof renderSyncStatus === 'function') renderSyncStatus();
 }
 function setAccountMenu(open){
   const btn = document.getElementById('headerAcctBtn');

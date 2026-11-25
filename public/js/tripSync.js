@@ -94,12 +94,36 @@ function renderSyncStatus(){
   el.querySelector('.sync-label').textContent = label;
   el.title = hint;
   el.setAttribute('aria-label', `同步狀態：${label}。${hint}`);
+  // 頭像外圈的環＋帳號選單裡的同步列（登入時頁首只有頭像）
+  const acctBtn = document.getElementById('headerAcctBtn');
+  if (acctBtn){
+    acctBtn.dataset.sync = state;
+    const who = acctBtn.dataset.name ? `帳號：${acctBtn.dataset.name}` : '帳號';
+    acctBtn.setAttribute('aria-label', state === 'saved' ? who : `${who}，${label}`);
+    acctBtn.title = state === 'error' ? '沒有存到，點一下看原因' : '';
+  }
+  const row = document.getElementById('acctSyncRow');
+  if (row){
+    const SYNC_ROW = {
+      saved: ['已同步', '全部都存好了。', ''],
+      saving: ['儲存中…', '正在把修改存到雲端。', ''],
+      error: ['未儲存', '沒有存到雲端，可能是網路斷線或伺服器沒有回應。', '再試一次'],
+      offline: ['未開啟行程', '開啟或建立一個行程後就會自動存檔。', '開啟行程'],
+      readonly: ['唯讀', hint, '']
+    }[state];
+    row.dataset.state = state;
+    row.innerHTML = `<span class="sync-dot" aria-hidden="true"></span><span class="acct-sync-text"><b>${SYNC_ROW[0]}</b>${SYNC_ROW[1]}</span>`
+      + (SYNC_ROW[2] ? `<button class="btn btn-ghost btn-sm" type="button" data-click="onSyncStatusClick">${SYNC_ROW[2]}</button>` : '');
+  }
   const switchBtn = document.getElementById('tripSwitchBtn');
-  if (switchBtn) switchBtn.style.display = (!shareMode && currentUser) ? '' : 'none';
+  const canSwitch = !shareMode && !!currentUser;
+  if (switchBtn) switchBtn.style.display = canSwitch ? '' : 'none';
+  const pickBtn = document.getElementById('tripPickBtn');
+  if (pickBtn) pickBtn.disabled = !canSwitch;
 }
 function onSyncStatusClick(){
   const state = document.getElementById('syncStatus').dataset.state;
-  if (state === 'offline'){ showMainTab('settings'); showSettingsSub('account'); }
+  if (state === 'offline'){ showMainTab('settings'); showSettingsSub(currentUser ? 'trip' : 'account'); }
   else if (state === 'error'){ saveTripToApi(); flushPendingEntries(true); }
   else toast(document.getElementById('syncStatus').title, 'info');
 }

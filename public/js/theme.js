@@ -15,6 +15,8 @@ function syncThemeToggleUI(theme){
   const label = theme === 'dark' ? '切換為淺色模式' : '切換為深色模式';
   if (icon) icon.setAttribute('href', theme === 'dark' ? '#i-sun' : '#i-moon');
   if (btn){ btn.title = label; btn.setAttribute('aria-label', label); }
+  const item = document.getElementById('acctThemeItem');
+  if (item) item.textContent = label;
 }
 // 瀏覽器網址列／PWA 狀態列顏色，對應 style.css 裡兩個主題的頁首底色
 const THEME_COLORS = { light: '#FFFFFF', dark: '#131314' };
