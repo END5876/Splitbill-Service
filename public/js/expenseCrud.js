@@ -23,6 +23,7 @@ function resetExpenseForm(){
   editingExpenseId = null;
   participantsDirty = false;
   setSplitModeState('equal');
+  setExpenseStep(0);
   document.getElementById('expenseFormTitle').textContent = '新增一筆支出';
   setFormCardEditing('expenseFormCard', 'btnSaveExpenseSync', 'btnResetExpense', false);
   document.getElementById('expDesc').value = '';
@@ -44,6 +45,7 @@ function saveExpense(){
   const descEl = document.getElementById('expDesc');
   const description = descEl.value.trim();
   if (!description){
+    setExpenseStep(0);
     descEl.setAttribute('aria-invalid', 'true');
     descEl.focus();
     toast('請填寫項目說明，之後查帳才認得出這筆是什麼。', 'error');
@@ -52,12 +54,12 @@ function saveExpense(){
   const dateStr = document.getElementById('expDate').value;
   const amount = parseFloat(document.getElementById('expAmount').value);
   const currency = document.getElementById('expCurrency').value;
-  if (!(amount>0)){ toast('請輸入大於 0 的金額。', 'error'); return false; }
+  if (!(amount>0)){ setExpenseStep(0); toast('請輸入大於 0 的金額。', 'error'); return false; }
   const customBaseRaw = document.getElementById('expAmountInBase').value.trim();
   const customBase = parseFloat(customBaseRaw);
   let amountInBase;
   if (currency !== trip.baseCurrency && customBaseRaw !== ''){
-    if (!(customBase > 0)){ toast('實際金額要大於 0。', 'error'); return false; }
+    if (!(customBase > 0)){ setExpenseStep(0); toast('實際金額要大於 0。', 'error'); return false; }
     amountInBase = round2(customBase);
   } else {
     const rate = resolveExpenseRate(currency);
@@ -68,13 +70,13 @@ function saveExpense(){
   const payers = readChipValues('payer').filter(p=>p.amount>0 || document.querySelector(`#payerChips .chip[data-id="${p.userId}"]`).classList.contains('checked'));
   const participants = readChipValues('participant');
 
-  if (!payers.length){ toast('請至少勾選一位先付錢的人。', 'error'); return false; }
-  if (!participants.length){ toast('請至少勾選一位要分攤的人。', 'error'); return false; }
+  if (!payers.length){ setExpenseStep(1); toast('請至少勾選一位先付錢的人。', 'error'); return false; }
+  if (!participants.length){ setExpenseStep(2); toast('請至少勾選一位要分攤的人。', 'error'); return false; }
 
   const payerSum = round2(payers.reduce((s,p)=>s+p.amount,0));
-  if (round2(Math.abs(payerSum-amount)) > 0.01){ toast(`代墊金額加起來是 ${payerSum}，跟總金額 ${amount} 不一樣，請調整後再記下。`, 'error'); return false; }
+  if (round2(Math.abs(payerSum-amount)) > 0.01){ setExpenseStep(1); toast(`代墊金額加起來是 ${payerSum}，跟總金額 ${amount} 不一樣，請調整後再記下。`, 'error'); return false; }
   const partSum = round2(participants.reduce((s,p)=>s+p.amount,0));
-  if (round2(Math.abs(partSum-amount)) > 0.01){ toast(`分攤金額加起來是 ${partSum}，跟總金額 ${amount} 不一樣，請調整後再記下。`, 'error'); return false; }
+  if (round2(Math.abs(partSum-amount)) > 0.01){ setExpenseStep(2); toast(`分攤金額加起來是 ${partSum}，跟總金額 ${amount} 不一樣，請調整後再記下。`, 'error'); return false; }
 
   let saved;
   if (editingExpenseId){
@@ -142,6 +144,7 @@ async function showQuickAddForm(kind, beforeFocus){
   if (document.body.dataset.tab !== kind) showMainTab(kind);
   if (editing) (dep ? resetDepositForm : resetExpenseForm)(); // 正在編輯別筆：改成新增
   setFormCardOpen(dep ? 'depositFormCard' : 'expenseFormCard', true);
+  if (beforeFocus) (dep ? setDepositStep : setExpenseStep)(0);
   if (beforeFocus) beforeFocus();
   // iOS 只有在使用者點擊的同一輪才會跳出鍵盤，不能延遲
   document.getElementById(dep ? 'depAmount' : 'expAmount').focus({ preventScroll: true });
@@ -166,6 +169,7 @@ function editExpense(id){
   const exp = trip.expenses.find(e=>e.id===id);
   if (!exp) return;
   editingExpenseId = id;
+  setExpenseStep(0);
   participantsDirty = true; // 編輯既有支出時，尊重原本已經存好的分攤金額，不要自動覆蓋
   document.getElementById('expenseFormTitle').textContent = '編輯支出';
   setFormCardEditing('expenseFormCard', 'btnSaveExpenseSync', 'btnResetExpense', true);

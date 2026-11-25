@@ -491,25 +491,48 @@
   .btn-ghost .spinner, .btn-danger .spinner{border-color:var(--card-line); border-top-color:var(--ink);}
   @keyframes spin{to{transform:rotate(360deg);}}
 
-  /* ---------- 誰代墊／誰分攤 ----------
-     上面一排名字膠囊（點一下勾選），下面才是金額；金額只在 .show-amt 時出現
-     （代墊兩人以上，或分攤選「自訂金額」，見 expenseForm.js 的 applyChipLayout()）。
-     .chip 用 display:contents，讓名字（order 1）和金額（order 3）分成兩區：
-     勾選時上面的膠囊位置不會跳動。原生 checkbox 保留給鍵盤與螢幕閱讀器。 */
-  .chip-select{ display:flex; flex-wrap:wrap; gap:8px; }
-  .chip-select[hidden]{ display:none; }
-  .chip{ display:contents; }
-  .chip-select.show-amt::after{ content:""; order:2; flex:0 0 100%; height:0; margin-top:-8px; }
-  .chip .chip-main{
-    order:1; position:relative; display:inline-flex; align-items:center; gap:8px; max-width:100%; min-height:40px;
-    margin:0; padding:0 14px 0 10px;
-    border:1.5px solid var(--card-line); border-radius:999px; background:var(--surface); color:var(--ink);
-    cursor:pointer; user-select:none; transition:border-color .15s, background .15s;
+  /* ---------- 三步驟記帳 ---------- */
+  .exp-steps{ display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:6px; margin-bottom:14px; }
+  .exp-step{
+    min-width:0; min-height:44px; padding:5px 0 0; border:0; border-top:3px solid var(--card-line); background:none;
+    color:var(--ink-soft); font:500 13px/1.4 var(--font-text); text-align:left; cursor:pointer;
   }
-  @media (min-width:1024px) and (pointer:fine){ .chip .chip-main{ min-height:36px; } }
-  @media (pointer:coarse){ .chip .chip-main{ min-height:44px; } }
-  .chip .chip-main:hover{ border-color:var(--brass-soft); }
-  .chip.checked .chip-main{ border-color:var(--brass-bg); background:var(--brass-tint); }
+  .exp-step[aria-current]{ border-color:var(--brass-bg); color:var(--ink); font-weight:700; }
+  .exp-step-val{ display:block; min-height:1.4em; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .exp-pane{ min-height:380px; }
+  .exp-pane[hidden], .expense-save-row .btn[hidden]{ display:none; }
+  .exp-amount{ display:flex; align-items:center; gap:12px; margin-bottom:10px; }
+  .exp-amount select{ flex:0 0 96px; width:96px; height:46px; }
+  input[type=text].amount-big{ flex:1 1 0; min-width:0; height:58px; padding:0 4px; border:0; background:transparent; text-align:right; font-size:40px; font-weight:600; }
+  .exp-keys{ display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:6px; margin-bottom:12px; }
+  .exp-keys button{
+    height:46px; border:0; border-radius:var(--r-md); background:var(--surface); color:var(--ink);
+    font:500 20px/1 var(--font-num); cursor:pointer; touch-action:manipulation;
+  }
+  .exp-keys button:hover{ background:var(--surface-hover); }
+  .exp-keys button:active{ background:var(--brass-tint); }
+
+  /* 誰付／誰分：一人一列，左邊勾選、右邊金額。代墊只有一人時不顯示金額；平分時金額只給看 */
+  .chip-select{ display:flex; flex-wrap:wrap; gap:8px; } /* 拍收據的「誰參加」 */
+  #payerChips, #participantChips, .pick-list{ display:grid; gap:0 24px; }
+  #participantChips[hidden]{ display:none; }
+  .pick-row{
+    display:flex; align-items:center; gap:10px; min-width:0; min-height:48px; padding:0; border:0; border-top:1px solid var(--card-line);
+    background:none; color:var(--ink); font:inherit; text-align:left; cursor:pointer;
+  }
+  .pick-row:first-child{ border-top:0; }
+  .pick-row:disabled{ color:var(--ink-soft); opacity:.6; cursor:default; }
+  .pick-dot{ width:18px; height:18px; flex:none; border:1.5px solid var(--ink-soft); border-radius:50%; }
+  .pick-row[aria-pressed="true"] .pick-dot{ border:5px solid var(--brass-bg); }
+  .pick-row[aria-pressed="true"]{ font-weight:700; }
+  .pick-note{ margin-left:auto; font-size:13px; color:var(--ink-soft); }
+  .chip-select[hidden]{ display:none; }
+  .chip{ display:flex; align-items:center; justify-content:space-between; gap:10px; min-width:0; min-height:48px; border-top:1px solid var(--card-line); }
+  .chip:first-child{ border-top:0; }
+  .chip .chip-main{
+    position:relative; display:flex; align-items:center; gap:10px; flex:1 1 auto; min-width:0; min-height:46px;
+    margin:0; color:var(--ink); cursor:pointer; user-select:none; border-radius:var(--r-sm);
+  }
   .chip-checkbox{position:absolute; opacity:0; width:1px; height:1px; margin:0; pointer-events:none;}
   .chip-box{
     width:16px; height:16px; flex-shrink:0; position:relative; border-radius:var(--r-sm);
@@ -524,17 +547,15 @@
   .chip-checkbox:checked ~ .chip-box{background:var(--brass-bg); border-color:var(--brass-bg);}
   .chip-checkbox:checked ~ .chip-box::after{transform:rotate(45deg) scale(1);}
   .chip-main:has(.chip-checkbox:focus-visible){box-shadow:var(--focus-ring);}
-  .chip-label{ min-width:0; font-size:13px; line-height:1.3; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .chip-label{ min-width:0; font-size:14.5px; line-height:1.3; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .amt-row{ display:none; }
-  .chip-select.show-amt .chip.checked .amt-row{
-    order:3; display:flex; align-items:center; gap:8px; flex:0 1 calc(50% - 4px); min-width:0;
-  }
-  .amt-name{ flex:1 1 0; min-width:0; font-size:13px; color:var(--ink-soft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #participantChips .chip.checked .amt-row, .chip-select.show-amt .chip.checked .amt-row{ display:block; flex:none; }
   .chip .amt{
-    flex:0 0 84px; width:84px; height:38px; margin:0; padding:0 8px; text-align:right;
+    width:104px; height:38px; margin:0; padding:0 8px; text-align:right;
     border:1px solid var(--card-line); border-radius:var(--r-sm); background:var(--surface); color:var(--ink);
     font-family:var(--font-num); font-variant-numeric:tabular-nums; font-size:16px; /* ≥16px 避免 iOS 聚焦時自動縮放頁面 */
   }
+  .chip .amt:read-only{ border-color:transparent; background:none; color:var(--ink-soft); pointer-events:none; }
   /* 自己改過的金額（平分差額時不會被改掉）：主色粗框 */
   .chip.manual .amt{ border-color:var(--brass-bg); box-shadow:inset 0 0 0 1px var(--brass-bg); }
   .chip .amt::-webkit-outer-spin-button, .chip .amt::-webkit-inner-spin-button{-webkit-appearance:none; margin:0;}
@@ -1244,7 +1265,13 @@
     #panel-overview.active > *, #panel-overview .ov-main > *, #panel-overview .kv-summary{grid-column:1 / -1;}
     #panel-overview .member-detail-list{padding-top:12px;}
 
-    #expenseFormBody .entry-grid{grid-template-columns:repeat(2, minmax(0,1fr)) minmax(0,1.5fr) minmax(0,1.2fr);}
+    /* 平板：左邊金額與欄位、右邊數字鍵盤；成員兩欄 */
+    .exp-pane{min-height:0;}
+    .exp-pane-amount:not([hidden]){display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); grid-template-rows:auto auto auto 1fr; column-gap:24px;}
+    .exp-pane-amount > *{grid-column:1;}
+    .exp-pane-amount > .exp-keys{grid-column:2; grid-row:1 / 5;}
+    #payerChips, #participantChips, .pick-list{grid-template-columns:repeat(2, minmax(0,1fr));}
+    .chip:nth-child(2), .pick-row:nth-child(2){border-top:0;}
   }
   @media (min-width:1024px){
     .wrap, .app-header-inner{max-width:1120px;}

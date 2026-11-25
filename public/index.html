@@ -207,33 +207,25 @@
         <button type="button" class="quick-add-close quick-add-only" data-click="closeQuickAdd" aria-label="關閉"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
       </h2>
       <div class="form-card-body" id="expenseFormBody">
-      <div class="entry-grid">
-        <div class="field">
-          <label for="expAmount">金額</label>
-          <input type="number" inputmode="decimal" id="expAmount" class="num" placeholder="0" step="0.01">
+      <!-- 三步驟：金額 → 誰付 → 誰分，上方可以直接跳（js/expenseForm.js 的 setExpenseStep） -->
+      <div class="exp-steps" role="group" aria-label="步驟"><button type="button" class="exp-step" data-step="0" data-click="setExpenseStep" data-args='[0]'>金額<span class="exp-step-val" id="expStepVal0"></span></button><button type="button" class="exp-step" data-step="1" data-click="setExpenseStep" data-args='[1]'>誰付<span class="exp-step-val" id="expStepVal1"></span></button><button type="button" class="exp-step" data-step="2" data-click="setExpenseStep" data-args='[2]'>誰分<span class="exp-step-val" id="expStepVal2"></span></button></div>
+      <div class="exp-pane exp-pane-amount" data-pane="0">
+        <div class="exp-amount">
+          <select id="expCurrency" aria-label="幣別"></select>
+          <input type="text" inputmode="none" id="expAmount" class="num amount-big" placeholder="0" autocomplete="off" maxlength="12" aria-label="金額" data-enter="nextExpenseStep">
         </div>
-        <div class="field">
-          <label for="expCurrency">幣別</label>
-          <select id="expCurrency"></select>
+        <div class="exp-keys"><button type="button" data-click="amountKey" data-args='["expAmount","1"]'>1</button><button type="button" data-click="amountKey" data-args='["expAmount","2"]'>2</button><button type="button" data-click="amountKey" data-args='["expAmount","3"]'>3</button><button type="button" data-click="amountKey" data-args='["expAmount","4"]'>4</button><button type="button" data-click="amountKey" data-args='["expAmount","5"]'>5</button><button type="button" data-click="amountKey" data-args='["expAmount","6"]'>6</button><button type="button" data-click="amountKey" data-args='["expAmount","7"]'>7</button><button type="button" data-click="amountKey" data-args='["expAmount","8"]'>8</button><button type="button" data-click="amountKey" data-args='["expAmount","9"]'>9</button><button type="button" data-click="amountKey" data-args='["expAmount","."]' aria-label="小數點">.</button><button type="button" data-click="amountKey" data-args='["expAmount","0"]'>0</button><button type="button" data-click="amountKey" data-args='["expAmount","⌫"]' aria-label="刪除一個數字">⌫</button></div>
+        <div class="entry-grid">
+          <input type="text" id="expDesc" placeholder="項目說明，例如晚餐" aria-label="項目說明" data-input="clearInvalid" data-args='["$el"]' data-enter="nextExpenseStep">
+          <input type="date" id="expDate" aria-label="日期">
         </div>
-        <div class="field">
-          <label for="expDesc">項目說明</label>
-          <input type="text" id="expDesc" placeholder="例如：晚餐" data-input="clearInvalid" data-args='["$el"]'>
+        <div class="field" id="expBaseAmountField" hidden>
+          <label for="expAmountInBase">實際花了多少 <span id="expBaseCurrencyLabel"></span>？（選填）</label>
+          <input type="number" inputmode="decimal" id="expAmountInBase" class="num" placeholder="例如刷卡金額，沒填用匯率換算" step="0.01">
         </div>
-        <div class="field">
-          <label for="expDate">日期</label>
-          <input type="date" id="expDate">
-        </div>
+        <p class="hint" id="expBaseHint"></p>
       </div>
-      <div class="field" id="expBaseAmountField" hidden>
-        <label for="expAmountInBase">實際花了多少 <span id="expBaseCurrencyLabel"></span>？（選填）</label>
-        <input type="number" inputmode="decimal" id="expAmountInBase" class="num" placeholder="例如刷卡金額，沒填用匯率換算" step="0.01">
-      </div>
-      <p class="hint" id="expBaseHint"></p>
-
-      <!-- 🆕 [成員膠囊重新設計] 欄位標題改用 .field-head：左邊說明文字，
-           右邊即時顯示「已選 N 人」，靠 expenseForm.js 的 updateChipFieldMeta()
-           自動同步，勾選/取消勾選時就會更新，不用另外按按鈕確認選了誰。 -->
+      <div class="exp-pane" data-pane="1" hidden>
       <div class="field">
         <div class="field-head">
           <label>誰代墊付款？</label>
@@ -243,7 +235,8 @@
         </div>
         <div class="chip-select" id="payerChips"></div>
       </div>
-
+      </div>
+      <div class="exp-pane" data-pane="2" hidden>
       <div class="field">
         <div class="field-head">
           <label>誰要分攤？</label>
@@ -259,8 +252,10 @@
         </div>
         <div class="chip-select" id="participantChips"></div>
       </div>
+      </div>
 
       <div class="btn-row expense-save-row">
+        <button type="button" class="btn btn-brass btn-block" id="btnNextExpense" data-click="nextExpenseStep">下一步</button>
         <button class="btn btn-brass btn-block" id="btnSaveExpenseSync" data-click="saveExpenseAndSync" data-loading="儲存中…">記下這筆</button>
         <button class="btn btn-ghost" id="btnResetExpense" data-click="resetExpenseForm">清空表單</button>
       </div>
@@ -296,39 +291,38 @@
         <button type="button" class="quick-add-close quick-add-only" data-click="closeQuickAdd" aria-label="關閉"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
       </h2>
       <div class="form-card-body" id="depositFormBody">
-      <p class="hint" style="margin:0 0 12px;">預收款＝出發前先向大家收的錢，例如團費。</p>
-      <div class="entry-grid">
-        <div class="field">
-          <label for="depPayer">付款人</label>
-          <select id="depPayer"></select>
+      <!-- 三步驟：金額 → 誰付 → 誰收（js/depositCrud.js 的 setDepositStep） -->
+      <div class="exp-steps" role="group" aria-label="步驟"><button type="button" class="exp-step" data-step="0" data-click="setDepositStep" data-args='[0]'>金額<span class="exp-step-val" id="depStepVal0"></span></button><button type="button" class="exp-step" data-step="1" data-click="setDepositStep" data-args='[1]'>誰付<span class="exp-step-val" id="depStepVal1"></span></button><button type="button" class="exp-step" data-step="2" data-click="setDepositStep" data-args='[2]'>誰收<span class="exp-step-val" id="depStepVal2"></span></button></div>
+      <div class="exp-pane exp-pane-amount" data-pane="0">
+        <div class="exp-amount">
+          <select id="depCurrency" aria-label="幣別"></select>
+          <input type="text" inputmode="none" id="depAmount" class="num amount-big" placeholder="0" autocomplete="off" maxlength="12" aria-label="金額" data-enter="nextDepositStep">
         </div>
-        <div class="field">
-          <label for="depCollector">收款人</label>
-          <select id="depCollector"></select>
+        <div class="exp-keys"><button type="button" data-click="amountKey" data-args='["depAmount","1"]'>1</button><button type="button" data-click="amountKey" data-args='["depAmount","2"]'>2</button><button type="button" data-click="amountKey" data-args='["depAmount","3"]'>3</button><button type="button" data-click="amountKey" data-args='["depAmount","4"]'>4</button><button type="button" data-click="amountKey" data-args='["depAmount","5"]'>5</button><button type="button" data-click="amountKey" data-args='["depAmount","6"]'>6</button><button type="button" data-click="amountKey" data-args='["depAmount","7"]'>7</button><button type="button" data-click="amountKey" data-args='["depAmount","8"]'>8</button><button type="button" data-click="amountKey" data-args='["depAmount","9"]'>9</button><button type="button" data-click="amountKey" data-args='["depAmount","."]' aria-label="小數點">.</button><button type="button" data-click="amountKey" data-args='["depAmount","0"]'>0</button><button type="button" data-click="amountKey" data-args='["depAmount","⌫"]' aria-label="刪除一個數字">⌫</button></div>
+        <div class="entry-grid">
+          <input type="text" id="depNote" placeholder="備註，可不填" aria-label="備註（選填）" data-enter="nextDepositStep">
+          <input type="date" id="depDate" aria-label="日期">
         </div>
-        <div class="field">
-          <label for="depAmount">金額</label>
-          <input type="number" inputmode="decimal" id="depAmount" class="num" placeholder="0" step="0.01">
+        <div class="field" id="depBaseAmountField" hidden>
+          <label for="depAmountInBase">實際轉了多少 <span id="depBaseCurrencyLabel"></span>？（選填）</label>
+          <input type="number" inputmode="decimal" id="depAmountInBase" class="num" placeholder="沒填就用匯率換算" step="0.01">
         </div>
-        <div class="field">
-          <label for="depCurrency">幣別</label>
-          <select id="depCurrency"></select>
-        </div>
-        <div class="field">
-          <label for="depNote">備註（選填）</label>
-          <input type="text" id="depNote" placeholder="例如：收團費">
-        </div>
-        <div class="field">
-          <label for="depDate">日期</label>
-          <input type="date" id="depDate">
-        </div>
+        <p class="hint" id="depBaseHint"></p>
       </div>
-      <div class="field" id="depBaseAmountField" hidden>
-        <label for="depAmountInBase">實際轉了多少 <span id="depBaseCurrencyLabel"></span>？（選填）</label>
-        <input type="number" inputmode="decimal" id="depAmountInBase" class="num" placeholder="沒填就用匯率換算" step="0.01">
+      <!-- 選單只存值（不顯示），畫面上用一人一列的清單選 -->
+      <select id="depPayer" hidden></select>
+      <select id="depCollector" hidden></select>
+      <div class="exp-pane" data-pane="1" hidden>
+        <div class="field-head"><label>誰付錢？</label></div>
+        <div class="pick-list" id="depPayerList" role="group" aria-label="誰付錢"></div>
       </div>
-      <p class="hint" id="depBaseHint"></p>
+      <div class="exp-pane" data-pane="2" hidden>
+        <div class="field-head"><label>誰收錢？</label></div>
+        <div class="pick-list" id="depCollectorList" role="group" aria-label="誰收錢"></div>
+      </div>
+
       <div class="btn-row expense-save-row">
+        <button type="button" class="btn btn-brass btn-block" id="btnNextDeposit" data-click="nextDepositStep">下一步</button>
         <button class="btn btn-brass btn-block" id="btnSaveDepositSync" data-click="saveDepositAndSync" data-loading="儲存中…">記下這筆</button>
         <button class="btn btn-ghost" id="btnResetDeposit" data-click="resetDepositForm">清空表單</button>
       </div>

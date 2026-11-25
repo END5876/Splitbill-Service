@@ -86,7 +86,6 @@ function buildChips(containerId, prefix){
         <span class="chip-label" title="${escapeHtml(m.name)}">${escapeHtml(m.name)}</span>
       </label>
       <span class="amt-row">
-        <span class="amt-name" aria-hidden="true">${escapeHtml(m.name)}</span>
         <input type="number" class="amt" inputmode="decimal" step="0.01" min="0"
           aria-label="${escapeHtml(m.name)} 的金額" data-id="${m.id}" disabled
           ${act('input', prefix==='payer' ? 'onPayerAmountInput' : 'onParticipantAmountInput', m.id)}>
@@ -213,6 +212,8 @@ function applyChipLayout(){
   const payers = document.getElementById('payerChips'), parts = document.getElementById('participantChips');
   payers.classList.toggle('show-amt', payers.querySelectorAll('.chip.checked').length > 1);
   parts.classList.toggle('show-amt', splitMode === 'custom');
+  // 平分時金額只給看，不能改
+  parts.querySelectorAll('.amt').forEach(i=>{ i.readOnly = splitMode !== 'custom'; i.tabIndex = splitMode === 'custom' ? 0 : -1; });
   parts.hidden = splitMode === 'self';
   const all = document.getElementById('btnAllParticipants');
   const boxes = [...parts.querySelectorAll('.chip')];
@@ -330,7 +331,84 @@ function renderExpenseHint(){
   updateChipFieldMeta('payerChips');
   updateChipFieldMeta('participantChips');
   applyChipLayout();
+  updateExpenseSteps();
 }
-document.getElementById('expAmount').addEventListener('input', renderExpenseHint);
+/* ---------- 三步驟：0 金額、1 誰付、2 誰分 ---------- */
+let expenseStep = 0;
+// 支出與轉帳表單共用：顯示第 n 步的內容、標示目前步驟
+function showFormStep(bodyId, n){
+  const body = document.getElementById(bodyId);
+  body.querySelectorAll('.exp-pane').forEach(p=>{ p.hidden = Number(p.dataset.pane) !== n; });
+  body.querySelectorAll('.exp-step').forEach(b=>{
+    if (Number(b.dataset.step) === n) b.setAttribute('aria-current', 'step');
+    else b.removeAttribute('aria-current');
+  });
+}
+function setExpenseStep(n){
+  expenseStep = n;
+  updateExpenseSteps();
+}
+function updateExpenseSteps(){
+  showFormStep('expenseFormBody', expenseStep);
+  const amount = parseFloat(document.getElementById('expAmount').value);
+  const names = id => {
+    const on = [...document.querySelectorAll(`#${id} .chip.checked .chip-label`)].map(x=>x.textContent);
+    if (!on.length) return '還沒選';
+    if (on.length === trip.members.length && on.length > 2) return `全部 ${on.length} 人`;
+    return on.length < 3 ? on.join('、') : `${on[0]}等 ${on.length} 人`;
+  };
+  document.getElementById('expStepVal0').textContent = amount > 0 ? `${fmtMoneyCompact(amount)} ${document.getElementById('expCurrency').value}` : '還沒填';
+  document.getElementById('expStepVal1').textContent = names('payerChips');
+  document.getElementById('expStepVal2').textContent = splitMode === 'self' ? '各付各的' : names('participantChips');
+  // 新增：前兩步是「下一步」。編輯既有一筆：每一步都能直接儲存
+  const last = expenseStep === 2 || !!editingExpenseId;
+  document.getElementById('btnNextExpense').hidden = last;
+  document.getElementById('btnSaveExpenseSync').hidden = !last;
+}
+function nextExpenseStep(){
+  if (expenseStep === 0){
+    if (!(parseFloat(document.getElementById('expAmount').value) > 0)){
+      toast('請輸入大於 0 的金額。', 'error');
+      document.getElementById('expAmount').focus();
+      return;
+    }
+    const desc = document.getElementById('expDesc');
+    if (!desc.value.trim()){
+      // 在金額按 Enter：先跳到項目說明；已經在項目說明或按按鈕才提示
+      if (document.activeElement !== document.getElementById('expAmount')){
+        desc.setAttribute('aria-invalid', 'true');
+        toast('請填寫項目說明，之後查帳才認得出這筆是什麼。', 'error');
+      }
+      desc.focus();
+      return;
+    }
+  }
+  if (expenseStep === 1 && !document.querySelector('#payerChips .chip.checked')){
+    toast('請至少勾選一位先付錢的人。', 'error');
+    return;
+  }
+  if (expenseStep < 2) setExpenseStep(expenseStep + 1);
+  // 「下一步」換成「記下這筆」時，鍵盤焦點跟著走
+  const btn = document.getElementById(expenseStep === 2 ? 'btnSaveExpenseSync' : 'btnNextExpense');
+  if (!btn.hidden && expenseStep > 0) btn.focus({ preventScroll: true });
+}
+// 數字鍵盤。用 input 事件通知，跟實體鍵盤輸入走同一條路
+function amountKey(inputId, k){
+  const el = document.getElementById(inputId);
+  el.value = k === '⌫' ? el.value.slice(0, -1) : cleanAmountText(el.value + k);
+  el.dispatchEvent(new Event('input', { bubbles: true }));
+}
+// 只留數字和一個小數點、小數最多兩位；貼上「1,200」也能用
+function cleanAmountText(v){
+  const s = String(v).normalize('NFKC').replace(/[^\d.]/g, '');
+  const [int, ...dec] = s.split('.');
+  const head = int.replace(/^0+(?=\d)/, '').slice(0, 9);
+  return dec.length ? `${head || '0'}.${dec.join('').slice(0, 2)}` : head;
+}
+document.getElementById('expAmount').addEventListener('input', ev=>{
+  const clean = cleanAmountText(ev.target.value);
+  if (clean !== ev.target.value) ev.target.value = clean;
+  renderExpenseHint();
+});
 document.getElementById('expAmountInBase').addEventListener('input', renderExpenseHint);
 document.getElementById('expCurrency').addEventListener('change', ()=>{ document.getElementById('expAmountInBase').value = ''; renderExpenseHint(); refreshExpenseLiveRate(); });

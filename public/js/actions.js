@@ -38,7 +38,7 @@ const UI_ACTIONS = new Set([
   'receiptUpdateServiceChargeRate', 'refreshTripList', 'removeMember', 'removeRate', 'renameMember', 'renameSelectedTrip',
   'resetDepositForm', 'resetExpenseForm', 'revealInviteNewBlock', 'revokeTripLink',
   'saveDepositAndSync', 'saveExpenseAndSync', 'saveLinkEdit', 'saveMyNickname',
-  'setSplitMode', 'toggleAllParticipants', 'setLinkComposerDays', 'setLinkComposerJoin', 'setLinkComposerLabel',
+  'setSplitMode', 'setExpenseStep', 'nextExpenseStep', 'amountKey', 'setDepositStep', 'nextDepositStep', 'pickDepositParty', 'toggleAllParticipants', 'setLinkComposerDays', 'setLinkComposerJoin', 'setLinkComposerLabel',
   'setLinkEditGuest', 'setLinkEditJoin', 'setLinkEditLabel', 'setShowAllTrips', 'showMainTab',
   'showSettingsSub', 'extendTripLink', 'clearExpiredLinks', 'archiveCurrentTrip', 'unarchiveCurrentTrip', 'unarchiveSelectedTrip', 'openQuickAdd', 'closeQuickAdd', 'switchQuickAdd', 'startFirstDeposit', 'startFirstExpense', 'startLoginHandoff', 'switchAccount', 'toggleDepositExpand',
   'toggleDepositFilterMember', 'toggleExpenseExpand', 'toggleExpenseFilterMember', 'toggleFormCard',
@@ -98,12 +98,14 @@ function clearInvalid(el){
 function startFirstExpense(){
   showMainTab('expenses');
   setFormCardOpen('expenseFormCard', true);
+  setExpenseStep(0);
   document.getElementById('expAmount').focus();
 }
 function startFirstDeposit(){
   showMainTab('deposits');
   setFormCardOpen('depositFormCard', true);
-  document.getElementById('depPayer').focus();
+  setDepositStep(0);
+  document.getElementById('depAmount').focus();
 }
 function focusNewMemberInput(){
   document.getElementById('newMemberName').focus();

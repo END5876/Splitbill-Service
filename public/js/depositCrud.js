@@ -48,16 +48,77 @@ function renderDepositHint(){
     }
   }
 }
-document.getElementById('depAmount').addEventListener('input', renderDepositHint);
+document.getElementById('depAmount').addEventListener('input', ev=>{
+  const clean = cleanAmountText(ev.target.value);
+  if (clean !== ev.target.value) ev.target.value = clean;
+  renderDepositHint();
+  updateDepositSteps();
+});
 document.getElementById('depAmountInBase').addEventListener('input', renderDepositHint);
-document.getElementById('depPayer').addEventListener('change', ()=>syncDepositPartyOptions());
-document.getElementById('depCollector').addEventListener('change', ()=>syncDepositPartyOptions());
-document.getElementById('depCurrency').addEventListener('change', ()=>{ document.getElementById('depAmountInBase').value = ''; renderDepositHint(); refreshDepositLiveRate(); });
+document.getElementById('depCurrency').addEventListener('change', ()=>{ document.getElementById('depAmountInBase').value = ''; renderDepositHint(); updateDepositSteps(); refreshDepositLiveRate(); });
 
 // 表單填了東西但還沒儲存（返回鍵、關閉頁面前提醒用）
 function isDepositFormDirty(){
   const amt = document.getElementById('depAmount'), note = document.getElementById('depNote');
   return !!((amt && amt.value) || (note && note.value.trim()));
+}
+/* ---------- 三步驟：0 金額、1 誰付、2 誰收 ---------- */
+let depositStep = 0;
+function setDepositStep(n){
+  depositStep = n;
+  updateDepositSteps();
+}
+function updateDepositSteps(){
+  showFormStep('depositFormBody', depositStep);
+  const amount = parseFloat(document.getElementById('depAmount').value);
+  const payerId = document.getElementById('depPayer').value, collectorId = document.getElementById('depCollector').value;
+  document.getElementById('depStepVal0').textContent = amount > 0 ? `${fmtMoneyCompact(amount)} ${document.getElementById('depCurrency').value}` : '還沒填';
+  document.getElementById('depStepVal1').textContent = payerId ? memberName(payerId) : '還沒選';
+  document.getElementById('depStepVal2').textContent = collectorId ? memberName(collectorId) : '還沒選';
+  renderDepositPickList('depPayerList', 'payer', payerId, '');
+  renderDepositPickList('depCollectorList', 'collector', collectorId, payerId);
+  const last = depositStep === 2 || !!editingDepositId;
+  document.getElementById('btnNextDeposit').hidden = last;
+  document.getElementById('btnSaveDepositSync').hidden = !last;
+}
+// 一人一列的單選清單；收款人清單裡，付款人那一列不能選
+function renderDepositPickList(listId, party, selectedId, blockedId){
+  const el = document.getElementById(listId);
+  const focused = el.contains(document.activeElement) ? document.activeElement.dataset.id : null;
+  el.innerHTML = trip.members.map(m=>`
+    <button type="button" class="pick-row" data-id="${escapeHtml(m.id)}" aria-pressed="${m.id === selectedId}" ${m.id === blockedId ? 'disabled' : ''} ${act('click', 'pickDepositParty', party, m.id)}>
+      <span class="pick-dot" aria-hidden="true"></span><span class="chip-label">${escapeHtml(m.name)}</span>${m.id === blockedId ? '<span class="pick-note">付款人</span>' : ''}
+    </button>`).join('') || '<p class="hint">尚未新增成員，請先到「設定 → 成員與分享」新增。</p>';
+  if (focused){
+    const back = [...el.children].find(b=>b.dataset.id === focused);
+    if (back) back.focus({ preventScroll: true });
+  }
+}
+function pickDepositParty(party, id){
+  const payer = document.getElementById('depPayer'), collector = document.getElementById('depCollector');
+  if (party === 'payer'){
+    payer.value = id;
+    if (collector.value === id) collector.value = '';
+  } else {
+    collector.value = id;
+  }
+  // 選好付款人就直接到下一步（編輯既有一筆時不自動跳）
+  if (party === 'payer' && !editingDepositId) depositStep = 2;
+  updateDepositSteps();
+}
+function nextDepositStep(){
+  if (depositStep === 0 && !(parseFloat(document.getElementById('depAmount').value) > 0)){
+    toast('請輸入大於 0 的金額。', 'error');
+    document.getElementById('depAmount').focus();
+    return;
+  }
+  if (depositStep === 1 && !document.getElementById('depPayer').value){
+    toast('請選擇付款人。', 'error');
+    return;
+  }
+  if (depositStep < 2) setDepositStep(depositStep + 1);
+  const btn = document.getElementById(depositStep === 2 ? 'btnSaveDepositSync' : 'btnNextDeposit');
+  if (!btn.hidden) btn.focus({ preventScroll: true });
 }
 function resetDepositForm(){
   if (typeof dropLayer === 'function') dropLayer('depositForm');
@@ -68,6 +129,9 @@ function resetDepositForm(){
   document.getElementById('depAmount').value = '';
   document.getElementById('depAmountInBase').value = '';
   document.getElementById('depNote').value = '';
+  document.getElementById('depPayer').value = '';
+  document.getElementById('depCollector').value = '';
+  setDepositStep(0);
   renderDepositHint();
   refreshDepositLiveRate();
 }
@@ -78,14 +142,14 @@ function saveDeposit(){
   const currency = document.getElementById('depCurrency').value;
   const note = document.getElementById('depNote').value.trim();
   const dateStr = document.getElementById('depDate').value;
-  if (!payerId || !collectorId){ toast('請選擇付款人和收款人。', 'error'); return false; }
-  if (payerId === collectorId){ toast('付款人和收款人不能是同一人。', 'error'); return false; }
-  if (!(amount>0)){ toast('請輸入大於 0 的金額。', 'error'); return false; }
+  if (!payerId || !collectorId){ setDepositStep(payerId ? 2 : 1); toast('請選擇付款人和收款人。', 'error'); return false; }
+  if (payerId === collectorId){ setDepositStep(2); toast('付款人和收款人不能是同一人。', 'error'); return false; }
+  if (!(amount>0)){ setDepositStep(0); toast('請輸入大於 0 的金額。', 'error'); return false; }
   const customBaseRaw = document.getElementById('depAmountInBase').value.trim();
   const customBase = parseFloat(customBaseRaw);
   let amountInBase;
   if (currency !== trip.baseCurrency && customBaseRaw !== ''){
-    if (!(customBase > 0)){ toast('實際金額要大於 0。', 'error'); return false; }
+    if (!(customBase > 0)){ setDepositStep(0); toast('實際金額要大於 0。', 'error'); return false; }
     amountInBase = round2(customBase);
   } else {
     const rate = resolveDepositRate(currency);
@@ -133,11 +197,11 @@ function editDeposit(id){
   renderDepositSelects();
   document.getElementById('depPayer').value = dep.payerId;
   document.getElementById('depCollector').value = dep.collectorId;
-  syncDepositPartyOptions();
   document.getElementById('depCurrency').innerHTML = currencyOptions(dep.currency);
   document.getElementById('depAmount').value = dep.amount;
   document.getElementById('depAmountInBase').value = dep.currency !== trip.baseCurrency ? dep.amountInBase : '';
   document.getElementById('depNote').value = dep.note;
+  setDepositStep(0);
   renderDepositHint();
   refreshDepositLiveRate();
   showMainTab('deposits');

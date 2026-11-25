@@ -11,15 +11,7 @@ function renderDepositSelects(){
   document.getElementById('depCurrency').innerHTML = currencyOptions(prevCurrency);
   if (prevPayer && trip.members.some(m=>m.id===prevPayer)) document.getElementById('depPayer').value = prevPayer;
   if (prevCollector && trip.members.some(m=>m.id===prevCollector)) document.getElementById('depCollector').value = prevCollector;
-  syncDepositPartyOptions();
-}
-// 付款人與收款人不能是同一人：在另一邊的選單裡停用已被選走的成員，
-// 從源頭避免選錯，而不是等按下儲存才跳錯誤提示。
-function syncDepositPartyOptions(){
-  const payerSel = document.getElementById('depPayer');
-  const collectorSel = document.getElementById('depCollector');
-  [...collectorSel.options].forEach(o=>{ o.disabled = !!o.value && o.value === payerSel.value; });
-  [...payerSel.options].forEach(o=>{ o.disabled = !!o.value && o.value === collectorSel.value; });
+  updateDepositSteps();
 }
 // ctaAction：按鈕要呼叫的動作名稱（見 js/actions.js）
 function emptyState(icon, text, ctaLabel, ctaAction){
