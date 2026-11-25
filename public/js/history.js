@@ -178,16 +178,16 @@ function renderHistoryPanel(){
   const el = document.getElementById('historyList');
   if (!el) return;
   if (!historyKey){
-    el.innerHTML = '<p class="empty-state" style="padding:16px;">開啟行程後，這裡會列出每次修改，刪錯的帳目也能還原。</p>';
+    el.innerHTML = '<p class="u-p-16px empty-state">開啟行程後，這裡會列出每次修改，刪錯的帳目也能還原。</p>';
     return;
   }
   if (historyError && !historyItems.length){
-    el.innerHTML = `<p class="empty-state" style="padding:16px;">讀取紀錄失敗：${escapeHtml(historyError)}</p>
-      <div class="btn-row" style="justify-content:center;"><button class="btn btn-ghost btn-sm" type="button" data-click="loadHistory">重試</button></div>`;
+    el.innerHTML = `<p class="u-p-16px empty-state">讀取紀錄失敗：${escapeHtml(historyError)}</p>
+      <div class="u-justify-center btn-row"><button class="btn btn-ghost btn-sm" type="button" data-click="loadHistory">重試</button></div>`;
     return;
   }
   if (!historyItems.length){
-    el.innerHTML = `<p class="empty-state" style="padding:16px;">${historyLoading ? '載入中…' : '還沒有任何修改。'}</p>`;
+    el.innerHTML = `<p class="u-p-16px empty-state">${historyLoading ? '載入中…' : '還沒有任何修改。'}</p>`;
     return;
   }
   // 依日期分組，沿用帳目清單的分組樣式
@@ -202,7 +202,7 @@ function renderHistoryPanel(){
       <div class="ledger-day-head"><span class="ledger-day-date">${escapeHtml(d.label)}</span></div>
       <div class="ledger-day-box">${d.items.map(historyItemHtml).join('')}</div>
     </div>`).join('') + (historyHasMore
-      ? `<div class="btn-row" style="justify-content:center; margin-top:14px;"><button class="btn btn-ghost btn-sm" type="button" data-click="loadMoreHistory" data-loading="讀取中…">載入更早的紀錄</button></div>`
+      ? `<div class="u-justify-center-m-top-14px btn-row"><button class="btn btn-ghost btn-sm" type="button" data-click="loadMoreHistory" data-loading="讀取中…">載入更早的紀錄</button></div>`
       : '');
 }
 

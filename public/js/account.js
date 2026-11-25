@@ -83,7 +83,7 @@ function renderAccountArea(){
         ${avatar}
         <div class="account-meta">
           <div class="account-name">${escapeHtml(currentUser.name || `${via} 使用者`)}</div>
-          <div class="hint" style="margin:0;">已用 ${via} 登入</div>
+          <div class="u-m-0 hint">已用 ${via} 登入</div>
         </div>
         <button class="btn btn-ghost btn-sm" type="button" data-click="switchAccount">換帳號</button>
         <button class="btn btn-ghost btn-sm" type="button" data-click="logout">登出</button>
@@ -114,20 +114,20 @@ function accountLinkHtml(){
   if (acc.discord && acc.line){
     return `
       <div class="account-link">
-        <div class="account-link-status"><span class="link-badge linked">${icon('check')} Discord</span><span class="link-badge linked">${icon('check')} LINE</span><span class="hint" style="margin:0;">兩種都能登入這個帳號。</span></div>
+        <div class="account-link-status"><span class="link-badge linked">${icon('check')} Discord</span><span class="link-badge linked">${icon('check')} LINE</span><span class="u-m-0 hint">兩種都能登入這個帳號。</span></div>
         <button class="btn btn-ghost btn-sm" type="button" data-click="unlinkAccount">停用 LINE 登入</button>
       </div>`;
   }
   if (acc.discord){
     return `
       <div class="account-link">
-        <p class="hint" style="margin:0;">之後在手機上可以用 LINE 一鍵登入。</p>
+        <p class="u-m-0 hint">之後在手機上可以用 LINE 一鍵登入。</p>
         <button class="btn btn-line btn-sm" type="button" ${act('click', 'linkAccount', 'line')}>加入 LINE 登入</button>
       </div>`;
   }
   return `
     <div class="account-link">
-      <p class="hint" style="margin:0;">之後也能在 Discord 群組裡直接記帳。</p>
+      <p class="u-m-0 hint">之後也能在 Discord 群組裡直接記帳。</p>
       <button class="btn btn-brass btn-sm" type="button" ${act('click', 'linkAccount', 'discord')}>加入 Discord 登入</button>
     </div>`;
 }
@@ -170,7 +170,7 @@ function myNicknameHtml(){
         <input type="text" id="myNicknameInput" maxlength="60" value="${escapeHtml(me.name)}" data-enter="saveMyNickname">
         <button class="btn btn-brass btn-sm" type="button" data-click="saveMyNickname">儲存</button>
       </div>
-      <p class="hint" style="margin-bottom:0;">其他成員看到的是這個名字。</p>
+      <p class="u-m-bottom-0 hint">其他成員看到的是這個名字。</p>
     </div>`;
 }
 function saveMyNickname(){
@@ -262,7 +262,7 @@ function renderDiscordPanel(){
           <div class="bind-code">${escapeHtml(code.code)}</div>
           <div class="bind-code-cmd"><code class="inline">${escapeHtml(code.command)}</code></div>
           <div class="hint" id="bindCodeExpiry"></div>
-          <div class="btn-row" style="justify-content:center;">
+          <div class="u-justify-center btn-row">
             <button class="btn btn-brass btn-sm" type="button" data-click="copyBindCommand">複製指令</button>
           </div>
         </div>` : ''}

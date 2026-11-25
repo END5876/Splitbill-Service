@@ -1487,3 +1487,38 @@
   .hist-meta{ display:inline-flex; align-items:baseline; gap:10px; flex-shrink:0; }
   .hist-revert{ font-size:12px; white-space:nowrap; color:var(--ink-soft); font-weight:600; }
   .hist-delete{ font-size:12px; white-space:nowrap; color:var(--danger); font-weight:600; }
+
+/* 原本寫在 HTML style 屬性裡的樣式（CSP 不允許 inline style）。!important 維持原本 inline 的優先順序 */
+.u-danger-solid{background:var(--debt-solid) !important; color:#fff !important; border:none !important}
+.u-m-bottom-14px{margin-bottom:14px !important}
+.u-m-0-0-10px{margin:0 0 10px !important}
+.u-m-top-0{margin-top:0 !important}
+.u-maxw-120px{max-width:120px !important}
+.u-maxw-180px{max-width:180px !important}
+.u-m-top-10px{margin-top:10px !important}
+.u-m-0{margin:0 !important}
+.u-m-bottom-0{margin-bottom:0 !important}
+.u-justify-center{justify-content:center !important}
+.u-p-16px{padding:16px !important}
+.u-justify-center-m-top-14px{justify-content:center !important; margin-top:14px !important}
+.u-m-top-14px{margin-top:14px !important}
+.u-justify-center-m-top-20px{justify-content:center !important; margin-top:20px !important}
+.u-m-top-8px{margin-top:8px !important}
+.u-m-14px-0-6px{margin:14px 0 6px !important}
+.u-p-14px-0-6px{padding:14px 0 6px !important}
+.u-border-top-1px-dashed-card-94aa{border-top:1px dashed var(--card-line) !important; margin-top:4px !important; padding-top:8px !important}
+.u-fw-700{font-weight:700 !important}
+.u-fs-14px{font-size:14px !important}
+.u-p-8px-0-4px{padding:8px 0 4px !important}
+.u-border-color-card-line-bor-5b88{border-color:var(--card-line) !important; border-top-color:var(--ink) !important}
+.u-color-debt{color:var(--debt) !important}
+.u-m-top-6px{margin-top:6px !important}
+.u-color-debt-m-top-6px{color:var(--debt) !important; margin-top:6px !important}
+.u-flex-1{flex:1 !important}
+.u-maxw-160px{max-width:160px !important}
+.u-m-top-neg6px{margin-top:-6px !important}
+.u-fs-14-5px-m-top-16px{font-size:14.5px !important; margin-top:16px !important}
+.u-maxw-130px{max-width:130px !important}
+.u-m-bottom-18px{margin-bottom:18px !important}
+/* 一開始隱藏，js/helpers.js 載入後換成 style.display，之後由各功能自己切換 */
+[data-init-hidden]{display:none !important}

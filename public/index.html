@@ -23,7 +23,7 @@
 <body>
 <!-- 全站共用的線條 icon（取代 emoji：各平台長得一致、會跟著主題變色）。
      用法：<svg class="ic" aria-hidden="true"><use href="#i-名稱"/></svg>；線條樣式由 CSS 的 svg.ic 統一控制。 -->
-<svg xmlns="http://www.w3.org/2000/svg" style="display:none;">
+<svg data-init-hidden xmlns="http://www.w3.org/2000/svg">
   <symbol id="i-overview" viewBox="0 0 24 24"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></symbol>
   <symbol id="i-receipt" viewBox="0 0 24 24"><path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/></symbol>
   <symbol id="i-transfer" viewBox="0 0 24 24"><path d="M4 8h15l-4-4"/><path d="M20 16H5l4 4"/></symbol>
@@ -62,13 +62,13 @@
      display:none，只有偵測到拖曳中的檔案時才由 js/receiptScan.js 顯示。
      pointer-events:none 讓滑鼠事件穿透到底下的 #panel-expenses，真正接收
      dragenter/dragover/drop 事件的是 #panel-expenses 本身，不是這層遮罩。 -->
-<div id="receiptDropOverlay" class="receipt-drop-overlay" style="display:none;" aria-hidden="true">
+<div data-init-hidden id="receiptDropOverlay" class="receipt-drop-overlay" aria-hidden="true">
   <div class="receipt-drop-overlay-inner"><svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg> 放開以上傳帳單照片</div>
 </div>
 
-<div id="shareErrorScreen" class="share-error-screen" style="display:none;"></div>
+<div data-init-hidden id="shareErrorScreen" class="share-error-screen"></div>
 <!-- 🆕 [行程連結] 加入行程畫面（登入／選「我是哪一位」），內容由 js/linkEntry.js 產生 -->
-<div id="inviteScreen" class="invite-screen" style="display:none;"></div>
+<div data-init-hidden id="inviteScreen" class="invite-screen"></div>
 <div id="noAccessScreen" role="alert" aria-live="assertive"></div>
 <header class="app-header" id="appHeader">
   <div class="app-header-inner">
@@ -77,7 +77,7 @@
          用免登入連結開啟、沒有頭像時，改用小字同步狀態＋深淺色切換鈕。 -->
     <div class="header-row1">
       <!-- 行程名稱：改名一律在「設定 → 行程 → 我的行程」；能切換行程時才可以點（js/tripSync.js 控制） -->
-      <h1 class="trip-title"><button class="trip-pick" id="tripPickBtn" type="button" data-click="openTripSwitcher" title="切換行程" disabled><span id="tripName"></span><svg class="ic trip-caret" id="tripSwitchBtn" aria-hidden="true" style="display:none;"><use href="#i-chevron-down"/></svg><span class="visually-hidden">，切換行程</span></button></h1>
+      <h1 class="trip-title"><button class="trip-pick" id="tripPickBtn" type="button" data-click="openTripSwitcher" title="切換行程" disabled><span id="tripName"></span><svg data-init-hidden class="ic trip-caret" id="tripSwitchBtn" aria-hidden="true"><use href="#i-chevron-down"/></svg><span class="visually-hidden">，切換行程</span></button></h1>
       <!-- 同步狀態（沒有頭像時才顯示）：已同步／儲存中／未儲存（點擊重試）／未開啟行程／唯讀 -->
       <button class="sync-status" id="syncStatus" type="button" data-click="onSyncStatusClick" data-state="offline">
         <span class="sync-dot" aria-hidden="true"></span><span class="sync-label">未開啟行程</span>
@@ -124,11 +124,11 @@
          「你的狀態」只有在能辨識出你是哪位成員（登入且已連結）時才會顯示，見 js/overview.js 的 renderMyStatusCard()。 -->
     <!-- ≥1024（style.css）：摘要一整列，下面左欄「你的狀態＋怎麼結清」、右欄成員明細 -->
     <div class="ov-main">
-    <div class="receipt my-status-card" id="myStatusCard" style="display:none; margin-bottom:14px;"></div>
+    <div data-init-hidden class="u-m-bottom-14px receipt my-status-card" id="myStatusCard"></div>
 
     <!-- 🆕 [總覽簡化] 「建議轉帳」與「彼此累計欠款總額」合併成同一張卡片，
          用標題列右側的分段按鈕切換兩種檢視，共用同一個「換算幣別」下拉選單與匯率查詢。 -->
-    <div class="receipt" style="margin-bottom:14px;">
+    <div class="u-m-bottom-14px receipt">
       <div class="receipt-head settle-head">
         <div>
           <div class="t1">怎麼結清</div>
@@ -173,7 +173,7 @@
   <!-- ================= EXPENSES ================= -->
   <div class="panel ledger-panel" id="panel-expenses" data-panel="expenses">
     <div class="ledger-side" data-write-only>
-    <div class="card" id="receiptSessionBanner" data-write-only style="display:none;"></div>
+    <div data-init-hidden class="card" id="receiptSessionBanner" data-write-only></div>
 
     <!-- 🆕 [帳單辨識區塊重新設計] 整條可點擊的橫幅列（icon + 標題 + 說明 + 箭頭），
          比純圖示按鈕明顯好辨識，但仍遠比原本置中大方框省版面；同一條列同時
@@ -190,7 +190,7 @@
         </span>
         <input type="file" id="receiptFileInput" accept="image/*" data-change="handleReceiptUpload" data-args='["$event"]'>
       </label>
-      <div id="receiptWorkArea" style="display:none;"></div>
+      <div data-init-hidden id="receiptWorkArea"></div>
     </div>
 
     <!-- 表單卡片預設展開，點標題列可收合（讓明細清單不會被推到很下面）；
@@ -357,14 +357,14 @@
 
     <!-- ---------- 🧳 行程：切換／建立行程，以及這個行程本身的設定 ---------- -->
     <div class="subpanel active" id="panel-trip" data-subpanel="trip">
-      <div class="card" id="myTripsCard" style="display:none;">
+      <div data-init-hidden class="card" id="myTripsCard">
         <h2 class="section-title">我的行程</h2>
         <!-- 標題列右側放「重新整理」；Bot 擁有者才看得到「列出所有行程」（js/account.js renderAccountArea） -->
         <div class="field">
           <div class="field-head">
             <label for="tripSelect">行程</label>
             <div class="field-tools">
-              <label class="check-row trip-showall" id="showAllTripsRow" style="display:none;">
+              <label data-init-hidden class="check-row trip-showall" id="showAllTripsRow">
                 <input type="checkbox" id="showAllTripsToggle" data-change="setShowAllTrips" data-args='["$checked"]'>
                 <span>列出所有行程</span>
               </label>
@@ -375,9 +375,9 @@
         </div>
         <!-- 下拉選單選了就直接開啟（onTripSelectChange）；改名在左，刪除推到最右邊（只有建立者看得到） -->
         <div class="btn-row trip-actions">
-          <button class="btn btn-ghost btn-sm" id="btnRenameTrip" type="button" style="display:none;" data-click="renameSelectedTrip" data-loading="儲存中…">行程改名</button>
-          <button class="btn btn-ghost btn-sm" id="btnUnarchiveTrip" type="button" style="display:none;" data-click="unarchiveSelectedTrip" data-loading="處理中…">取消封存</button>
-          <button class="btn btn-danger btn-sm trip-delete" id="btnDeleteTrip" type="button" style="display:none;" data-click="deleteSelectedTrip" data-loading="刪除中…">刪除這個行程</button>
+          <button data-init-hidden class="btn btn-ghost btn-sm" id="btnRenameTrip" type="button" data-click="renameSelectedTrip" data-loading="儲存中…">行程改名</button>
+          <button data-init-hidden class="btn btn-ghost btn-sm" id="btnUnarchiveTrip" type="button" data-click="unarchiveSelectedTrip" data-loading="處理中…">取消封存</button>
+          <button data-init-hidden class="btn btn-danger btn-sm trip-delete" id="btnDeleteTrip" type="button" data-click="deleteSelectedTrip" data-loading="刪除中…">刪除這個行程</button>
         </div>
 
         <h3 class="section-subtitle" id="createTripHeading">建立新行程</h3>
@@ -405,7 +405,7 @@
             </select>
           </div>
         </div>
-        <p class="hint" style="margin:0 0 10px;">結算幣別建立後不能更改。</p>
+        <p class="u-m-0-0-10px hint">結算幣別建立後不能更改。</p>
         <div class="btn-row">
           <button class="btn btn-primary" data-click="createTripOnServer" data-loading="建立中…">＋ 建立行程</button>
         </div>
@@ -413,7 +413,7 @@
 
       <div class="card" id="ratesCard">
         <h2 class="section-title">匯率</h2>
-        <p class="hint" style="margin-top:0;">查不到即時匯率時，記帳會用這裡的匯率。</p>
+        <p class="u-m-top-0 hint">查不到即時匯率時，記帳會用這裡的匯率。</p>
         <table class="rate-table">
           <thead><tr><th>幣別</th><th>1 單位等於多少 <span id="baseLabel">TWD</span></th><th></th></tr></thead>
           <tbody id="rateTableBody"></tbody>
@@ -424,7 +424,7 @@
             <input type="text" id="newRateCurrency" placeholder="例如：日本、JPY" autocomplete="off" aria-label="搜尋幣別">
             <ul class="cur-list" id="newRateCurrencyList" role="listbox" aria-label="幣別" hidden></ul>
           </div>
-          <input type="number" inputmode="decimal" id="newRateValue" placeholder="匯率" step="0.0001" style="max-width:120px;" aria-label="匯率">
+          <input class="u-maxw-120px" type="number" inputmode="decimal" id="newRateValue" placeholder="匯率" step="0.0001" aria-label="匯率">
           <button class="btn btn-primary" id="addRateBtn" data-click="addRate">＋ 新增幣別</button>
         </div>
         <p class="hint cur-hint" id="newRateHint" aria-live="polite"></p>
@@ -443,7 +443,7 @@
         <h2 class="section-title">成員名單 <span class="n" id="memberCount"></span></h2>
         <div class="member-list" id="memberList"></div>
         <div class="btn-row inline-add-row">
-          <input type="text" id="newMemberName" placeholder="新成員名稱" style="max-width:180px;" aria-label="新成員名稱" data-enter="addMember">
+          <input class="u-maxw-180px" type="text" id="newMemberName" placeholder="新成員名稱" aria-label="新成員名稱" data-enter="addMember">
           <button class="btn btn-primary" data-click="addMember">＋ 新增成員</button>
         </div>
       </div>
@@ -482,7 +482,7 @@
 
       <div class="card">
         <h2 class="section-title">下載備份</h2>
-        <p class="hint" style="margin-top:0;">JSON 檔可以再匯入成新行程。</p>
+        <p class="u-m-top-0 hint">JSON 檔可以再匯入成新行程。</p>
         <div class="btn-row">
           <button class="btn btn-ghost" type="button" data-click="downloadJson">⬇ 下載這個行程的 JSON</button>
           <button class="btn btn-ghost" type="button" data-click="copyJson">複製 JSON</button>
@@ -491,9 +491,9 @@
 
       <div class="card">
         <h2 class="section-title">匯入成新行程</h2>
-        <p class="hint" style="margin-top:0;">會建立成新的行程，不會動到目前的行程。</p>
+        <p class="u-m-top-0 hint">會建立成新的行程，不會動到目前的行程。</p>
         <input type="file" id="fileInput" accept="application/json,.json" data-change="handleFileImport" data-args='["$event"]' aria-label="選擇 JSON 檔案">
-        <textarea id="jsonInput" rows="6" placeholder="或把 JSON 內容貼在這裡…" style="margin-top:10px;" aria-label="貼上 JSON 內容"></textarea>
+        <textarea class="u-m-top-10px" id="jsonInput" rows="6" placeholder="或把 JSON 內容貼在這裡…" aria-label="貼上 JSON 內容"></textarea>
         <div class="btn-row">
           <button class="btn btn-primary" type="button" data-click="importJsonAsNewTrip" data-loading="匯入中…">匯入成新行程</button>
         </div>

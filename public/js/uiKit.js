@@ -141,7 +141,7 @@ function confirmModal(message, opts){
       <div class="modal-body" id="modalBody">${escapeHtml(message)}</div>
       <div class="modal-actions">
         <button class="btn btn-ghost" id="modalCancelBtn">${escapeHtml(opts.cancelText || '取消')}</button>
-        <button class="btn ${opts.danger ? 'btn-danger' : 'btn-primary'}" id="modalConfirmBtn" style="${opts.danger ? 'background:var(--debt-solid);color:#fff;border:none;' : ''}">${escapeHtml(confirmTextOf(opts))}</button>
+        <button class="btn ${opts.danger ? 'btn-danger u-danger-solid' : 'btn-primary'}" id="modalConfirmBtn">${escapeHtml(confirmTextOf(opts))}</button>
       </div>`, { hasTitle: !!opts.title, hasBody: true, onDismiss: ()=>resolve(false) });
     const finish = (val)=>{ closeModal(); resolve(val); };
     document.getElementById('modalCancelBtn').onclick = ()=>finish(false);
@@ -175,7 +175,7 @@ function promptModal(message, opts){
     mountModal(`
       ${modalTitleHtml(opts.title)}
       ${message ? `<div class="modal-body" id="modalBody">${escapeHtml(message)}</div>` : ''}
-      <input type="text" id="modalPromptInput" autocomplete="off" ${opts.maxLength ? `maxlength="${Number(opts.maxLength)}"` : ''} placeholder="${escapeHtml(opts.placeholder || '')}" aria-label="${escapeHtml(opts.title || '輸入')}" style="margin-bottom:18px;">
+      <input class="u-m-bottom-18px" type="text" id="modalPromptInput" autocomplete="off" ${opts.maxLength ? `maxlength="${Number(opts.maxLength)}"` : ''} placeholder="${escapeHtml(opts.placeholder || '')}" aria-label="${escapeHtml(opts.title || '輸入')}">
       <div class="modal-actions">
         <button class="btn btn-ghost" id="modalCancelBtn">${escapeHtml(opts.cancelText || '取消')}</button>
         <button class="btn btn-primary" id="modalConfirmBtn">${escapeHtml(confirmTextOf(opts))}</button>
@@ -198,10 +198,10 @@ function typeToConfirmModal(message, expected, opts){
     mountModal(`
       ${modalTitleHtml(opts.title)}
       <div class="modal-body" id="modalBody">${escapeHtml(message)}</div>
-      <input type="text" id="modalConfirmInput" autocomplete="off" placeholder="${escapeHtml(opts.placeholder || '')}" aria-label="輸入確認文字" style="margin-bottom:18px;">
+      <input class="u-m-bottom-18px" type="text" id="modalConfirmInput" autocomplete="off" placeholder="${escapeHtml(opts.placeholder || '')}" aria-label="輸入確認文字">
       <div class="modal-actions">
         <button class="btn btn-ghost" id="modalCancelBtn">${escapeHtml(opts.cancelText || '取消')}</button>
-        <button class="btn btn-danger" id="modalConfirmBtn" disabled style="background:var(--debt-solid);color:#fff;border:none;">${escapeHtml(confirmTextOf(opts))}</button>
+        <button class="u-danger-solid btn btn-danger" id="modalConfirmBtn" disabled>${escapeHtml(confirmTextOf(opts))}</button>
       </div>`, { role: 'alertdialog', hasTitle: !!opts.title, hasBody: true, onDismiss: ()=>resolve(false) });
     const input = document.getElementById('modalConfirmInput');
     const btn = document.getElementById('modalConfirmBtn');

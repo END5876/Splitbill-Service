@@ -300,7 +300,7 @@ async function handleReceiptUpload(fileOrEvent){
   const originalTriggerBody = triggerBody ? triggerBody.innerHTML : '';
   if (triggerBody){
     triggerBody.innerHTML = `
-      <span class="receipt-scan-ic"><span class="spinner" style="border-color:var(--card-line); border-top-color:var(--ink);"></span></span>
+      <span class="receipt-scan-ic"><span class="u-border-color-card-line-bor-5b88 spinner"></span></span>
       <span class="receipt-scan-txt">
         <span class="title">辨識中…</span>
         <span class="sub">請不要關閉頁面</span>
@@ -542,7 +542,7 @@ function buildReceiptSummaryHtml(){
   return `<div class="receipt-summary" id="receiptSummaryBox">
     ${rows}
     <div class="receipt-summary-row total"><span>總金額</span><span>${fmtMoney(grandTotal, trip.baseCurrency)}</span></div>
-    ${unclaimedCount ? `<p class="hint" style="color:var(--debt);">${icon('alert')} 還有 ${unclaimedCount} 個項目尚未認領</p>` : ''}
+    ${unclaimedCount ? `<p class="u-color-debt hint">${icon('alert')} 還有 ${unclaimedCount} 個項目尚未認領</p>` : ''}
   </div>`;
 }
 
@@ -563,12 +563,12 @@ function renderReceiptWorkArea(){
     const unclaimed = !isShared && (!Array.isArray(item.assignedTo) || item.assignedTo.length===0);
     const showServiceHint = item.type==='item' && !item.priceOverridden && receiptState.serviceChargeRate > 0;
     const serviceChargeHint = showServiceHint
-      ? `<p class="hint" style="margin-top:6px;">已含 ${Math.round(receiptState.serviceChargeRate*10000)/100}% 服務費（原價 ${fmtMoney(item.basePrice, receiptState.detectedCurrency||trip.baseCurrency)}）</p>`
+      ? `<p class="u-m-top-6px hint">已含 ${Math.round(receiptState.serviceChargeRate*10000)/100}% 服務費（原價 ${fmtMoney(item.basePrice, receiptState.detectedCurrency||trip.baseCurrency)}）</p>`
       : '';
     // 🆕 語言辨識 + 翻譯：品項名稱若有繁中翻譯（代表帳單原文不是中文），
     // 在輸入框下方附上一行「原文＋翻譯」同時顯示，方便核對辨識是否正確。
     const translationHint = item.nameTranslated
-      ? `<p class="hint" style="margin-top:6px;">${icon('globe')} 翻譯：<b>${escapeHtml(item.nameTranslated)}</b></p>`
+      ? `<p class="u-m-top-6px hint">${icon('globe')} 翻譯：<b>${escapeHtml(item.nameTranslated)}</b></p>`
       : '';
     return `
     <div class="receipt-item-row ${item.type==='fee'?'fee':''} ${unclaimed?'unclaimed':''}">
@@ -584,7 +584,7 @@ function renderReceiptWorkArea(){
         <button type="button" class="claim-chip shared ${isShared?'on':''}" ${act('click','receiptSetShared',item.id)}>${icon('users')} 共同分擔</button>
       </div>
       ${serviceChargeHint}
-      ${unclaimed ? '<p class="hint" style="color:var(--debt); margin-top:6px;">還沒分配：點人名或「共同分擔」</p>' : ''}
+      ${unclaimed ? '<p class="u-color-debt-m-top-6px hint">還沒分配：點人名或「共同分擔」</p>' : ''}
     </div>`;
   }).join('');
 
@@ -597,7 +597,7 @@ function renderReceiptWorkArea(){
   const curInTrip = detectedCur && trip.rates[detectedCur];
   const defaultCur = receiptState.currency || (curInTrip ? detectedCur : trip.baseCurrency);
   const currencyHint = (detectedCur && !curInTrip)
-    ? `<p class="hint" style="color:var(--debt);">帳單可能是 <b>${detectedCur}</b>，行程還沒有這個幣別。請先到「設定 → 行程」新增匯率。</p>`
+    ? `<p class="u-color-debt hint">帳單可能是 <b>${detectedCur}</b>，行程還沒有這個幣別。請先到「設定 → 行程」新增匯率。</p>`
     : (detectedCur ? `<p class="hint">已自動選 ${detectedCur}，不對的話可以改。</p>` : '');
 
   // 還沒選付款人時顯示「請選擇」，不要讓畫面看起來像已經選了第一位成員
@@ -606,8 +606,8 @@ function renderReceiptWorkArea(){
   area.innerHTML = `
     <div class="receipt-preview-row">
       <img class="receipt-thumb" src="${escapeHtml(receiptState.imageDataUrl || '')}" alt="帳單照片預覽">
-      <div style="flex:1;">
-        <p class="hint" style="margin-top:0;">點人名分給誰，可以多選一起分。辨識錯的可以直接改。</p>
+      <div class="u-flex-1">
+        <p class="u-m-top-0 hint">點人名分給誰，可以多選一起分。辨識錯的可以直接改。</p>
         <div class="btn-row">
           <button type="button" class="btn btn-ghost btn-sm" data-click="receiptResetUpload">${icon('refresh')} 重新上傳照片</button>
           ${receiptSessionJoined ? `<button type="button" class="btn btn-danger btn-sm" data-click="abandonReceiptSession">${icon('stop')} 放棄認領</button>` : ''}
@@ -616,12 +616,12 @@ function renderReceiptWorkArea(){
     </div>
 
     <div class="row">
-      <div class="field" style="max-width:160px;">
+      <div class="u-maxw-160px field">
         <label>服務費 %</label>
         <input type="number" inputmode="decimal" step="0.1" min="0" value="${Math.round(receiptState.serviceChargeRate*10000)/100}" data-change="receiptUpdateServiceChargeRate" data-args='["$value"]'>
       </div>
     </div>
-    <p class="hint" style="margin-top:-6px;">只套用到沒有手動改過金額的品項。</p>
+    <p class="u-m-top-neg6px hint">只套用到沒有手動改過金額的品項。</p>
 
     <div class="field">
       <label>這次有誰參加？</label>
@@ -629,7 +629,7 @@ function renderReceiptWorkArea(){
       <p class="hint">共同分擔的品項會平均分給這些人。</p>
     </div>
 
-    <h2 class="section-title" style="font-size:14.5px; margin-top:16px;">品項認領</h2>
+    <h2 class="u-fs-14-5px-m-top-16px section-title">品項認領</h2>
     ${itemsHtml}
     <div class="btn-row">
       <button type="button" class="btn btn-ghost btn-sm" data-click="receiptAddManualItem">新增品項</button>
@@ -637,7 +637,7 @@ function renderReceiptWorkArea(){
 
     ${buildReceiptSummaryHtml()}
 
-    <div class="field" style="margin-top:14px;">
+    <div class="u-m-top-14px field">
       <label>項目說明</label>
       <input type="text" id="receiptDesc" placeholder="例如：聚餐晚餐" value="${escapeHtml(receiptState.description||'')}" data-input="receiptSetField" data-args='["description","$value"]'>
     </div>
@@ -646,7 +646,7 @@ function renderReceiptWorkArea(){
         <label>誰墊付這筆帳單？</label>
         <select id="receiptPayer" data-change="receiptSetField" data-args='["payerId","$value"]'>${payerOptions}</select>
       </div>
-      <div class="field" style="max-width:130px;">
+      <div class="u-maxw-130px field">
         <label>幣別</label>
         <select id="receiptCurrency" data-change="receiptSetField" data-args='["currency","$value"]'>${currencyOptions(defaultCur)}</select>
       </div>

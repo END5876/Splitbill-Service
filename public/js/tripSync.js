@@ -164,6 +164,8 @@ async function saveTripToApiImpl(){
   const tripSwitched = () => currentTripId !== tripIdAtStart;
 
   for (let attempt = 0; attempt < MAX_SAVE_RETRY; attempt++){
+    await resolveEntryConflicts();
+    if (tripSwitched()) return true;
     // 版本比對：儲存前先看看伺服器上的版本跟我們最後一次同步的是否一致，
     // 偵測到衝突時嘗試自動合併（把伺服器有但本地沒有的筆數加進來），
     // 只有在無法自動合併時才詢問使用者。
@@ -276,6 +278,11 @@ async function saveTripToApiImpl(){
 // 會在自己存檔時復活、自己刪掉的帳目也會被別人的版本補回來。
 // 沒有 base（第一次儲存、或舊資料）時退回原本的作法：聯集、同 id 以本地為準。
 let lastMergeConflicts = 0;
+let lastMergeKept = [];            // 最近一次合併中，先保留本地、還沒問過使用者的帳目
+// 還沒問過使用者要留哪一份的帳目：「行程:種類:id」→ { kind, id, server }。整包存檔前一定先問（resolveEntryConflicts）
+const entryConflicts = new Map();
+const entriesInFlight = new Set(); // 正在送出的那幾筆，由 syncEntry 自己處理衝突
+function conflictKey(kind, id){ return `${trip.id}:${kind}:${id}`; }
 function syncBase(){
   try{ return lastSyncedTripJSON ? JSON.parse(lastSyncedTripJSON) : null; }catch(e){ return null; }
 }
@@ -286,6 +293,7 @@ function mergeById(localList, serverList, baseList){
   const B = baseList ? new Map(baseList.map(x=>[x.id, x])) : null;
   const out = [];
   let conflicts = 0;
+  const kept = []; // 衝突而先保留本地的：{ id, server }（server 為 null 代表別人刪掉了）
   for (const [id, s] of S){
     const l = L.get(id), b = B && B.get(id);
     if (!l){
@@ -294,18 +302,17 @@ function mergeById(localList, serverList, baseList){
       continue;                                        // 我刪掉、別人沒動：刪除
     }
     if (sameJson(l, s) || (b && sameJson(b, l))){ out.push(s); continue; } // 一樣，或只有別人改過
-    if (b && !sameJson(b, s)){ conflicts++; }          // 兩邊都改過
-    else if (!b){ conflicts++; }
+    if (!b || !sameJson(b, s)){ conflicts++; kept.push({ id, server: s }); } // 兩邊都改過
     out.push(l);
   }
   for (const [id, l] of L){
     if (S.has(id)) continue;
     const b = B && B.get(id);
     if (!b){ out.push(l); continue; }                  // 我新增的
-    if (!sameJson(b, l)){ conflicts++; out.push(l); }  // 別人刪掉、我改過：保留我的修改
+    if (!sameJson(b, l)){ conflicts++; kept.push({ id, server: null }); out.push(l); } // 別人刪掉、我改過：保留我的修改
     // 別人刪掉、我沒動：刪除
   }
-  return { list: out, conflicts };
+  return { list: out, conflicts, kept };
 }
 function mergeRates(local, server, base){
   const out = {};
@@ -324,6 +331,7 @@ function tryMergeTrips(localTrip, serverTrip, baseTrip){
     const dep = mergeById(localTrip.deposits, serverTrip.deposits, base && base.deposits);
     const mem = mergeById(localTrip.members, serverTrip.members, base && base.members);
     lastMergeConflicts = exp.conflicts + dep.conflicts + mem.conflicts;
+    lastMergeKept = [...exp.kept.map(k=>({ kind:'expenses', ...k })), ...dep.kept.map(k=>({ kind:'deposits', ...k }))];
     // 行程名稱、基準幣別、封存狀態：本地沒改過就用伺服器的
     const scalar = (key) => (base && sameJson(localTrip[key], base[key])) ? serverTrip[key] : localTrip[key];
     const merged = Object.assign({}, serverTrip, {
@@ -358,7 +366,10 @@ function applySavedTrip(savedRaw, sentJSON){
 function mergeWithServer(serverTrip){
   const server = repairTrip(serverTrip);
   const merged = tryMergeTrips(trip, server, syncBase());
-  if (merged) lastSyncedTripJSON = JSON.stringify(server);
+  if (merged){
+    lastSyncedTripJSON = JSON.stringify(server);
+    for (const k of lastMergeKept) entryConflicts.set(conflictKey(k.kind, k.id), k);
+  }
   return merged;
 }
 
@@ -388,7 +399,59 @@ function applyEntryToBase(kind, id, entry, updatedAt){
   base.updatedAt = updatedAt;
   lastSyncedTripJSON = JSON.stringify(repairTrip(base));
 }
-// entry 為 null 代表刪除；opts.restore：這是從「紀錄」還原的（只影響操作紀錄上的說明）
+/* ===================== 同一筆帳同時被改 ===================== */
+// 開始編輯、刪除前伺服器上的那一筆；送出時帶給伺服器比對（沒有代表伺服器還沒有這筆）
+function entryBase(kind, id){
+  const base = syncBase();
+  return base && (base[kind] || []).find(x => x.id === id) || null;
+}
+const ENTRY_DIFF_FIELDS = {
+  expenses: [['description','項目說明'],['amount','金額'],['currency','幣別'],['amountInBase','換算金額'],['payers','代墊'],['participants','分攤'],['createdAt','日期']],
+  deposits: [['payerId','付款人'],['collectorId','收款人'],['amount','金額'],['currency','幣別'],['amountInBase','換算金額'],['note','備註'],['createdAt','日期']],
+};
+function entryDiff(kind, a, b){
+  return ENTRY_DIFF_FIELDS[kind].filter(([key]) => !sameJson(a[key], b[key])).map(([, label]) => label);
+}
+function entrySummary(kind, e){
+  const what = kind === 'expenses' ? e.description : `${memberName(e.payerId)} → ${memberName(e.collectorId)}`;
+  return `${what} ${fmtMoneyCompact(e.amount)} ${e.currency}`;
+}
+// 問使用者要留哪一份；mine 為 null 代表要刪除，theirs 為 null 代表對方刪了。resolve true＝用我的
+function askEntryConflict(kind, mine, theirs){
+  if (!theirs){
+    return confirmModal(`你改的內容：${entrySummary(kind, mine)}`, { title: '這筆已被刪除', confirmText: '重新建立', cancelText: '不建立' });
+  }
+  if (!mine){
+    return confirmModal(`對方改成：${entrySummary(kind, theirs)}`, { title: '這筆剛被改過', confirmText: '仍要刪除', cancelText: '保留', danger: true });
+  }
+  return confirmModal(
+    `你的：${entrySummary(kind, mine)}\n對方：${entrySummary(kind, theirs)}\n不同：${entryDiff(kind, mine, theirs).join('、')}`,
+    { title: '這筆剛被改過', confirmText: '用我的', cancelText: '用對方的' }
+  );
+}
+// 把本地這一筆換成指定內容（null＝移除）
+function setLocalEntry(kind, id, entry){
+  const i = trip[kind].findIndex(x => x.id === id);
+  if (entry){ if (i === -1) trip[kind].push(entry); else trip[kind][i] = entry; }
+  else if (i !== -1) trip[kind].splice(i, 1);
+}
+// 整包存檔前：之前合併時先保留本地的帳目，逐筆問過才存，不悄悄蓋掉別人的修改
+async function resolveEntryConflicts(){
+  const tripId = trip.id;
+  for (const [key, c] of [...entryConflicts]){
+    if (trip.id !== tripId) return;
+    if (!key.startsWith(`${tripId}:`) || entriesInFlight.has(key)) continue;
+    const mine = trip[c.kind].find(x => x.id === c.id);
+    if (mine && !(c.server && !entryDiff(c.kind, mine, c.server).length)){
+      const useMine = await askEntryConflict(c.kind, mine, c.server);
+      if (trip.id !== tripId) return;
+      if (entryConflicts.get(key) !== c) continue; // 視窗開著時又更新過，下次存檔再問
+      if (!useMine){ setLocalEntry(c.kind, c.id, c.server); renderAll(); }
+    }
+    entryConflicts.delete(key);
+  }
+}
+// entry 為 null 代表刪除；opts.base：開始改之前的那筆（有帶才會檢查衝突）；opts.restore：這是從「紀錄」還原的（只影響操作紀錄上的說明）
 /* ===================== 還沒存到的帳目 ===================== */
 // 新增支出／轉帳時剛好沒網路：這筆先存在這台手機上（localStorage），頁首常駐提示，
 // 連上網路、重新打開行程或按「再試一次」時自動補送。帳目 id 是前端產生的，伺服器用 PUT 依 id 寫入，
@@ -469,13 +532,18 @@ async function syncEntry(kind, id, entry, opts){
   syncSaving++;
   renderSyncStatus();
   let ok = false;
+  const tripIdAtStart = trip.id;
+  const key = conflictKey(kind, id);
+  entriesInFlight.add(key);
   try{
     const res = await fetch(entryApiUrl(kind, id), {
       method: entry ? 'PUT' : 'DELETE',
       headers: Object.assign({ 'Content-Type': 'application/json' }, apiHeaders()),
-      body: JSON.stringify(Object.assign(entry ? { entry } : {}, { writerId: CLIENT_INSTANCE_ID }, opts && opts.restore ? { restore: true } : {})),
+      body: JSON.stringify(Object.assign(entry ? { entry } : {}, { writerId: CLIENT_INSTANCE_ID }, opts.base !== undefined ? { base: opts.base } : {}, opts.restore ? { restore: true } : {})),
     });
     const body = await apiJson(res);
+    if (trip.id !== tripIdAtStart){ ok = true; return true; } // 等回應時換到別的行程了：已經存好，不能套到現在的畫面
+    entryConflicts.delete(key);
     const saved = entry ? repairTrip({ [kind]: [body.entry] })[kind][0] : null;
     if (saved){
       const idx = trip[kind].findIndex(x => x.id === id);
@@ -486,6 +554,8 @@ async function syncEntry(kind, id, entry, opts){
       trip.updatedAt = body.updatedAt;
       applyEntryToBase(kind, id, saved, body.updatedAt);
     } else {
+      // 先把這筆記進 base 再合併：伺服器上如果又被別人改過，才看得出是「只有別人改過」
+      applyEntryToBase(kind, id, saved, trip.updatedAt);
       await refreshTripFromServer();
     }
     ok = true;
@@ -495,6 +565,24 @@ async function syncEntry(kind, id, entry, opts){
     // 這次只送了一筆；同時還有別的本地修改（例如記帳時順手更新的匯率）就補一次整包儲存
     if (lastSyncedTripJSON && JSON.stringify(trip) !== lastSyncedTripJSON) scheduleCloudSave(0);
   }catch(err){
+    const conflict = err.status === 409 && err.body && err.body.conflict;
+    if (conflict && trip.id === tripIdAtStart){
+      const theirs = err.body.current ? repairTrip({ [kind]: [err.body.current] })[kind][0] : null;
+      const useMine = await askEntryConflict(kind, entry, theirs);
+      if (trip.id !== tripIdAtStart) return false;
+      entryConflicts.delete(key);
+      if (useMine){
+        setLocalEntry(kind, id, entry);
+        return (ok = await syncEntry(kind, id, entry, Object.assign({}, opts, { base: theirs })));
+      }
+      setLocalEntry(kind, id, theirs);
+      applyEntryToBase(kind, id, theirs, trip.updatedAt);
+      removePendingEntry(kind, id);
+      ok = true;
+      await refreshTripFromServer().catch(()=>{}); // 抓不到就等下一次同步，這筆已經是對方的內容
+      renderAll();
+      return false;
+    }
     // 沒有網路或伺服器沒回應：新增的帳目先存在這台手機上，之後自動補存
     const unreachable = !err.status || err.status >= 500;
     // 伺服器明確拒絕（4xx：權限、行程不存在、格式不對）：重送也不會成功，從待補存清單拿掉並說明
@@ -512,8 +600,9 @@ async function syncEntry(kind, id, entry, opts){
         : `沒有存到：${err.message}`, 'error');
     }
   }finally{
+    entriesInFlight.delete(key);
     syncSaving--;
-    syncFailed = !ok;
+    if (trip.id === tripIdAtStart) syncFailed = !ok;
     renderSyncStatus();
   }
   return ok;
@@ -546,6 +635,7 @@ async function saveSharedTripToApi(){
   const MAX_SAVE_RETRY = 3;
 
   for (let attempt = 0; attempt < MAX_SAVE_RETRY; attempt++){
+    await resolveEntryConflicts();
     try{
       const sentJSON = JSON.stringify(trip); // 送出的那份，回應回來時拿來判斷這段期間本地又改了什麼
       const payload = Object.assign({}, trip, { expectedUpdatedAt: trip.updatedAt || null, writerId: CLIENT_INSTANCE_ID });

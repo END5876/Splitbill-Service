@@ -1,4 +1,5 @@
-FROM node:22-slim
+# 基底映像固定到 digest，每次建置內容一致；新版由 Dependabot 每月開 PR 更新
+FROM node:22-slim@sha256:be979e5523c76fa4d5ca4ebd3099078f220aa47ec39c48ad5b5df9314debd6eb
 WORKDIR /app
 ENV NODE_ENV=production
 # 先只複製 package*.json：依賴沒變時這一層會直接用快取，不必每次重裝

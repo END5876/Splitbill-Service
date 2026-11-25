@@ -1,5 +1,6 @@
 'use strict';
 // 支出的新增/編輯/刪除，與「表單是否有未儲存內容」的保護判斷。
+let editingExpenseBase = null; // 打開編輯時伺服器上的那一筆（衝突檢查用）
 /* ===================== expense CRUD ===================== */
 // 🆕 [即時同步保護] 判斷「新增支出」表單目前是否有使用者還沒送出的內容——
 // 不只是編輯既有支出（editingExpenseId），也包含「正在填一筆全新的支出」：
@@ -107,10 +108,11 @@ function saveExpense(){
 // 只把這一筆送到伺服器（見 js/tripSync.js 的 syncEntry）
 async function saveExpenseAndSync(){
   const isNew = !editingExpenseId;
+  const base = isNew ? null : editingExpenseBase; // saveExpense 會清掉編輯狀態，先記下來
   const saved = saveExpense();
   if (!saved) return;
   closeQuickAdd(); // 從「＋ 記一筆」打開的：存好就收起來，回到原本的畫面
-  await syncEntry('expenses', saved.id, saved, { isNew });
+  await syncEntry('expenses', saved.id, saved, { isNew, base });
 }
 
 /* ---------- 快速記一筆（手機）：右下浮動按鈕打開底部面板，就是支出／轉帳分頁的同一張表單，上方可以切換 ---------- */
@@ -169,6 +171,7 @@ function editExpense(id){
   const exp = trip.expenses.find(e=>e.id===id);
   if (!exp) return;
   editingExpenseId = id;
+  editingExpenseBase = entryBase('expenses', id);
   setExpenseStep(0);
   participantsDirty = true; // 編輯既有支出時，尊重原本已經存好的分攤金額，不要自動覆蓋
   document.getElementById('expenseFormTitle').textContent = '編輯支出';
@@ -234,6 +237,7 @@ async function deleteEntry(kind, id, el, kindName, label, afterDelete){
     if (!ok) return;
   }
   const tripId = trip.id;
+  const base = entryBase(kind, id);
   await swipeRowOut(el);
   if (trip.id !== tripId) return;
   // 確認視窗、動畫期間 trip 可能被 SSE／存檔換掉，要用 id 重新找位置
@@ -242,7 +246,7 @@ async function deleteEntry(kind, id, el, kindName, label, afterDelete){
   const [removed] = trip[kind].splice(idx, 1);
   afterDelete();
   renderAll();
-  const saved = syncEntry(kind, id, null);
+  const saved = syncEntry(kind, id, null, base ? { base } : {});
   toastUndo(`已刪除「${label(removed)}」`, async () => {
     await saved; // 等刪除存完再還原，順序不會顛倒
     if (trip.id !== tripId || trip[kind].some(x => x.id === id)) return;

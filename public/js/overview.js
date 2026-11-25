@@ -91,7 +91,7 @@ async function renderDebtSectionUI(){
 
   listEl.innerHTML = sourceList.length
     ? settleGroupsHtml(displayList, effectiveCurrency, isTransfer)
-    : `<p class="empty-state" style="padding:16px;">${emptyMsg}</p>${archiveOfferHtml(isTransfer)}`;
+    : `<p class="u-p-16px empty-state">${emptyMsg}</p>${archiveOfferHtml(isTransfer)}`;
   swipeRowPeek();
 }
 
@@ -237,7 +237,7 @@ function renderMemberDetails(net) {
   const el = document.getElementById('memberDetailList');
   if (!el) return;
   if (!trip.members.length) {
-    el.innerHTML = '<p class="hint" style="padding:14px 0 6px;">尚無成員</p>';
+    el.innerHTML = '<p class="u-p-14px-0-6px hint">尚無成員</p>';
     return;
   }
 
@@ -359,12 +359,12 @@ function renderMemberDetails(net) {
     const bodyHtml = hasData
       ? `<div class="detail-totals">
            ${summaryRows}
-           <div class="detail-summary-row" style="border-top:1px dashed var(--card-line);margin-top:4px;padding-top:8px;">
-             <span class="label" style="font-weight:700;">${Math.abs(v) <= 0.01 ? '已結清' : netWords(v)}</span>
-             <span class="val ${netCls}" style="font-size:14px;">${Math.abs(v) > 0.01 ? `${fmtMoney(Math.abs(v), trip.baseCurrency)} ${trip.baseCurrency}` : ''}</span>
+           <div class="u-border-top-1px-dashed-card-94aa detail-summary-row">
+             <span class="u-fw-700 label">${Math.abs(v) <= 0.01 ? '已結清' : netWords(v)}</span>
+             <span class="u-fs-14px val ${netCls}">${Math.abs(v) > 0.01 ? `${fmtMoney(Math.abs(v), trip.baseCurrency)} ${trip.baseCurrency}` : ''}</span>
            </div>
          </div>${paidSection}${shareSection}${tInSection}${tOutSection}`
-      : '<p class="hint" style="padding:8px 0 4px;">尚無帳目</p>';
+      : '<p class="u-p-8px-0-4px hint">尚無帳目</p>';
 
     const isOpen = openMemberDetailIds.has(m.id);
     return `<div class="member-detail-card ${isOpen ? 'open' : ''}" id="mdc-${m.id}">

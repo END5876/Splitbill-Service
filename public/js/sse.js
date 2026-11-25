@@ -209,7 +209,8 @@ function handleIncomingTripUpdate(rawPushedTrip){
   }
   trip = merged;
   renderAll();
-  if (lastMergeConflicts) toast(`你和其他人同時改了 ${lastMergeConflicts} 筆，目前保留你的版本，其他人的修改可以在「紀錄」找回。`, 'error');
+  // 正在送出的那筆由 syncEntry 問使用者，這裡不重複提示
+  if (lastMergeConflicts && !entriesInFlight.size) toast(`你和其他人同時改了 ${lastMergeConflicts} 筆，目前保留你的版本，其他人的修改可以在「紀錄」找回。`, 'error');
   else toast(hadLocalChanges ? '已更新成最新內容，你還沒儲存的修改也保留著' : '其他人剛更新了這個行程，畫面已同步', 'info');
 }
 

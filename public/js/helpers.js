@@ -1,5 +1,12 @@
 'use strict';
 
+// index.html 一開始要藏的元素：換成 style.display，各功能用 style.display 切換才有效（CSP 不允許直接寫 style 屬性）
+if (typeof document.querySelectorAll === 'function') document.querySelectorAll('[data-init-hidden]').forEach(el=>{
+  el.style.display = 'none';
+  el.removeAttribute('data-init-hidden');
+});
+
+
 /* =====================================================================
    資料結構（與 Mousebot handlers/splitbill/utils/storage.js 對齊）
    Trip = {

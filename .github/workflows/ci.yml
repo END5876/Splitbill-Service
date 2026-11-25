@@ -17,9 +17,25 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm run typecheck
       - run: npm test
       # 正式環境會裝到的套件（--omit=dev）有 high 以上的漏洞就讓 CI 失敗
       - run: npm audit --omit=dev --audit-level=high
+
+  # 瀏覽器測試與覆蓋率：先只顯示結果、不擋 CI（2026-11-25 起兩週，穩定後拿掉 continue-on-error）
+  browser:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run e2e
+      - run: npm run coverage
+        if: always()
 
   # 建置正式環境用的映像並冒煙測試：VPS 上的 autodeploy 也是用同一個 Dockerfile 建置
   docker:

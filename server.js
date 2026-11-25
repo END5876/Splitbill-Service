@@ -62,11 +62,11 @@ const { requestLog, redactPath } = require('./lib/requestLog');
 
 // 🔒 [安全性] Content-Security-Policy：腳本只能來自本站檔案，inline <script> 與
 // onclick="…" 一律不執行（前端改用 js/actions.js 的事件委派）。就算哪天又有資料沒跳脫
-// 就進了 HTML，也跑不起來。樣式仍允許 inline（style="…" 屬性很多，而且不能執行程式）。
+// 就進了 HTML，也跑不起來。樣式同樣不允許 inline（寫在 css/style.css；JS 設 el.style 不受限）。
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
   "script-src 'self'",
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "style-src 'self' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com",
   "img-src 'self' data: blob: https://cdn.discordapp.com https://profile.line-scdn.net",
   "connect-src 'self'",

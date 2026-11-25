@@ -222,22 +222,11 @@ function escapeHtml(s) {
 }
 
 // 登入流程中的小頁面（錯誤、跳轉）。內容全部經過 escapeHtml，body 由呼叫端組好（已跳脫）。
-function sendPage(res, status, title, bodyHtml, { refresh } = {}) {
+function sendPage(res, status, title, bodyHtml, { refresh } = /** @type {{ refresh?: string }} */ ({})) {
   res.status(status).set('Cache-Control', 'no-store').type('html').send(`<!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 ${refresh ? `<meta http-equiv="refresh" content="0;url=${escapeHtml(refresh)}">` : ''}<title>${escapeHtml(title)}｜裊器分帳</title>
-<style>
-:root{--ink:#1F2330;--ink-soft:#4F5566;--paper:#F2F3F7;--card:#FFFFFF;--line:#DCDFE8;--brass:#8A5A12;--on-brass:#FFFFFF}
-@media (prefers-color-scheme:dark){:root{--ink:#F2F3F5;--ink-soft:#A8ACB4;--paper:#1E1F22;--card:#2B2D31;--line:#3F4147;--brass:#D6A646;--on-brass:#1E1F22}}
-body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;background:var(--paper);color:var(--ink);font-family:"Noto Sans TC",system-ui,sans-serif}
-main{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px;width:100%;max-width:360px;display:flex;flex-direction:column;gap:14px;text-align:center}
-h1{font-size:18px;margin:0}p{color:var(--ink-soft);font-size:14px;line-height:1.6;margin:0}
-a.btn,button{height:44px;border-radius:22px;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;text-decoration:none;background:var(--brass);color:var(--on-brass);border:0;width:100%;font-family:inherit;cursor:pointer}
-button.secondary{background:transparent;color:var(--ink);border:1px solid var(--line)}
-form{display:flex;flex-direction:column;gap:10px}
-.code{font:700 30px/1.2 ui-monospace,Menlo,Consolas,monospace;letter-spacing:.2em;color:var(--ink)}
-.warn{color:#C0392B;font-weight:700}
-</style></head><body><main><h1>${escapeHtml(title)}</h1>${bodyHtml}</main></body></html>`);
+<link rel="stylesheet" href="/css/auth-page.css"></head><body><main><h1>${escapeHtml(title)}</h1>${bodyHtml}</main></body></html>`);
 }
 
 const backLink = '<a class="btn" href="/">回到裊器分帳</a>';
@@ -350,7 +339,7 @@ module.exports = function createOAuthRouter(deps = {}) {
     let handoff = '';
     if (req.query.handoff !== undefined) {
       if (req.query.link === '1' || !liveHandoff(req.query.handoff, 'pending')) return expiredHandoffPage(res);
-      handoff = req.query.handoff;
+      handoff = String(req.query.handoff);
     }
 
     // 🆕 [帳號綁定] 綁定一定要「已經登入」：登入 Cookie 是 SameSite=Strict，別的網站連過來的請求帶不到它，

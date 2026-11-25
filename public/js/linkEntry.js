@@ -80,8 +80,8 @@ function showLinkError(message){
     <div class="ic">${icon('alert')}</div>
     <h1>這個連結打不開</h1>
     <p>${escapeHtml(message)}</p>
-    <p style="margin-top:14px;">可以請給你連結的人再傳一組新的給你。</p>
-    <div class="btn-row" style="justify-content:center; margin-top:20px;">
+    <p class="u-m-top-14px">可以請給你連結的人再傳一組新的給你。</p>
+    <div class="u-justify-center-m-top-20px btn-row">
       <button class="btn btn-ghost" type="button" data-click="goHome">回到首頁</button>
     </div>
   `;
@@ -220,12 +220,12 @@ function showJoinScreen(token, info){
       <div class="invite-card">
         ${head}
         <p>有人邀請你一起記這個行程的帳。<br>登入後，選擇你是哪一位就能加入。</p>
-        <div class="btn-row" style="justify-content:center;">
+        <div class="u-justify-center btn-row">
           ${oauthEnabled
             ? loginButtonsHtml('/#link=' + encodeURIComponent(token), '並加入')
             : '<p class="hint">這個網站還沒有開啟登入，請聯絡管理員。</p>'}
         </div>
-        <div class="btn-row" style="justify-content:center; margin-top:14px;">${secondary}</div>
+        <div class="u-justify-center-m-top-14px btn-row">${secondary}</div>
       </div>`;
     return;
   }
@@ -243,16 +243,16 @@ function showJoinScreen(token, info){
       <div class="invite-members">
         ${unlinked.map(m => `<button class="modal-list-item" type="button" ${act('click','confirmJoinClaim',token,m.id,'$el')}><div class="mli-title">我是「${escapeHtml(m.name)}」</div></button>`).join('')}
       </div>` : '<p>名單上的成員都已經有人選了，你可以用新成員的身分加入。</p>'}
-      ${linked.length ? `<div class="hint" style="margin-top:8px;">已經有人選了：${linked.map(m => escapeHtml(m.name)).join('、')}</div>` : ''}
+      ${linked.length ? `<div class="u-m-top-8px hint">已經有人選了：${linked.map(m => escapeHtml(m.name)).join('、')}</div>` : ''}
       ${unlinked.length ? `<button type="button" class="link-btn invite-new-toggle" data-click="revealInviteNewBlock" data-args='["$el"]'>都不是？以新成員身分加入</button>` : ''}
       <div class="invite-new" id="inviteNewBlock" ${unlinked.length ? 'hidden' : ''}>
-        <div class="hint" style="margin:14px 0 6px;">以新成員身分加入：</div>
-        <div class="btn-row" style="justify-content:center;">
-          <input type="text" id="inviteNewName" maxlength="60" placeholder="你的名字" aria-label="你的名字" value="${escapeHtml(currentUser.name || '')}" style="max-width:180px;">
+        <div class="u-m-14px-0-6px hint">以新成員身分加入：</div>
+        <div class="u-justify-center btn-row">
+          <input class="u-maxw-180px" type="text" id="inviteNewName" maxlength="60" placeholder="你的名字" aria-label="你的名字" value="${escapeHtml(currentUser.name || '')}">
           <button class="btn btn-primary" type="button" ${act('click','claimJoinAsNew',token,'$el')}>加入</button>
         </div>
       </div>
-      <div class="btn-row" style="justify-content:center; margin-top:14px;">${secondary}</div>
+      <div class="u-justify-center-m-top-14px btn-row">${secondary}</div>
     </div>`;
 }
 // 認領前再確認一次：認錯人之後要請建立者解除連結，比較麻煩。

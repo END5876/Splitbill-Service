@@ -1,6 +1,7 @@
 'use strict';
 // 轉帳／預收款的新增/編輯/刪除與即時匯率提示。
 /* ===================== deposit CRUD ===================== */
+let editingDepositBase = null; // 打開編輯時伺服器上的那一筆（衝突檢查用）
 let depositLiveRate = null; // { currency, rate, asOf }
 async function refreshDepositLiveRate(){
   const currency = document.getElementById('depCurrency').value;
@@ -182,15 +183,17 @@ function saveDeposit(){
 }
 async function saveDepositAndSync(){
   const isNew = !editingDepositId;
+  const base = isNew ? null : editingDepositBase; // saveDeposit 會清掉編輯狀態，先記下來
   const saved = saveDeposit();
   if (!saved) return;
   closeQuickAdd(); // 從「＋ 記一筆」打開的：存好就收起來
-  await syncEntry('deposits', saved.id, saved, { isNew });
+  await syncEntry('deposits', saved.id, saved, { isNew, base });
 }
 function editDeposit(id){
   const dep = trip.deposits.find(d=>d.id===id);
   if (!dep) return;
   editingDepositId = id;
+  editingDepositBase = entryBase('deposits', id);
   document.getElementById('depositFormTitle').textContent = '編輯轉帳紀錄';
   setFormCardEditing('depositFormCard', 'btnSaveDepositSync', 'btnResetDeposit', true);
   document.getElementById('depDate').value = toDateInputValue(dep.createdAt);

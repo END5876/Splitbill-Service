@@ -80,7 +80,7 @@ function renderInviteSection(){
   const el = document.getElementById('inviteHero');
   if (!el) return;
   if (!isTripMember()){
-    el.innerHTML = `<p class="hint" style="margin:0;">${currentTripId && shareMode
+    el.innerHTML = `<p class="u-m-0 hint">${currentTripId && shareMode
       ? '你是用免登入連結開啟的，要邀請別人請找行程成員。'
       : '請先開啟一個行程。'}</p>`;
     document.getElementById('linkManager').innerHTML = '';
