@@ -44,5 +44,8 @@ jobs:
           # 服務以 node（非 root）身分執行，資料庫檔案也屬於 node
           test "$(docker exec sb sh -c 'stat -c %U /proc/1')" = node
           test "$(docker exec sb stat -c %U /app/data/splitbill.db)" = node
+          # 映像內建的 HEALTHCHECK 要能變成 healthy（VPS 的 autodeploy 靠它判斷部署成功）
+          for i in $(seq 1 30); do s=$(docker inspect -f '{{.State.Health.Status}}' sb); [ "$s" = healthy ] && break; sleep 3; done
+          test "$s" = healthy
           docker logs sb
           docker rm -f sb

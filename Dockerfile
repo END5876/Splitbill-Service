@@ -12,6 +12,10 @@ RUN sed -i 's/\r$//' docker-entrypoint.sh && chmod +x docker-entrypoint.sh \
 # 分帳資料（splitbill.db 與 backups/）存放位置，部署時請把 Volume 掛載到這個目錄
 ENV SPLITBILL_DATA_DIR=/app/data
 EXPOSE 3000
+# 健康檢查：只看資料庫讀不讀得到。「沒掛 Volume」也會讓 /healthz 回 503，但重啟修不好，
+# 而 VPS 的 heal.sh 會重啟 unhealthy 的容器，所以這裡不採用狀態碼，避免一直重啟。
+# start-period 留給啟動時的資料庫遷移與備份。
+HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=3     CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||process.env.SPLITBILL_WEB_PORT||3000)+'/healthz').then(r=>r.json()).then(b=>process.exit(b.db==='ok'?0:1)).catch(()=>process.exit(1))"
 # 🔒 服務本身以 node 帳號（非 root）執行：entrypoint 先修正資料目錄的擁有者再降權（見 docker-entrypoint.sh）
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["node", "server.js"]
