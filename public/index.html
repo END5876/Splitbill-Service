@@ -129,7 +129,7 @@
     <!-- 🆕 [總覽簡化] 「建議轉帳」與「彼此累計欠款總額」合併成同一張卡片，
          用標題列右側的分段按鈕切換兩種檢視，共用同一個「換算幣別」下拉選單與匯率查詢。 -->
     <div class="receipt" style="margin-bottom:14px;">
-      <div class="receipt-head">
+      <div class="receipt-head settle-head">
         <div>
           <div class="t1">怎麼結清</div>
           <div class="t2" id="debtViewSubtitle">最少轉帳次數</div>
@@ -381,13 +381,13 @@
         </div>
 
         <h3 class="section-subtitle" id="createTripHeading">建立新行程</h3>
-        <div class="row">
+        <div class="entry-grid create-trip-grid">
           <div class="field">
             <label for="newTripName">行程名稱</label>
             <input type="text" id="newTripName" maxlength="60" placeholder="例如：沖繩三天兩夜">
           </div>
-          <div class="field" style="max-width:180px;">
-            <label for="newTripCurrency">結算用的幣別（建立後不能改）</label>
+          <div class="field">
+            <label for="newTripCurrency">結算幣別</label>
             <select id="newTripCurrency">
               <option value="TWD" selected>TWD 新台幣</option>
               <option value="JPY">JPY 日圓</option>
@@ -405,6 +405,7 @@
             </select>
           </div>
         </div>
+        <p class="hint" style="margin:0 0 10px;">結算幣別建立後不能更改。</p>
         <div class="btn-row">
           <button class="btn btn-primary" data-click="createTripOnServer" data-loading="建立中…">＋ 建立行程</button>
         </div>

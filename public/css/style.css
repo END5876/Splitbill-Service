@@ -419,6 +419,7 @@
   .row{display:flex; gap:12px; flex-wrap:wrap;}
   /* 記帳表單的欄位：等寬兩欄對齊，高度一致 */
   .entry-grid{display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:10px 12px; margin-bottom:12px;}
+  @media (min-width:641px){ .create-trip-grid{grid-template-columns:minmax(0,1fr) 180px;} }
   .entry-grid > .field{margin:0; min-width:0;}
   .entry-grid input, .entry-grid select{height:46px; min-width:0;}
   .expense-save-row{flex-wrap:nowrap;}
@@ -965,6 +966,9 @@
   }
   .stamp.settled{color:var(--credit); border-color:var(--credit);}
 
+  /* 標題與切換按鈕固定同一行，切換時位置不跳動 */
+  .settle-head{ flex-wrap:nowrap; }
+  .settle-head > div:first-child{ min-width:0; }
   .settle-list{padding:12px 18px 16px;}
   /* 結算列：依付款人分組，一組一個圓角區塊；每列「付給誰｜金額」（overview.js settleGroupsHtml） */
   .settle-box{ background:var(--surface); border-radius:var(--r-lg); overflow:hidden; }
