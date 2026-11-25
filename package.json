@@ -15,6 +15,6 @@
   "dependencies": {
     "@google/genai": "^2.32.0",
     "compression": "^1.8.2",
-    "express": "^4.22.2"
+    "express": "^5.3.0"
   }
 }
