@@ -380,14 +380,16 @@ async function handleReceiptUpload(fileOrEvent){
 // 與初始 HTML（index.html 的 #receiptScanTriggerBody）共用同一段結構，
 // 避免兩處各自寫一份、之後改文案或版面要記得同步兩邊。
 // 觸控裝置不能拖曳檔案，改說「拍收據」；桌機說「上傳」並提醒可以拖進來
-const RECEIPT_IS_TOUCH = window.matchMedia && matchMedia('(hover: none)').matches;
+const RECEIPT_IS_TOUCH = window.matchMedia && matchMedia('(pointer: coarse)').matches;
 const RECEIPT_SCAN_TRIGGER_DEFAULT_HTML = `
   <span class="receipt-scan-ic"><svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg></span>
   <span class="receipt-scan-txt">
     <span class="title">${RECEIPT_IS_TOUCH ? '拍收據，自動列出品項' : '上傳收據照片，自動列出品項'}</span>
-    <span class="sub">${RECEIPT_IS_TOUCH ? '也可以從相簿選照片' : '或直接把照片拖進這一頁'}</span>
+    ${RECEIPT_IS_TOUCH ? '' : '<span class="sub">或直接把照片拖進這一頁</span>'}
   </span>`;
 { const body = document.getElementById('receiptScanTriggerBody'); if (body) body.innerHTML = RECEIPT_SCAN_TRIGGER_DEFAULT_HTML; }
+// 觸控裝置：「拍收據」直接開相機（capture），「相簿」才是選現有照片
+if (RECEIPT_IS_TOUCH) document.querySelectorAll('[data-receipt-main]').forEach(el => el.setAttribute('for', 'receiptCameraInput'));
 
 function receiptResetUpload(){
   receiptState = null;

@@ -180,7 +180,10 @@
          也是拖放目標的視覺入口，整個「支出記帳」分頁都收拖放，見
          js/receiptScan.js 的 initReceiptDropZone() / handleReceiptDrop()。 -->
     <div class="card" id="receiptScanCard" data-write-only>
-      <label class="receipt-scan-trigger" for="receiptFileInput" id="receiptScanTrigger">
+      <!-- 觸控裝置：整條開相機（js/receiptScan.js 會改 data-receipt-main 的 for），右邊「相簿」選現有照片；
+           桌機只有選檔案。input 放在 label 外面，點「相簿」才不會連帶觸發相機。 -->
+      <div class="receipt-scan-trigger" id="receiptScanTrigger">
+        <label class="receipt-scan-main" for="receiptFileInput" data-receipt-main>
         <span class="receipt-scan-trigger-body" id="receiptScanTriggerBody">
           <span class="receipt-scan-ic"><svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg></span>
           <span class="receipt-scan-txt">
@@ -188,8 +191,11 @@
             <span class="sub">或直接把照片拖進這一頁</span>
           </span>
         </span>
-        <input type="file" id="receiptFileInput" accept="image/*" data-change="handleReceiptUpload" data-args='["$event"]'>
-      </label>
+        </label>
+        <label class="receipt-scan-album" for="receiptFileInput" aria-label="從相簿選收據照片">相簿</label>
+        <input type="file" id="receiptCameraInput" accept="image/*" capture="environment" data-change="handleReceiptUpload" data-args='["$event"]' aria-label="拍收據">
+        <input type="file" id="receiptFileInput" accept="image/*" data-change="handleReceiptUpload" data-args='["$event"]' aria-label="選擇收據照片">
+      </div>
       <div data-init-hidden id="receiptWorkArea"></div>
     </div>
 
@@ -203,7 +209,8 @@
           <span class="form-card-chevron" aria-hidden="true">▾</span>
         </button>
         <span class="seg-tabs quick-add-only quick-add-switch"><button type="button" class="seg-tab" aria-pressed="true" data-click="switchQuickAdd" data-args='["expenses"]'>支出</button><button type="button" class="seg-tab" aria-pressed="false" data-click="switchQuickAdd" data-args='["deposits"]'>轉帳／預收</button></span>
-        <label class="link-btn quick-add-only" for="receiptFileInput">拍收據</label>
+        <label class="link-btn quick-add-only" for="receiptFileInput" data-receipt-main>拍收據</label>
+        <label class="link-btn quick-add-only quick-add-album" for="receiptFileInput" aria-label="從相簿選收據照片">相簿</label>
         <button type="button" class="quick-add-close quick-add-only" data-click="closeQuickAdd" aria-label="關閉"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
       </h2>
       <div class="form-card-body" id="expenseFormBody">
