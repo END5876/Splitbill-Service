@@ -392,9 +392,30 @@ function nextExpenseStep(){
   const btn = document.getElementById(expenseStep === 2 ? 'btnSaveExpenseSync' : 'btnNextExpense');
   if (!btn.hidden && expenseStep > 0) btn.focus({ preventScroll: true });
 }
+// 按鍵震動。Android 用 Vibration API；iPhone 沒有，改用切換開關（input switch）時系統給的輕震，
+// 只有在點擊當下呼叫才有效，不支援的版本什麼都不會發生
+let hapticSwitch = null;
+function hapticTap(ms){
+  if (navigator.vibrate){ navigator.vibrate(ms); return; }
+  if (!matchMedia('(pointer:coarse)').matches || !('switch' in HTMLInputElement.prototype)) return;
+  if (!hapticSwitch){
+    hapticSwitch = document.createElement('label');
+    hapticSwitch.className = 'visually-hidden';
+    hapticSwitch.setAttribute('aria-hidden', 'true');
+    hapticSwitch.innerHTML = '<input type="checkbox" switch tabindex="-1">';
+    hapticSwitch.style.cssText = 'position:fixed;left:0;top:0;pointer-events:none;';
+    document.body.appendChild(hapticSwitch);
+  }
+  hapticSwitch.click();
+}
+// Android：手指一按下就震，不等放開
+document.addEventListener('pointerdown', ev => {
+  if (ev.pointerType === 'touch' && navigator.vibrate && ev.target.closest('.exp-keys button')) hapticTap(12);
+});
 // 數字鍵盤。用 input 事件通知，跟實體鍵盤輸入走同一條路
 function amountKey(inputId, k){
   const el = document.getElementById(inputId);
+  if (!navigator.vibrate) hapticTap(12);
   el.value = k === '⌫' ? el.value.slice(0, -1) : cleanAmountText(el.value + k);
   el.dispatchEvent(new Event('input', { bubbles: true }));
 }
@@ -413,6 +434,7 @@ function amountKey(inputId, k){
     if (!b) return;
     timer = setTimeout(() => {
       timer = null; swallow = true;
+      hapticTap(35); // 全部清除：震久一點
       const el = b.closest('.exp-pane').querySelector('.amount-big');
       el.value = '';
       el.dispatchEvent(new Event('input', { bubbles: true }));

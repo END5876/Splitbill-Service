@@ -91,8 +91,9 @@ async function renderDebtSectionUI(){
   if (noteEl) noteEl.textContent = rateNote;
 
   listEl.innerHTML = sourceList.length
-    ? settleGroupsHtml(displayList, verb, isTransfer)
+    ? settleGroupsHtml(displayList, verb, effectiveCurrency, isTransfer)
     : `<p class="empty-state" style="padding:16px;">${emptyMsg}</p>${archiveOfferHtml(isTransfer)}`;
+  swipeRowPeek();
 }
 
 /* =====================================================================
@@ -100,9 +101,8 @@ async function renderDebtSectionUI(){
    讓「看結算 → 實際轉錢 → 回來記帳」在同一個地方完成。
    金額一律用基準幣別（清單計算本來就是基準幣別），不受換算幣別影響。
 ===================================================================== */
-// 依付款人分組：付款人寫一次（兩筆以上加合計），下面每列「付給誰｜金額｜✓」。
-// 金額的幣別就是上方「換算幣別」選的那個，列裡不重複寫。
-function settleGroupsHtml(list, verb, withPaidBtn){
+// 依付款人分組：付款人寫一次（兩筆以上加合計），下面每列「付給誰｜金額」。
+function settleGroupsHtml(list, verb, currency, canMark){
   const groups = new Map();
   for (const t of list){
     if (!groups.has(t.from)) groups.set(t.from, []);
@@ -111,9 +111,9 @@ function settleGroupsHtml(list, verb, withPaidBtn){
   return [...groups].map(([from, rows]) => `<div class="settle-box">
       <div class="settle-group-head">
         <span class="settle-party">${settleNameHtml(from)}</span>
-        ${rows.length > 1 ? `<span class="settle-sum">共${verb === '欠' ? '欠' : '要付'} <span class="num">${fmtMoneyCompact(round2(rows.reduce((s, t) => s + t.amount, 0)))}</span></span>` : ''}
+        ${rows.length > 1 ? `<span class="settle-sum">共${verb === '欠' ? '欠' : '要付'} <span class="num">${fmtMoneyCompact(round2(rows.reduce((s, t) => s + t.amount, 0)))}</span> ${currency}</span>` : ''}
       </div>
-      ${rows.map(t => settleRowHtml(t, `<span class="settle-verb lead">${verb}</span>${settleNameHtml(t.to)}`, t.amount, withPaidBtn)).join('')}
+      ${rows.map(t => settleRowHtml(t, `<span class="settle-verb lead">${verb}</span>${settleNameHtml(t.to)}`, t.amount, currency, canMark)).join('')}
     </div>`).join('');
 }
 // 名字太長時只截名字本身；自己只寫「你」
@@ -122,37 +122,49 @@ function settleNameHtml(memberId){
   return me && me.id === memberId ? '<span class="you-tag">你</span>'
     : `<span class="settle-name">${escapeHtml(memberName(memberId))}</span>`;
 }
-function settleRowHtml(t, whoHtml, amount, withPaidBtn){
-  return `<div class="settle-item">
-      <span class="settle-party">${whoHtml}</span>
-      <span class="settle-amt">${fmtMoneyCompact(amount)}</span>
-      ${withPaidBtn ? markPaidButtonHtml(t) : ''}
-    </div>`;
+// 建議轉帳：左滑（或點一下）露出「標記已付」，見 swipeRows.js；唯讀時只能看
+function settleRowHtml(t, whoHtml, amount, currency, canMark){
+  const inner = `<span class="settle-party">${whoHtml}</span><span class="settle-amt">${fmtMoneyCompact(amount)}<span class="settle-amt-cur">${currency}</span></span>`;
+  if (!canMark) return `<div class="settle-item">${inner}</div>`;
+  return `<div class="settle-sw"><div class="settle-in">
+      <button type="button" class="settle-act" data-write-only tabindex="-1" aria-hidden="true" ${act('click','markTransferPaid',t.from,t.to,'$el')}><span>標記已付</span></button>
+      <div class="settle-item settle-tap" role="button" tabindex="0" aria-expanded="false">${inner}</div>
+    </div></div>`;
 }
-// 圓形 ✓：按下去會先跳確認，說明是誰付給誰、多少錢
-function markPaidButtonHtml(t){
-  return `<button type="button" class="settle-check" data-write-only title="標記已付"
-    aria-label="標記已付：${escapeHtml(memberName(t.from))}付給${escapeHtml(memberName(t.to))}"
-    ${act('click','markTransferPaid',t.from,t.to)}><span><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg></span></button>`;
-}
-async function markTransferPaid(fromId, toId){
+let markingPaid = false;
+async function markTransferPaid(fromId, toId, el){
+  if (markingPaid || document.body.matches('.share-readonly, .trip-archived')) return; // 只能看
   const t = lastTransferTx.find(x => x.from === fromId && x.to === toId);
   if (!t) return;
   const amount = round2(t.amount);
   const base = trip.baseCurrency;
-  const ok = await confirmModal(
-    '會新增一筆轉帳，結算結果也會跟著更新。',
-    { title: `${memberName(fromId)}已經付給${memberName(toId)} ${fmtMoney(amount, base)} ${base} 了嗎？`, confirmText: '標記已付', cancelText: '還沒付' }
-  );
-  if (!ok) return;
+  const tripId = trip.id;
+  markingPaid = true;
+  try{ await swipeRowOut(el); } finally { markingPaid = false; }
+  // 動畫期間換了行程，或別人剛好改了帳：不要記錯
+  const now = trip.id === tripId && lastTransferTx.find(x => x.from === fromId && x.to === toId);
+  if (!now || round2(now.amount) !== amount){
+    renderAll();
+    toast('帳目剛剛有更新，請確認金額後再標記。', 'error');
+    return;
+  }
   const dep = {
     id: genId('dep'), payerId: fromId, collectorId: toId,
     amount, currency: base, amountInBase: amount, note: '結算轉帳', createdAt: Date.now()
   };
   trip.deposits.push(dep);
   renderAll();
-  toast(`已標記已付：${memberName(fromId)}付給${memberName(toId)} ${fmtMoney(amount, base)} ${base}`, 'success');
-  if (currentTripId || shareMode) await syncEntry('deposits', dep.id, dep);
+  const saved = (currentTripId || shareMode) ? syncEntry('deposits', dep.id, dep) : Promise.resolve();
+  toastUndo(`已標記：${memberName(fromId)}付給${memberName(toId)} ${fmtMoney(amount, base)} ${base}`, async () => {
+    await saved; // 等新增存完再刪，順序不會顛倒
+    if (trip.id !== tripId) return;
+    const i = trip.deposits.findIndex(d => d.id === dep.id);
+    if (i === -1) return;
+    trip.deposits.splice(i, 1);
+    renderAll();
+    if (currentTripId || shareMode) await syncEntry('deposits', dep.id, null);
+  });
+  await saved;
 }
 
 /* =====================================================================
@@ -186,7 +198,7 @@ function renderMyStatusCard(net){
     const paying = t.from === me.id;
     const name = `<span class="settle-name">${escapeHtml(memberName(paying ? t.to : t.from))}</span>`;
     const who = paying ? `<span class="settle-verb lead">付給</span>${name}` : `${name}<span class="settle-verb">要付給你</span>`;
-    return settleRowHtml(t, who, t.amount, true);
+    return settleRowHtml(t, who, t.amount, base, true);
   }).join('');
   el.innerHTML = `
     <div class="receipt-head my-status-head">

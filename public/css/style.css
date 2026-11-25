@@ -1030,24 +1030,39 @@
   .stamp.settled{color:var(--credit); border-color:var(--credit);}
 
   .settle-list{padding:12px 18px 16px;}
-  /* 結算列：依付款人分組，一組一個圓角區塊；每列「付給誰｜金額｜✓」（overview.js settleGroupsHtml） */
-  .settle-box{ background:var(--surface); border-radius:var(--r-lg); padding:4px 8px 4px 14px; }
+  /* 結算列：依付款人分組，一組一個圓角區塊；每列「付給誰｜金額」（overview.js settleGroupsHtml） */
+  .settle-box{ background:var(--surface); border-radius:var(--r-lg); overflow:hidden; }
   .settle-box + .settle-box{ margin-top:10px; }
-  .settle-group-head{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; padding:9px 6px 7px 0; font-weight:700; font-size:14.5px; }
+  .settle-group-head{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; padding:12px 14px 9px; font-weight:700; font-size:14.5px; }
   .settle-sum{ flex-shrink:0; font-size:13px; font-weight:500; color:var(--ink-soft); }
-  .settle-item{ display:flex; align-items:center; gap:8px; min-height:50px; font-size:14.5px; }
-  .settle-item:not(:first-child){ border-top:1px solid color-mix(in srgb, var(--card-line) 60%, transparent); }
+  .settle-item{ position:relative; display:flex; align-items:center; gap:8px; min-height:50px; padding:0 14px; font-size:14.5px; background:var(--surface); }
+  /* 分隔線畫在外層，滑動時不跟著跑 */
+  .settle-sw:not(:first-child) .settle-in::before, .settle-item:not(:first-child):not(.settle-tap)::before{
+    content:""; position:absolute; top:0; left:14px; right:14px; height:1px; z-index:1; background:color-mix(in srgb, var(--card-line) 60%, transparent);
+  }
   .settle-party{ display:flex; align-items:baseline; min-width:0; flex:1 1 auto; white-space:nowrap; }
   .settle-party .you-tag{ flex-shrink:0; margin:0; }
   .settle-name{ min-width:0; overflow:hidden; text-overflow:ellipsis; }
   .settle-verb{ flex-shrink:0; color:var(--ink-soft); font-size:13px; font-weight:400; margin:0 6px; }
   .settle-verb.lead{ margin-left:0; }
-  .settle-amt{ flex-shrink:0; white-space:nowrap; padding-right:6px; font-family:var(--font-num); font-variant-numeric:tabular-nums; font-weight:700; font-size:15px; }
-  /* 標記已付：外圈 44px 好點，看得到的圓 30px */
-  .settle-check{ flex:none; display:grid; place-items:center; width:44px; height:44px; padding:0; border:0; border-radius:50%; background:none; cursor:pointer; }
-  .settle-check > span{ display:grid; place-items:center; width:30px; height:30px; border-radius:50%; background:var(--brass-tint); color:var(--on-emphasis); transition:background .15s, color .15s; }
-  .settle-check .ic{ width:16px; height:16px; stroke-width:2.6; }
-  .settle-check:hover > span, .settle-check:active > span{ background:var(--brass-bg); color:var(--on-brass); }
+  .settle-amt{ flex-shrink:0; white-space:nowrap; font-family:var(--font-num); font-variant-numeric:tabular-nums; font-weight:700; font-size:15px; }
+  .settle-amt-cur{ margin-left:4px; font-size:13px; font-weight:400; color:var(--ink-soft); }
+  /* 左滑標記已付（swipeRows.js） */
+  .settle-sw{ display:grid; grid-template-rows:1fr; transition:grid-template-rows .28s cubic-bezier(.3,0,.2,1), opacity .2s; }
+  .settle-sw.gone{ grid-template-rows:0fr; opacity:0; }
+  .settle-in{ position:relative; min-height:0; overflow:hidden; }
+  .settle-tap{ touch-action:pan-y; user-select:none; -webkit-user-select:none; -webkit-tap-highlight-color:transparent; cursor:grab; will-change:transform; }
+  .settle-tap:focus-visible{ outline:2px solid var(--brass); outline-offset:-3px; border-radius:var(--r-md); }
+  /* 看得到的膠囊 30px，可點範圍 44px */
+  .settle-act{
+    position:absolute; right:14px; top:50%; height:44px; margin-top:-22px; padding:0; border:0; background:none;
+    display:flex; align-items:center; opacity:0; transform:scale(.6); transform-origin:right center; cursor:pointer;
+  }
+  .settle-act span{ padding:0 12px; border-radius:999px; background:var(--brass-tint); color:var(--on-emphasis); font:600 13px/30px var(--font-text); white-space:nowrap; }
+  .settle-act:hover span, .settle-act:active span{ background:var(--brass-bg); color:var(--on-brass); }
+  .settle-tap.snap{ transition:transform .42s cubic-bezier(.2,1.12,.32,1); }
+  .settle-act.snap{ transition:transform .42s cubic-bezier(.2,1.12,.32,1), opacity .25s; }
+  body.share-readonly .settle-tap, body.trip-archived .settle-tap{ cursor:default; }
 
   /* 🆕「建議轉帳」「彼此累計欠款總額」的幣別換算列：小型下拉選單＋匯率提示文字
      並排在同一行，取代原本另外佔一整個欄位的大型 select。 */
