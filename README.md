@@ -175,7 +175,7 @@ Mousebot 分帳系統的獨立服務：**網頁記帳介面（`public/`）＋ RE
 npm install
 cp .env.example .env              # 至少填 SPLITBILL_API_KEY；要測登入再填 Discord／LINE 那幾項
 node --env-file=.env server.js    # 服務不會自動讀 .env
-npm test
+npm run lint && npm run typecheck && npm test   # CI 也跑這三項
 ```
 
 ## License

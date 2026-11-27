@@ -248,7 +248,6 @@ function startWebApi(options = {}) {
   // ---- 統一的錯誤回應：路由裡丟出的例外（例如寫入資料庫失敗）都在這裡轉成
   // { error } JSON，路由不用各自包 try/catch。body 解析錯誤（JSON 格式錯、太大）
   // 沿用它本身的狀態碼。
-  // eslint-disable-next-line no-unused-vars
   app.use('/api', (err, req, res, next) => {
     const status = Number.isInteger(err.status) && err.status >= 400 && err.status < 600 ? err.status : 500;
     // 路徑裡的分享連結 token 不進 log（redactPath）；帶上請求 id，和 [splitbill-http] 那一行對得起來

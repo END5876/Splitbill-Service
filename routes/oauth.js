@@ -206,6 +206,7 @@ function enabledProviders() {
 
 /** 只允許站內相對路徑，避免被拿來當開放式重新導向（//evil、/\evil、夾控制字元都不行）。 */
 function safeNext(v) {
+  // eslint-disable-next-line no-control-regex -- 刻意擋控制字元
   if (typeof v !== 'string' || !/^\/(?![/\\])/.test(v) || /[\x00-\x1f\x7f\\]/.test(v)) return '/';
   return v.slice(0, 500);
 }

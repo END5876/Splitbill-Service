@@ -274,8 +274,8 @@ describe('storage 模組本身', () => {
     const storage = freshStorage(dir);
     try {
       storage.loadAll();
-      const t = makeTrip(storage, 'rb', { name: '原本的名字' });
-      const other = makeTrip(storage, 'rb2');
+      makeTrip(storage, 'rb', { name: '原本的名字' });
+      makeTrip(storage, 'rb2');
 
       // 用另一條連線在資料庫裡裝一個「內容含 FAILME 就拒絕寫入」的 trigger，模擬寫入失敗
       const { DatabaseSync } = require('node:sqlite');

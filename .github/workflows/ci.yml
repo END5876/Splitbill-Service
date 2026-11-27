@@ -17,6 +17,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm run lint
       - run: npm run typecheck
       - run: npm test
       # 正式環境會裝到的套件（--omit=dev）有 high 以上的漏洞就讓 CI 失敗
